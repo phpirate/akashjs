@@ -13,8 +13,8 @@
  * ```
  */
 
-import { signal, computed, batch } from './signals.js';
-import { batch as schedulerBatch } from './scheduler.js';
+import { signal, computed } from './signals.js';
+import { batch } from './scheduler.js';
 
 // =========================================================================
 // Types
