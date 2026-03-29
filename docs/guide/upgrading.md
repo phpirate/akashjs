@@ -6,6 +6,12 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.10 (compiler)
+
+**Bug fixes:**
+
+- **Compiler:** reactive getter wrapping is now selective — only expressions containing function calls (signal reads like `count()`, `activeTab()`) are wrapped. Static values like literal arrays, objects, numbers, strings, and plain identifiers are passed through as-is. Fixes components like `<Tabs>` receiving `items: () => [...]` instead of the expected plain array.
+
 ### 0.1.9 (compiler) / 0.1.5 (runtime)
 
 **Bug fixes:**
