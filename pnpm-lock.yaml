@@ -47,46 +47,46 @@ importers:
   packages/devtools:
     dependencies:
       '@akashjs/runtime':
-        specifier: workspace:*
-        version: link:../runtime
+        specifier: ^0.1.0
+        version: 0.1.0
 
   packages/forms:
     dependencies:
       '@akashjs/runtime':
-        specifier: workspace:*
-        version: link:../runtime
+        specifier: ^0.1.0
+        version: 0.1.0
 
   packages/http:
     dependencies:
       '@akashjs/runtime':
-        specifier: workspace:*
-        version: link:../runtime
+        specifier: ^0.1.0
+        version: 0.1.0
 
   packages/i18n:
     dependencies:
       '@akashjs/runtime':
-        specifier: workspace:*
-        version: link:../runtime
+        specifier: ^0.1.0
+        version: 0.1.0
 
   packages/router:
     dependencies:
       '@akashjs/runtime':
-        specifier: workspace:*
-        version: link:../runtime
+        specifier: ^0.1.0
+        version: 0.1.0
 
   packages/runtime: {}
 
   packages/ui:
     dependencies:
       '@akashjs/runtime':
-        specifier: workspace:*
-        version: link:../runtime
+        specifier: ^0.1.0
+        version: 0.1.0
 
   packages/vite-plugin:
     dependencies:
       '@akashjs/compiler':
-        specifier: workspace:*
-        version: link:../compiler
+        specifier: ^0.1.0
+        version: 0.1.0
       vite:
         specifier: ^5.0.0
         version: 5.4.21(@types/node@25.5.0)
@@ -111,6 +111,12 @@ importers:
         version: 5.4.21(@types/node@25.5.0)
 
 packages:
+
+  '@akashjs/compiler@0.1.0':
+    resolution: {integrity: sha512-EtMsyIsRtv1gEv7nqHsFrqTChwn8TUE8ihVWIWzLbRjQYWzUNIW0vTgRBbm37hIBX8rV8yUjRprleHbGY6ZFew==}
+
+  '@akashjs/runtime@0.1.0':
+    resolution: {integrity: sha512-VbbQBURaWTGwtM9fifr6jLNCVQ+YgB+ArNUqRkFoqKENrlty5KfS/2pf5a7IUS0QNruu1ho46xN1WiqnW2bmEQ==}
 
   '@asamuzakjp/css-color@5.0.1':
     resolution: {integrity: sha512-2SZFvqMyvboVV1d15lMf7XiI3m7SDqXUuKaTymJYLN6dSGadqp+fVojqJlVoMlbZnlTmu3S0TLwLTJpvBMO1Aw==}
@@ -1683,6 +1689,10 @@ packages:
     engines: {node: '>=12.20'}
 
 snapshots:
+
+  '@akashjs/compiler@0.1.0': {}
+
+  '@akashjs/runtime@0.1.0': {}
 
   '@asamuzakjp/css-color@5.0.1':
     dependencies:
