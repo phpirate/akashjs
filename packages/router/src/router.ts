@@ -360,6 +360,10 @@ export function createRouter(routes: RouteConfig[]): Router {
     );
   }) as NavigateFn;
 
+  // Provide router context so Outlet and use* hooks can inject it
+  const depth = signal(0);
+  provideRouter({ route: () => resolvedRoute(), navigate, loaderData: () => loaderData(), depth });
+
   return {
     navigate,
     route: () => resolvedRoute(),
