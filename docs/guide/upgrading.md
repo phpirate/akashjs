@@ -6,6 +6,12 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.7 / vite-plugin 0.1.5
+
+**Bug fixes:**
+
+- **Vite plugin:** fixed HMR style injection race condition. The old style element was removed *after* the new one was appended (both matched the same `data-akash-style` selector), causing styles to disappear on hot update. Now the old style is removed before the new one is injected.
+
 ### 0.1.7
 
 **Bug fixes:**
