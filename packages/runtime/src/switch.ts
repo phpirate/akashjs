@@ -55,13 +55,14 @@ export function renderSwitch(
 
       // Find matching case or default
       const branch = cases[value] ?? cases._default;
-      if (branch) {
+      const liveParent = anchor.parentNode;
+      if (branch && liveParent) {
         const node = branch();
         const nodes = node instanceof DocumentFragment
           ? Array.from(node.childNodes)
           : [node];
         for (const n of nodes) {
-          parent.insertBefore(n, anchor);
+          liveParent.insertBefore(n, anchor);
         }
         currentNodes = nodes;
       }

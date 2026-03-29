@@ -136,15 +136,17 @@ export function renderConditional(
         current = null;
       }
 
-      // Insert new nodes
+      // Insert new nodes — use anchor.parentNode since the anchor may have
+      // moved from the initial DocumentFragment into the real DOM
       const branch = value ? trueBranch : falseBranch;
-      if (branch) {
+      const liveParent = anchor.parentNode;
+      if (branch && liveParent) {
         const fragment = branch();
         const nodes = fragment instanceof DocumentFragment
           ? Array.from(fragment.childNodes)
           : [fragment];
         for (const node of nodes) {
-          parent.insertBefore(node, anchor);
+          liveParent.insertBefore(node, anchor);
         }
         current = { nodes, dispose: null };
       }
@@ -222,10 +224,14 @@ export function renderList<T>(
         item.dispose?.();
       }
 
-      // Reconcile DOM order — simple approach: re-insert all in order
-      for (const item of newItems) {
-        for (const node of item.nodes) {
-          parent.insertBefore(node, anchor);
+      // Reconcile DOM order — use anchor.parentNode since anchor may have
+      // moved from the initial DocumentFragment into the real DOM
+      const liveParent = anchor.parentNode;
+      if (liveParent) {
+        for (const item of newItems) {
+          for (const node of item.nodes) {
+            liveParent.insertBefore(node, anchor);
+          }
         }
       }
 
