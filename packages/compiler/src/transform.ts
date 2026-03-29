@@ -93,6 +93,16 @@ export function transform(sfc: ParsedSFC, options: CompileOptions = {}): Compile
   return { code, css };
 }
 
+/** Check if a value is already a function expression (arrow or function keyword) */
+function isAlreadyFunction(value: string): boolean {
+  const trimmed = value.trim();
+  // Arrow function: () => ..., (x) => ..., x => ...
+  if (/^(?:\([^)]*\)|[a-zA-Z_$]\w*)\s*=>/.test(trimmed)) return true;
+  // Function keyword
+  if (/^function[\s(]/.test(trimmed)) return true;
+  return false;
+}
+
 /** Detect which runtime APIs are used in script/template and need auto-importing */
 function detectAutoImports(script: string, template: string, imports: Set<string>): void {
   // APIs that may appear in the script block
@@ -388,8 +398,13 @@ function generateComponentCall(
         const jsxContent = tryCompileJSXProp(attr.value, imports, indent, scopeId);
         if (jsxContent) {
           propParts.push(`${attr.name}: ${jsxContent}`);
-        } else {
+        } else if (attr.name.startsWith('on') || isAlreadyFunction(attr.value)) {
+          // Event handlers and function values — pass through as-is
           propParts.push(`${attr.name}: ${attr.value}`);
+        } else {
+          // Wrap in getter for reactivity — expressions like activeTab() === 'login'
+          // must be re-evaluated by the consuming component, not eagerly evaluated
+          propParts.push(`${attr.name}: () => ${attr.value}`);
         }
       } else {
         propParts.push(`${attr.name}: ${JSON.stringify(attr.value)}`);

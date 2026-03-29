@@ -319,4 +319,39 @@ const data = signal(null);
     expect(result.code).toContain('d.title');
     expect(result.code).toContain('d.body');
   });
+
+  it('wraps dynamic component props in getters for reactivity', () => {
+    const source = `
+<script lang="ts">
+const activeTab = signal('login');
+</script>
+
+<template>
+  <Show when={activeTab() === 'login'}>
+    <div>Login form</div>
+  </Show>
+</template>
+`;
+
+    const result = compile(source);
+    // when should be a getter, not an eagerly evaluated value
+    expect(result.code).toContain("when: () => activeTab() === 'login'");
+  });
+
+  it('does not wrap event handler props in getters', () => {
+    const source = `
+<script lang="ts">
+function handleClick() {}
+</script>
+
+<template>
+  <MyComponent onClick={handleClick} />
+</template>
+`;
+
+    const result = compile(source);
+    // Event handlers should be passed through directly
+    expect(result.code).toContain('onClick: handleClick');
+    expect(result.code).not.toContain('onClick: () =>');
+  });
 });

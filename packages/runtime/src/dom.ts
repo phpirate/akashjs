@@ -250,7 +250,7 @@ export function renderList<T>(
 
 /** Props for the <Show> component */
 export interface ShowProps<T> {
-  when: T | null | undefined | false;
+  when: (() => T | null | undefined | false) | T | null | undefined | false;
   fallback?: () => AkashNode;
   children: (value: T) => AkashNode;
 }
@@ -258,17 +258,23 @@ export interface ShowProps<T> {
 /**
  * <Show> component — conditionally renders children with type narrowing.
  * The children callback receives the non-null/undefined value.
+ * `when` can be a reactive getter or a static value.
  */
 export function Show<T>(props: ShowProps<T>): Node {
   const anchor = createAnchor('show');
   const container = document.createDocumentFragment();
   container.appendChild(anchor);
 
+  // Resolve when — may be a getter (from compiler) or a static value
+  const getWhen = typeof props.when === 'function'
+    ? props.when as () => T | null | undefined | false
+    : () => props.when as T | null | undefined | false;
+
   renderConditional(
     container,
     anchor,
-    () => !!props.when,
-    () => nodeToDOM(props.children(props.when as T)),
+    () => !!getWhen(),
+    () => nodeToDOM(props.children(getWhen() as T)),
     props.fallback ? () => nodeToDOM(props.fallback!()) : undefined,
   );
 
@@ -277,23 +283,29 @@ export function Show<T>(props: ShowProps<T>): Node {
 
 /** Props for the <For> component */
 export interface ForProps<T> {
-  each: T[];
+  each: (() => T[]) | T[];
   key: (item: T) => unknown;
   children: (item: T, index: number) => AkashNode;
 }
 
 /**
  * <For> component — renders a list with keyed reconciliation.
+ * `each` can be a reactive getter or a static array.
  */
 export function For<T>(props: ForProps<T>): Node {
   const anchor = createAnchor('for');
   const container = document.createDocumentFragment();
   container.appendChild(anchor);
 
+  // Resolve each — may be a getter (from compiler) or a static array
+  const getEach = typeof props.each === 'function'
+    ? props.each as () => T[]
+    : () => props.each as T[];
+
   renderList(
     container,
     anchor,
-    () => props.each,
+    getEach,
     props.key,
     (item, index) => nodeToDOM(props.children(item, index)),
   );
