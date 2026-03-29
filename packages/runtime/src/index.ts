@@ -57,7 +57,6 @@ export {
   ssrRaw,
   nodeToHtml,
   renderNodes,
-  escapeHtml,
   isServerRendering,
 } from './ssr.js';
 export type { SSRElement, SSRText, SSRRaw, SSRNode } from './ssr.js';
@@ -228,6 +227,15 @@ export type { Machine, MachineConfig, StateConfig, TransitionConfig, MachineCont
 
 export { createEventBus, globalEventBus } from './event-bus.js';
 export type { EventBus, EventMap, EventHandler } from './event-bus.js';
+
+export {
+  sanitize, escapeHtml, createSafeHTML,
+  generateCSP, getCSPHeaderName, generateSecurityHeaders,
+  safeMerge, deepFreeze,
+  generateSRI, generateCSRFToken, createCSRFInterceptor,
+  sanitizeURL, createRateLimiter,
+} from './security.js';
+export type { SanitizeOptions, CSPConfig, SecurityHeadersConfig } from './security.js';
 
 export { akashError, formatError, getErrorDef, getAllErrorCodes } from './errors.js';
 export type { ErrorDef } from './errors.js';

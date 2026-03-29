@@ -21,6 +21,7 @@ import { registerTestCommand } from './commands/test.js';
 import { registerSizeCommand } from './commands/size.js';
 import { registerDeployCommand } from './commands/deploy.js';
 import { registerUpdateCommand } from './commands/update.js';
+import { registerAuditCommand } from './commands/audit.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -38,6 +39,7 @@ export function createProgram(): Command {
   registerSizeCommand(program);
   registerDeployCommand(program);
   registerUpdateCommand(program);
+  registerAuditCommand(program);
 
   return program;
 }
