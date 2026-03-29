@@ -109,9 +109,23 @@ A few things AkashJS ships that other frameworks don't:
 - **`akash audit`** — CLI security scanner for your codebase
 - **`akash deploy`** — Zero-config deploy to Vercel/Cloudflare/Netlify/Deno
 
-## Bundle Size
+## Performance
 
-The core runtime (signals + components + DOM) is **3.4KB gzipped**. Features you don't import aren't shipped.
+**Bundle size:** Core runtime is 3.4KB gzipped. Features you don't import aren't shipped.
+
+**Signal benchmarks** (Node.js, not DOM — run `npx tsx benchmark/run.ts`):
+
+| Operation | Time |
+|---|---|
+| Create 10,000 signals | 8.6ms |
+| Create+dispose 10,000 effects | 14ms |
+| Batch update 1000 signals × 100 | 10ms |
+| Diamond deps (depth 50) × 1000 | 45ms |
+
+**Known performance gaps:**
+- Memory per signal (~650 bytes) is higher than SolidJS (~40 bytes). Optimization needed.
+- No browser DOM rendering benchmarks yet — js-framework-benchmark harness not integrated.
+- Large computed chains (1000+ computeds) show linear scaling, not constant time.
 
 | Import | Gzipped |
 |---|---|
