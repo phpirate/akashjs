@@ -83,13 +83,20 @@ effect(() => console.log(doubled())); // re-runs only when count changes
 
 **UI** — 24 Material Design 3 components: Button, TextField, Card, Dialog, Tabs, Drawer, etc. (Note: these components use semantic HTML but have not undergone a formal WCAG accessibility audit.)
 
-## SSR / SSG (Experimental)
+## SSR / SSG
 
-AkashJS has APIs for server-side rendering (`renderToString`, `renderToStream`), static site generation (`prerender`), client hydration (`hydrate`, `progressiveHydrate`), and a server-mode compiler that outputs string concatenation instead of DOM calls.
+AkashJS has APIs for server-side rendering, static site generation, and client hydration.
 
-**These APIs exist and have unit tests, but have not been proven in a real SSR deployment.** Known risks include hydration mismatches, streaming edge cases, and server/client code splitting issues that only surface under real-world conditions. The reference app (TaskFlow) is client-side only.
+The reference app (TaskFlow) has a working SSR server (`apps/taskflow/server/`) that renders the login page, dashboard, and Kanban board entirely on the server using `ssrElement`/`nodeToHtml` — no DOM APIs, pure string output. Run it with:
 
-If you need production SSR today, use a proven framework (Next.js, Nuxt, SvelteKit). AkashJS SSR should be considered experimental until we ship an SSR reference app and resolve the inevitable edge cases.
+```bash
+npx tsx apps/taskflow/server/index.ts
+# Routes: /login, /dashboard, /project/p1
+```
+
+**What works:** `ssrElement()`, `ssrText()`, `nodeToHtml()`, `escapeHtml()`, server-mode compiler, security headers on responses, `__SSR_DATA__` for client hydration bootstrap.
+
+**What's still experimental:** `hydrate()` and `progressiveHydrate()` for client-side signal attachment, `renderToStream()` for streaming SSR, and `prerender()` for build-time SSG. These have unit tests but haven't been used in a full hydration round-trip yet.
 
 ## What's different
 
