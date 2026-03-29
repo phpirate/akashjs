@@ -46,6 +46,14 @@ export function transform(sfc: ParsedSFC, options: CompileOptions = {}): Compile
   // User script (with Props interface extracted)
   const { cleanScript, propsInterface } = extractPropsInterface(script);
 
+  // Separate user imports from the rest of the script
+  const { userImports, bodyScript } = extractUserImports(cleanScript);
+
+  // Hoist user imports to top level
+  if (userImports.length > 0) {
+    code += userImports.join('\n') + '\n';
+  }
+
   // Generate the component
   const generics = propsInterface ? `<${propsInterface}>` : '';
 
@@ -57,9 +65,9 @@ export function transform(sfc: ParsedSFC, options: CompileOptions = {}): Compile
     code += `  const props = ctx.props;\n`;
   }
 
-  // Include user script (indented)
-  if (cleanScript.trim()) {
-    const indented = cleanScript
+  // Include user script body (without imports, indented)
+  if (bodyScript.trim()) {
+    const indented = bodyScript
       .trim()
       .split('\n')
       .map((line) => `  ${line}`)
@@ -101,6 +109,41 @@ function detectAutoImports(script: string, imports: Set<string>): void {
       imports.add(api);
     }
   }
+}
+
+/** Separate import statements from the rest of the script */
+function extractUserImports(script: string): {
+  userImports: string[];
+  bodyScript: string;
+} {
+  const lines = script.split('\n');
+  const userImports: string[] = [];
+  const bodyLines: string[] = [];
+
+  let inMultiLineImport = false;
+
+  for (const line of lines) {
+    if (inMultiLineImport) {
+      userImports[userImports.length - 1] += '\n' + line;
+      if (line.includes('from ') || line.trimEnd().endsWith(';')) {
+        inMultiLineImport = false;
+      }
+      continue;
+    }
+
+    const trimmed = line.trim();
+    if (/^import\s/.test(trimmed)) {
+      userImports.push(line.trim());
+      // Check if this import spans multiple lines (no `from` on this line)
+      if (!trimmed.includes('from ') && !trimmed.endsWith(';')) {
+        inMultiLineImport = true;
+      }
+    } else {
+      bodyLines.push(line);
+    }
+  }
+
+  return { userImports, bodyScript: bodyLines.join('\n') };
 }
 
 /** Extract Props interface from script so we can use it as generic param */
