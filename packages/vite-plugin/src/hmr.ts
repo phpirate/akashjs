@@ -68,14 +68,12 @@ if (import.meta.hot) {
  * When only styles change, we can hot-swap the <style> element
  * without re-rendering the component.
  */
-export function generateStyleHmrCode(styleId: string): string {
+export function generateStyleHmrCode(_styleId: string): string {
   return `
-// Style HMR
+// Style HMR — accept updates so the module re-evaluates
+// (old style removal happens before new style injection above)
 if (import.meta.hot) {
   import.meta.hot.accept();
-  // Remove old style element and re-inject
-  const oldStyle = document.querySelector('[data-akash-style="${styleId}"]');
-  if (oldStyle) oldStyle.remove();
 }
 `;
 }

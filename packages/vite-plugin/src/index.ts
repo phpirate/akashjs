@@ -8,7 +8,7 @@
 
 import { compile } from '@akashjs/compiler';
 import type { Plugin } from 'vite';
-import { analyzeHmrChange, generateHmrCode, generateStyleHmrCode } from './hmr.js';
+import { analyzeHmrChange, generateHmrCode } from './hmr.js';
 
 export interface AkashPluginOptions {
   /** Include file patterns (default: .akash files) */
@@ -48,15 +48,13 @@ export default function akash(options: AkashPluginOptions = {}): Plugin {
           const cssCode = result.css.replace(/`/g, '\\`').replace(/\\/g, '\\\\');
           const styleId = id.replace(/[^a-zA-Z0-9]/g, '_');
           output += `\n// Injected scoped styles\n`;
+          // Remove old style before appending new one (critical for HMR)
+          output += `const __akash_old_style = document.querySelector('[data-akash-style="${styleId}"]');\n`;
+          output += `if (__akash_old_style) __akash_old_style.remove();\n`;
           output += `const __akash_style = document.createElement('style');\n`;
           output += `__akash_style.setAttribute('data-akash-style', '${styleId}');\n`;
           output += `__akash_style.textContent = \`${cssCode}\`;\n`;
           output += `document.head.appendChild(__akash_style);\n`;
-
-          // Add style HMR in dev mode
-          if (!isProduction) {
-            output += generateStyleHmrCode(styleId);
-          }
         }
       }
 

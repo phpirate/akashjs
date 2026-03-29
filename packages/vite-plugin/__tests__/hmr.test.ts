@@ -71,10 +71,9 @@ describe('generateHmrCode', () => {
 });
 
 describe('generateStyleHmrCode', () => {
-  it('generates style element removal code', () => {
+  it('generates HMR accept call for style updates', () => {
     const code = generateStyleHmrCode('my-style-id');
     expect(code).toContain('import.meta.hot');
-    expect(code).toContain('data-akash-style');
-    expect(code).toContain('my-style-id');
+    expect(code).toContain('accept()');
   });
 });
