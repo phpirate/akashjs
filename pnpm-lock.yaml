@@ -148,7 +148,7 @@ importers:
         specifier: ^0.1.0
         version: 0.1.0
       vite:
-        specifier: ^5.0.0
+        specifier: ^5.0.0 || ^6.0.0
         version: 5.4.21(@types/node@25.5.0)
 
   playground:
