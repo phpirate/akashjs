@@ -6,6 +6,12 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.11 (compiler)
+
+**Bug fixes:**
+
+- **Compiler:** reactive getter wrapping is now limited to built-in primitives (`Show`, `For`, `Switch`). All other components receive prop values directly, fixing UI components like `Button` receiving `disabled: () => expr` (always truthy) instead of the actual boolean value.
+
 ### 0.1.6 (runtime)
 
 **Bug fixes:**
