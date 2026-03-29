@@ -3,6 +3,7 @@
   "displayName": "AkashJS",
   "description": "Syntax highlighting for AkashJS .akash single-file components",
   "version": "0.1.0",
+  "private": true,
   "publisher": "akashjs",
   "license": "MIT",
   "repository": {

@@ -66,6 +66,33 @@ importers:
 
   extensions/vscode-akash: {}
 
+  packages/akashjs:
+    dependencies:
+      '@akashjs/compiler':
+        specifier: ^0.1.3
+        version: 0.1.3
+      '@akashjs/forms':
+        specifier: ^0.1.3
+        version: 0.1.3
+      '@akashjs/http':
+        specifier: ^0.1.3
+        version: 0.1.3
+      '@akashjs/i18n':
+        specifier: ^0.1.3
+        version: 0.1.3
+      '@akashjs/router':
+        specifier: ^0.1.3
+        version: 0.1.3
+      '@akashjs/runtime':
+        specifier: ^0.1.3
+        version: 0.1.3
+      '@akashjs/ui':
+        specifier: ^0.1.3
+        version: 0.1.3
+      '@akashjs/vite-plugin':
+        specifier: ^0.1.3
+        version: 0.1.3(vite@5.4.21(@types/node@25.5.0))
+
   packages/cli:
     dependencies:
       commander:
@@ -148,8 +175,34 @@ packages:
   '@akashjs/compiler@0.1.0':
     resolution: {integrity: sha512-EtMsyIsRtv1gEv7nqHsFrqTChwn8TUE8ihVWIWzLbRjQYWzUNIW0vTgRBbm37hIBX8rV8yUjRprleHbGY6ZFew==}
 
+  '@akashjs/compiler@0.1.3':
+    resolution: {integrity: sha512-/d90kw34I0kgmGkubsjNluqfRjajrs5mFe16H//K6ewkkwyMqA+eWub/aSrm/k3YLLwa3Z0m3UtADmJ88qopLA==}
+
+  '@akashjs/forms@0.1.3':
+    resolution: {integrity: sha512-wlE7jX0xm7WLLxJbPPd/kjOFA9DPmOseQGqs63Bt6/o4G44i1NBDJ26b+Gp+cPbxe+aYI07TWdOZk0KugwmG4g==}
+
+  '@akashjs/http@0.1.3':
+    resolution: {integrity: sha512-AAub5DctYQO3YtVdgqI110vrZ+N2eRBdovk/b1p5bNF/FkPHwIEp/otecLq6r07r1xcvtmlOlr0JvUmA11NuGg==}
+
+  '@akashjs/i18n@0.1.3':
+    resolution: {integrity: sha512-64kRasnWAuIIzxeXC0s9WF0G0ovfQEOY2N/r/X20tS9dpVfwQFJsHS7wVHy0xWz5Z+B2i1LKgADJzXPRgjr3kg==}
+
+  '@akashjs/router@0.1.3':
+    resolution: {integrity: sha512-3mvWxM9G8untbhnyymqcHg6g0EAQLdDOBLERGo1NPJDVXa+GOZc3aHJh9XCA/x0Ss6mD7ELqDeNdlau/1Z/NoA==}
+
   '@akashjs/runtime@0.1.0':
     resolution: {integrity: sha512-VbbQBURaWTGwtM9fifr6jLNCVQ+YgB+ArNUqRkFoqKENrlty5KfS/2pf5a7IUS0QNruu1ho46xN1WiqnW2bmEQ==}
+
+  '@akashjs/runtime@0.1.3':
+    resolution: {integrity: sha512-6D5SMpfrzw2ml2Cr6HX1nvuTLaiEB3kVJghIx0n8LWHB4ABDvlV9SrzCR/qcTVWJHuYeu031ilA32nCQuZNAHQ==}
+
+  '@akashjs/ui@0.1.3':
+    resolution: {integrity: sha512-51wZ3OykvO6JhHmBU6HAyhcZrmXhA3w6rV6GMKKH4PMJ494VbAoPDVn4AVryMlPu6hAW0x2KrPMOvtK2l0eErA==}
+
+  '@akashjs/vite-plugin@0.1.3':
+    resolution: {integrity: sha512-LZnwz8vnIcV0v6mj8yGtEvAMCf9WU2JFrTT8kd+XX1Aa+gXiYMiDQHbOxS2sZfGLMY4Ouvz4m9gf68QwS4XK0g==}
+    peerDependencies:
+      vite: ^5.0.0
 
   '@asamuzakjp/css-color@5.0.1':
     resolution: {integrity: sha512-2SZFvqMyvboVV1d15lMf7XiI3m7SDqXUuKaTymJYLN6dSGadqp+fVojqJlVoMlbZnlTmu3S0TLwLTJpvBMO1Aw==}
@@ -1725,7 +1778,36 @@ snapshots:
 
   '@akashjs/compiler@0.1.0': {}
 
+  '@akashjs/compiler@0.1.3': {}
+
+  '@akashjs/forms@0.1.3':
+    dependencies:
+      '@akashjs/runtime': 0.1.3
+
+  '@akashjs/http@0.1.3':
+    dependencies:
+      '@akashjs/runtime': 0.1.3
+
+  '@akashjs/i18n@0.1.3':
+    dependencies:
+      '@akashjs/runtime': 0.1.3
+
+  '@akashjs/router@0.1.3':
+    dependencies:
+      '@akashjs/runtime': 0.1.3
+
   '@akashjs/runtime@0.1.0': {}
+
+  '@akashjs/runtime@0.1.3': {}
+
+  '@akashjs/ui@0.1.3':
+    dependencies:
+      '@akashjs/runtime': 0.1.3
+
+  '@akashjs/vite-plugin@0.1.3(vite@5.4.21(@types/node@25.5.0))':
+    dependencies:
+      '@akashjs/compiler': 0.1.3
+      vite: 5.4.21(@types/node@25.5.0)
 
   '@asamuzakjp/css-color@5.0.1':
     dependencies:
