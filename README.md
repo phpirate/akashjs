@@ -81,7 +81,7 @@ effect(() => console.log(doubled())); // re-runs only when count changes
 
 **HTTP** — `createHttpClient()` with interceptors, `createResource()` for async data, `createAction()` for mutations.
 
-**UI** — 24 Material Design 3 components: Button, TextField, Card, Dialog, Tabs, Drawer, etc.
+**UI** — 24 Material Design 3 components: Button, TextField, Card, Dialog, Tabs, Drawer, etc. (Note: these components use semantic HTML but have not undergone a formal WCAG accessibility audit.)
 
 ## What's different
 
@@ -121,6 +121,14 @@ akash audit            # Security scan
 akash update           # Update + run codemods
 ```
 
+## Editor Support
+
+A TextMate grammar for `.akash` syntax highlighting is in `extensions/vscode-akash/`. It provides basic highlighting for script/template/style blocks with embedded TypeScript, HTML, and CSS.
+
+**This is not a full language server** — there's no auto-completion or diagnostics in templates yet. A `createLanguageService()` API exists in the compiler package but hasn't been integrated into a VS Code LSP extension.
+
+To use the grammar locally: copy `extensions/vscode-akash/` into your `~/.vscode/extensions/` folder.
+
 ## Documentation
 
 - **[Guide](docs/guide/)** — Feature documentation
@@ -145,9 +153,15 @@ AkashJS is in early development (v0.1.x). Here's what exists:
 What's still needed before 1.0:
 
 - Real-world usage and feedback
-- End-to-end browser tests
+- Cross-browser testing (currently tested in happy-dom/Node.js; no automated Playwright/Selenium suite for real browsers yet)
 - Performance benchmarks against other frameworks
+- WCAG accessibility audit for UI components (the components use semantic HTML and ARIA where appropriate, but no formal compliance audit has been done)
 - API stabilization
+
+### Requirements
+
+- **Node.js** >= 18.0.0
+- **Browser**: Targets ES2022. Should work in modern browsers (Chrome/Edge 90+, Firefox 90+, Safari 15+) but this is based on the APIs used, not automated cross-browser test results.
 
 ## Versioning
 
