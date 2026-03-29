@@ -7,10 +7,8 @@
  * for the next level, and so on.
  */
 
-import { defineComponent, effect, signal, provide, createContext } from '@akashjs/runtime';
-import type { AkashNode, Component } from '@akashjs/runtime';
-import { useRouterInternal, provideRouter } from './router.js';
-import type { ResolvedRoute } from './types.js';
+import { defineComponent, effect, signal } from '@akashjs/runtime';
+import { useRouterInternal } from './router.js';
 
 export const Outlet = defineComponent(() => {
   const routerCtx = useRouterInternal();
@@ -55,13 +53,7 @@ export const Outlet = defineComponent(() => {
         container.removeChild(container.firstChild);
       }
 
-      // Render component — for layouts, we need to increment the depth
-      // so child <Outlet> renders the next match level.
-      // We pass the incremented depth through the router context.
-      const nextDepth = signal(currentDepth + 1);
-
-      // The component render will pick up the router context with the new depth
-      // when it calls useRouterInternal().
+      // Render the component
       const node = Comp({
         children: undefined,
       });

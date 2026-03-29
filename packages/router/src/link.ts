@@ -6,8 +6,7 @@
  */
 
 import { defineComponent, createElement, setProperty } from '@akashjs/runtime';
-import { useNavigate } from './router.js';
-import { resolvePath, } from './router.js';
+import { useNavigate, resolvePath } from './router.js';
 import { buildUrl } from './history.js';
 
 export interface LinkProps {

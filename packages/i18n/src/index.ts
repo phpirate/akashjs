@@ -18,7 +18,7 @@
  */
 
 import { signal, computed } from '@akashjs/runtime';
-import type { Signal, ReadonlySignal } from '@akashjs/runtime';
+import type { ReadonlySignal } from '@akashjs/runtime';
 
 // --- Types ---
 

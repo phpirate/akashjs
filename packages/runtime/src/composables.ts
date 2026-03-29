@@ -5,7 +5,7 @@
  * reactive primitives that every app uses.
  */
 
-import { signal, effect, computed } from './signals.js';
+import { signal, effect } from './signals.js';
 import type { Signal, ReadonlySignal } from './signals.js';
 
 // --- useInterval ---
@@ -189,19 +189,6 @@ export function useToggle(initial = false) {
  * ```
  */
 export function usePrevious<T>(source: () => T): ReadonlySignal<T | undefined> {
-  const prev = signal<T | undefined>(undefined);
-
-  let isFirst = true;
-  effect(() => {
-    const current = source();
-    if (isFirst) {
-      isFirst = false;
-    } else {
-      // We want the previous value, so we set on the *next* change
-    }
-  });
-
-  // Simpler approach: track with a closure
   let lastValue: T | undefined;
   const tracked = signal<T | undefined>(undefined);
 
