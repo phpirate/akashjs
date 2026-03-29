@@ -15,7 +15,7 @@ export default defineConfig({
   lastUpdated: true,
   cleanUrls: true,
   themeConfig: {
-    logo: '/logo.png',
+    // logo: '/logo.png',
     nav: [
       { text: 'Guide', link: '/guide/introduction' },
       { text: 'Tutorial', link: '/tutorial/introduction' },
