@@ -400,6 +400,11 @@ function generateComponentCall(
 
 /**
  * Compile children nodes into a render function body: () => { ... return node; }
+ *
+ * Handles special cases:
+ * - A single expression child that is an arrow function with JSX:
+ *   {(value) => <div>...</div>} compiles the JSX and wraps it in (value) => { ... }
+ * - Regular element/text/expression children: wrapped in () => { ... }
  */
 function generateChildrenBody(
   children: TemplateNode[],
@@ -407,23 +412,81 @@ function generateChildrenBody(
   indent: number,
   scopeId?: string,
 ): string {
+  // Single expression child — check for arrow function with JSX
+  if (children.length === 1 && children[0].type === 'expression') {
+    const compiled = tryCompileArrowJSX(children[0].content ?? '', imports, indent, scopeId);
+    if (compiled) return compiled;
+  }
+
   const pad = ' '.repeat(indent);
   const innerLines: string[] = [];
 
-  if (children.length === 1) {
-    generateNode(children[0], innerLines, imports, indent, '__child', scopeId);
+  // Filter out whitespace-only text nodes
+  const meaningful = children.filter(
+    (c) => !(c.type === 'text' && !(c.content ?? '').trim()),
+  );
+
+  if (meaningful.length === 1) {
+    generateNode(meaningful[0], innerLines, imports, indent, '__child', scopeId);
     innerLines.push(`${pad}return __child;`);
   } else {
     innerLines.push(`${pad}const __frag = document.createDocumentFragment();`);
-    for (let i = 0; i < children.length; i++) {
+    for (let i = 0; i < meaningful.length; i++) {
       const cVar = `__child${i}`;
-      generateNode(children[i], innerLines, imports, indent, cVar, scopeId);
+      generateNode(meaningful[i], innerLines, imports, indent, cVar, scopeId);
       innerLines.push(`${pad}__frag.appendChild(${cVar});`);
     }
     innerLines.push(`${pad}return __frag;`);
   }
 
   return `() => {\n${innerLines.join('\n')}\n${' '.repeat(indent - 2)}}`;
+}
+
+/**
+ * Detect arrow functions containing JSX and compile them:
+ *   (value) => <div>{value.name}</div>
+ *   () => <span>hello</span>
+ *
+ * Returns compiled function string, or null if not an arrow+JSX pattern.
+ */
+function tryCompileArrowJSX(
+  expr: string,
+  imports: Set<string>,
+  indent: number,
+  scopeId?: string,
+): string | null {
+  const trimmed = expr.trim();
+
+  // Match arrow function: optional params => JSX body
+  // Patterns: () => <Tag>, (x) => <Tag>, x => <Tag>, (x, i) => <Tag>
+  const arrowMatch = /^(\(?[^)]*\)?)\s*=>\s*(<[a-zA-Z].*)$/s.exec(trimmed);
+  if (!arrowMatch) return null;
+
+  const params = arrowMatch[1];
+  const jsxBody = arrowMatch[2];
+
+  // Parse the JSX body as template content
+  const nodes = parseTemplate(jsxBody);
+  if (nodes.length === 0) return null;
+
+  // Generate the DOM creation code for the JSX
+  const pad = ' '.repeat(indent);
+  const innerLines: string[] = [];
+
+  if (nodes.length === 1) {
+    generateNode(nodes[0], innerLines, imports, indent, '__child', scopeId);
+    innerLines.push(`${pad}return __child;`);
+  } else {
+    innerLines.push(`${pad}const __frag = document.createDocumentFragment();`);
+    for (let i = 0; i < nodes.length; i++) {
+      const cVar = `__child${i}`;
+      generateNode(nodes[i], innerLines, imports, indent, cVar, scopeId);
+      innerLines.push(`${pad}__frag.appendChild(${cVar});`);
+    }
+    innerLines.push(`${pad}return __frag;`);
+  }
+
+  return `${params} => {\n${innerLines.join('\n')}\n${' '.repeat(indent - 2)}}`;
 }
 
 /**
@@ -437,6 +500,11 @@ function tryCompileJSXProp(
   scopeId?: string,
 ): string | null {
   const trimmed = value.trim();
+
+  // Check for arrow function with JSX: (x) => <Tag> or () => <Tag>
+  const arrowResult = tryCompileArrowJSX(trimmed, imports, indent + 2, scopeId);
+  if (arrowResult) return arrowResult;
+
   // Check if the value looks like JSX: starts with < followed by a tag name
   if (!/^<[a-zA-Z]/.test(trimmed)) return null;
 

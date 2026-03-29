@@ -235,4 +235,67 @@ const isLoading = signal(true);
     expect(result.code).toContain('"Please log in"');
     expect(result.code).toContain('"Loading..."');
   });
+
+  it('compiles arrow function children with JSX: {(value) => <div>...</div>}', () => {
+    const source = `
+<script lang="ts">
+const user = signal(null);
+</script>
+
+<template>
+  <Show when={user()}>
+    {(u) => <div class="profile">{u.name}</div>}
+  </Show>
+</template>
+`;
+
+    const result = compile(source);
+    // Should compile into (u) => { ... createElement ... }
+    expect(result.code).toContain('(u) => {');
+    expect(result.code).toContain("document.createElement('div')");
+    expect(result.code).toContain('"profile"');
+    // Reactive expression {u.name} should be a text binding
+    expect(result.code).toContain('u.name');
+  });
+
+  it('compiles parameterless arrow function children: {() => <span>...</span>}', () => {
+    const source = `
+<script lang="ts">
+const show = signal(true);
+</script>
+
+<template>
+  <Show when={show()}>
+    {() => <span>Visible</span>}
+  </Show>
+</template>
+`;
+
+    const result = compile(source);
+    expect(result.code).not.toContain('String(');
+    expect(result.code).toContain('() => {');
+    expect(result.code).toContain("document.createElement('span')");
+  });
+
+  it('compiles arrow function with multiple JSX children', () => {
+    const source = `
+<script lang="ts">
+const data = signal(null);
+</script>
+
+<template>
+  <Show when={data()}>
+    {(d) => <div><h1>{d.title}</h1><p>{d.body}</p></div>}
+  </Show>
+</template>
+`;
+
+    const result = compile(source);
+    expect(result.code).toContain('(d) => {');
+    expect(result.code).toContain("document.createElement('h1')");
+    expect(result.code).toContain("document.createElement('p')");
+    // Reactive expressions compiled as text bindings
+    expect(result.code).toContain('d.title');
+    expect(result.code).toContain('d.body');
+  });
 });
