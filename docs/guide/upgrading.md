@@ -6,6 +6,12 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.13 (compiler)
+
+**Bug fixes:**
+
+- **Compiler:** fixed infinite loop when parsing complex templates. The template parser could stall when encountering characters that partially matched tag boundaries (e.g., `<` not followed by a valid tag name). Also fixed `findClosingTag` incorrectly matching `>` inside `{...}` attribute expressions. Both issues could cause the dev server to hang on large `.akash` files.
+
 ### 0.1.11 (compiler)
 
 **Bug fixes:**
