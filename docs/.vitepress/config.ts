@@ -5,7 +5,7 @@ export default defineConfig({
   description: 'Angular structure, Svelte simplicity — a TypeScript-first UI framework',
   ignoreDeadLinks: true,
   head: [
-    ['meta', { name: 'theme-color', content: '#6750A4' }],
+    ['meta', { name: 'theme-color', content: '#1565C0' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'AkashJS' }],
     ['meta', { property: 'og:description', content: 'Angular structure, Svelte simplicity — a TypeScript-first UI framework' }],
@@ -15,7 +15,7 @@ export default defineConfig({
   lastUpdated: true,
   cleanUrls: true,
   themeConfig: {
-    logo: '/logo.svg',
+    logo: '/logo.png',
     nav: [
       { text: 'Guide', link: '/guide/introduction' },
       { text: 'Tutorial', link: '/tutorial/introduction' },
