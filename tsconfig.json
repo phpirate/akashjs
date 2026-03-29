@@ -7,7 +7,9 @@
     { "path": "packages/router" },
     { "path": "packages/forms" },
     { "path": "packages/http" },
+    { "path": "packages/i18n" },
     { "path": "packages/cli" },
-    { "path": "packages/devtools" }
+    { "path": "packages/devtools" },
+    { "path": "packages/ui" }
   ]
 }
