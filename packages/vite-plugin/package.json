@@ -1,6 +1,6 @@
 {
   "name": "@akashjs/vite-plugin",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "description": "AkashJS Vite plugin — .akash file transformation and HMR",
   "type": "module",
   "main": "dist/index.cjs",
@@ -20,7 +20,7 @@
     "test": "vitest"
   },
   "peerDependencies": {
-    "vite": "^5.0.0"
+    "vite": "^5.0.0 || ^6.0.0"
   },
   "dependencies": {
     "@akashjs/compiler": "^0.1.0"
