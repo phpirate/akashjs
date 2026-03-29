@@ -135,3 +135,33 @@ akash deploy --dry-run                # Generate config files without deploying
 | **Static** | Default fallback | No adapter — static files in `dist/` |
 
 When no `--target` is provided, the platform is auto-detected from config files in the project root. If none match, it falls back to `static`.
+
+## akash audit
+
+Scan your project for common security vulnerabilities.
+
+```sh
+akash audit                # Run full audit, print report
+akash audit --fix          # Auto-fix issues where possible
+akash audit --json         # Output results as JSON (for CI)
+```
+
+### What it scans for
+
+- Unsanitized `innerHTML` assignments
+- Missing CSP headers in SSR entry points
+- Hardcoded secrets or API keys in source files
+- Missing CSRF protection on HTTP clients
+- Prototype-pollutable merge patterns (e.g., recursive `Object.assign` on user input)
+- Unsafe URL usage (`javascript:` hrefs, unvalidated redirects)
+- Missing security headers in server middleware
+- Outdated dependencies with known CVEs
+
+### Options
+
+| Flag | Description |
+|---|---|
+| `--fix` | Automatically apply safe fixes (e.g., wrap `innerHTML` with `sanitize()`, add missing headers) |
+| `--json` | Output structured JSON for programmatic consumption and CI integration |
+
+Exit code is `1` when critical issues are found, making it suitable for CI gates.

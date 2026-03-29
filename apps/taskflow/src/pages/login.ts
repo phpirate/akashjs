@@ -2,7 +2,9 @@
  * Login page — centered card on gradient background.
  */
 
-import { signal, effect, createElement } from '@akashjs/runtime';
+import { signal, effect, createElement, createRateLimiter } from '@akashjs/runtime';
+
+const loginLimiter = createRateLimiter({ maxAttempts: 5, windowMs: 60000 });
 import { authStore } from '../stores/auth.js';
 
 export function renderLoginPage(container: HTMLElement): void {
@@ -247,6 +249,12 @@ export function renderLoginPage(container: HTMLElement): void {
     const p = password();
     if (!e) { error.set('Please enter your email address.'); return; }
     if (!p) { error.set('Please enter your password.'); return; }
+
+    // Prevent brute-force login attempts
+    if (!loginLimiter.check()) {
+      error.set('Too many attempts. Please wait a minute before trying again.');
+      return;
+    }
 
     loading.set(true);
     // Simulate brief delay

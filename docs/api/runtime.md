@@ -1663,3 +1663,135 @@ Get all current query params as a plain `Record<string, string>`.
 ```ts
 function getQueryParams(): Record<string, string>;
 ```
+
+## Security
+
+### sanitize(html, options?)
+
+Strip dangerous HTML and return a safe string.
+
+```ts
+function sanitize(html: string, options?: {
+  allowTags?: string[];
+  allowAttrs?: string[];
+  allowStyle?: boolean;
+}): string;
+```
+
+### escapeHtml(str)
+
+Escape HTML entities in a string (`&`, `<`, `>`, `"`, `'`).
+
+```ts
+function escapeHtml(str: string): string;
+```
+
+### createSafeHTML(el)
+
+Return a setter that auto-sanitizes HTML before assigning to `innerHTML`.
+
+```ts
+function createSafeHTML(el: HTMLElement): (html: string) => void;
+```
+
+### generateCSP(directives?)
+
+Generate a Content-Security-Policy header value with a cryptographic nonce.
+
+```ts
+function generateCSP(directives?: Record<string, string[]>): {
+  header: string;
+  nonce: string;
+};
+```
+
+### getCSPHeaderName(reportOnly?)
+
+Return the correct CSP header name.
+
+```ts
+function getCSPHeaderName(reportOnly?: boolean): string;
+// 'Content-Security-Policy' or 'Content-Security-Policy-Report-Only'
+```
+
+### generateSecurityHeaders(options?)
+
+Return a record of recommended security headers.
+
+```ts
+function generateSecurityHeaders(options?: {
+  hsts?: boolean;
+  frameOptions?: 'DENY' | 'SAMEORIGIN';
+  permissionsPolicy?: Record<string, string>;
+}): Record<string, string>;
+```
+
+### safeMerge(target, ...sources)
+
+Deep-merge objects while blocking prototype pollution keys (`__proto__`, `constructor`, `prototype`).
+
+```ts
+function safeMerge<T>(target: T, ...sources: Partial<T>[]): T;
+```
+
+### deepFreeze(obj)
+
+Recursively freeze an object and all nested objects.
+
+```ts
+function deepFreeze<T extends object>(obj: T): Readonly<T>;
+```
+
+### generateSRI(content, algorithm?)
+
+Compute a Subresource Integrity hash.
+
+```ts
+function generateSRI(content: string, algorithm?: 'sha256' | 'sha384' | 'sha512'): Promise<string>;
+```
+
+### generateCSRFToken()
+
+Generate a cryptographically random CSRF token.
+
+```ts
+function generateCSRFToken(): string;
+```
+
+### createCSRFInterceptor(options?)
+
+Create an HTTP interceptor that attaches CSRF tokens to mutating requests.
+
+```ts
+function createCSRFInterceptor(options?: {
+  source?: 'meta' | 'cookie';
+  cookieName?: string;
+  headerName?: string;
+}): HttpInterceptor;
+```
+
+### sanitizeURL(url, options?)
+
+Validate and sanitize a URL, blocking dangerous schemes.
+
+```ts
+function sanitizeURL(url: string, options?: {
+  allowedSchemes?: string[];
+  allowedHosts?: string[];
+}): string;
+```
+
+### createRateLimiter(options)
+
+Create a client-side rate limiter.
+
+```ts
+function createRateLimiter(options: {
+  maxRequests: number;
+  windowMs: number;
+}): {
+  allow(): boolean;
+  remaining(): number;
+  reset(): void;
+};
+```

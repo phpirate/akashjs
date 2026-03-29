@@ -2,7 +2,7 @@
  * Header component — breadcrumb, search, view toggle, user menu.
  */
 
-import { signal, effect } from '@akashjs/runtime';
+import { signal, effect, useClickOutside } from '@akashjs/runtime';
 import { projectStore } from '../stores/projects.js';
 import { authStore } from '../stores/auth.js';
 
@@ -290,6 +290,12 @@ export function createHeader(
   });
 
   userWrap.appendChild(dropdown);
+
+  // Close dropdown when clicking outside the user menu
+  useClickOutside(userWrap, () => {
+    dropdown.style.display = 'none';
+  });
+
   rightSection.appendChild(userWrap);
 
   header.appendChild(rightSection);

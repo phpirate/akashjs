@@ -32,4 +32,5 @@ AkashJS takes a different path:
 | `@akashjs/http` | Promise-based HTTP client with interceptors |
 | `@akashjs/i18n` | Signal-based internationalization with lazy loading |
 | `@akashjs/devtools` | Browser extension hook for inspecting components and signals |
-| `@akashjs/cli` | Project scaffolding and dev tooling |
+| `@akashjs/security` | XSS sanitization, CSP, CSRF, security headers, audit CLI |
+| `@akashjs/cli` | Project scaffolding, dev tooling, and `akash audit` security scanner |

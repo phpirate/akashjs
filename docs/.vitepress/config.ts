@@ -86,6 +86,7 @@ export default defineConfig({
             { text: 'State Machines', link: '/guide/machines' },
             { text: 'Testing', link: '/guide/testing' },
             { text: 'Performance', link: '/guide/performance' },
+            { text: 'Security', link: '/guide/security-module' },
           ],
         },
         {

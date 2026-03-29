@@ -2,7 +2,7 @@
  * CreateTaskModal component — modal form for creating a new task.
  */
 
-import { signal } from '@akashjs/runtime';
+import { signal, escapeHtml } from '@akashjs/runtime';
 import type { TaskStatus, TaskPriority } from '../types/index.js';
 import { STATUS_LABELS, PRIORITY_LABELS } from '../types/index.js';
 import { taskStore } from '../stores/tasks.js';
@@ -347,10 +347,14 @@ export function createTaskModal(
       return;
     }
 
+    // Sanitize user input to prevent XSS when rendering task content
+    const safeTitle = escapeHtml(titleVal);
+    const safeDescription = escapeHtml(formDescription());
+
     taskStore.create({
       projectId,
-      title: titleVal,
-      description: formDescription(),
+      title: safeTitle,
+      description: safeDescription,
       status: formStatus(),
       priority: formPriority(),
       assigneeId: formAssignee(),

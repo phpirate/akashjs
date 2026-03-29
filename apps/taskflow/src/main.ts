@@ -5,8 +5,11 @@
  * and mounts the app shell.
  */
 
-import { signal, effect, createElement, useTheme, useKeyboard } from '@akashjs/runtime';
+import { signal, effect, createElement, useTheme, useKeyboard, createRateLimiter } from '@akashjs/runtime';
 import { injectGlobalStyles } from './styles/global.js';
+
+// Security is built-in: rate limiting, HTML escaping, and click-outside
+// detection are provided by @akashjs/runtime and used throughout the app.
 import { authStore } from './stores/auth.js';
 import { projectStore } from './stores/projects.js';
 import { renderLoginPage } from './pages/login.js';
