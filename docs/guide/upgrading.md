@@ -6,6 +6,12 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.6 (runtime)
+
+**Bug fixes:**
+
+- **Runtime:** fixed `insertBefore` error when toggling between multiple `<Show>`, `<For>`, or `<Switch>` blocks. The reactive renderers were using a stale `DocumentFragment` reference as the parent node; now they use `anchor.parentNode` to resolve the live DOM parent.
+
 ### 0.1.10 (compiler)
 
 **Bug fixes:**
