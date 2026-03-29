@@ -7,9 +7,9 @@
   "scripts": {
     "build": "pnpm -r run build",
     "dev": "pnpm -r run dev --parallel",
-    "test": "vitest",
+    "test": "vitest run",
     "test:run": "vitest run",
-    "lint": "eslint packages/*/src/**/*.ts",
+    "lint": "eslint",
     "format": "prettier --write \"packages/*/src/**/*.ts\"",
     "typecheck": "tsc --build"
   },
