@@ -83,6 +83,45 @@ effect(() => console.log(doubled())); // re-runs only when count changes
 
 **UI** — 24 Material Design 3 components: Button, TextField, Card, Dialog, Tabs, Drawer, etc. (Note: these components use semantic HTML but have not undergone a formal WCAG accessibility audit.)
 
+## SSR, SSG, and Hydration
+
+AkashJS supports server-side rendering and static site generation:
+
+```ts
+import { renderToString, renderToStream } from '@akashjs/runtime';
+
+// Server-side rendering
+const html = await renderToString(App, { title: 'Home' });
+
+// Streaming SSR
+const stream = renderToStream(App, { title: 'Home' });
+
+// Static site generation (at build time)
+await prerender({
+  routes: ['/', '/about', '/blog/hello'],
+  render: (url) => renderToString(App, { url }),
+  outDir: 'dist',
+});
+```
+
+**Hydration** — the client attaches signals to server-rendered HTML without re-creating DOM:
+
+```ts
+import { hydrate, progressiveHydrate } from '@akashjs/runtime';
+
+// Full hydration
+hydrate({ container: document.getElementById('app')!, component: App });
+
+// Progressive — hydrate lazily when components enter the viewport
+progressiveHydrate({ target: el, component: Comments, rootMargin: '200px' });
+```
+
+**Server-mode compiler** — `compile(source, { mode: 'server' })` outputs string concatenation instead of DOM calls, suitable for Node/Deno/edge runtimes.
+
+**Deploy adapters** — `akash deploy` generates platform-specific entry points for Vercel (Edge), Cloudflare Workers, Netlify Functions, Deno Deploy, or plain Node.js.
+
+> **Honest note:** SSR/SSG/hydration are implemented and tested at the API level, but haven't been used in a production SSR deployment yet. The reference app (TaskFlow) is client-side only.
+
 ## What's different
 
 A few things AkashJS ships that other frameworks don't:
