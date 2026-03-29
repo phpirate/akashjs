@@ -1,0 +1,409 @@
+/* =========================================================================
+   AkashJS Documentation — Custom Theme
+   Elegant, modern, distinctive
+   ========================================================================= */
+
+/* --- Color palette --- */
+:root {
+  /* Primary — deep purple inspired by Material Design 3 */
+  --vp-c-brand-1: #6750A4;
+  --vp-c-brand-2: #7E67C1;
+  --vp-c-brand-3: #9580D4;
+  --vp-c-brand-soft: rgba(103, 80, 164, 0.12);
+
+  /* Accent */
+  --vp-c-tip-1: #10b981;
+  --vp-c-tip-2: #059669;
+  --vp-c-tip-soft: rgba(16, 185, 129, 0.12);
+
+  /* Warning */
+  --vp-c-warning-1: #f59e0b;
+  --vp-c-warning-2: #d97706;
+  --vp-c-warning-soft: rgba(245, 158, 11, 0.12);
+
+  /* Danger */
+  --vp-c-danger-1: #ef4444;
+  --vp-c-danger-2: #dc2626;
+  --vp-c-danger-soft: rgba(239, 68, 68, 0.12);
+
+  /* Typography */
+  --vp-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  --vp-font-family-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, Monaco, monospace;
+
+  /* Layout */
+  --vp-layout-max-width: 1440px;
+
+  /* Custom */
+  --akash-gradient: linear-gradient(135deg, #6750A4 0%, #3b82f6 50%, #10b981 100%);
+  --akash-gradient-subtle: linear-gradient(135deg, rgba(103, 80, 164, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
+}
+
+.dark {
+  --vp-c-brand-1: #D0BCFF;
+  --vp-c-brand-2: #B69DF8;
+  --vp-c-brand-3: #9580D4;
+  --vp-c-brand-soft: rgba(208, 188, 255, 0.12);
+}
+
+/* --- Google Fonts --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* --- Hero section --- */
+.VPHero .name {
+  background: var(--akash-gradient) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+.VPHero .text {
+  font-size: 48px !important;
+  font-weight: 800 !important;
+  line-height: 1.15 !important;
+  letter-spacing: -0.02em;
+}
+
+.VPHero .tagline {
+  font-size: 18px !important;
+  line-height: 1.6 !important;
+  max-width: 560px;
+  color: var(--vp-c-text-2);
+}
+
+/* Hero gradient background glow */
+.VPHero::before {
+  content: '';
+  position: absolute;
+  top: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 600px;
+  background: radial-gradient(ellipse, rgba(103, 80, 164, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.dark .VPHero::before {
+  background: radial-gradient(ellipse, rgba(103, 80, 164, 0.08) 0%, transparent 70%);
+}
+
+/* --- Feature cards --- */
+.VPFeature {
+  border-radius: 16px !important;
+  border: 1px solid var(--vp-c-divider) !important;
+  transition: all 0.3s cubic-bezier(0.2, 0, 0, 1) !important;
+  background: var(--vp-c-bg) !important;
+}
+
+.VPFeature:hover {
+  border-color: var(--vp-c-brand-1) !important;
+  box-shadow: 0 8px 30px rgba(103, 80, 164, 0.1) !important;
+  transform: translateY(-2px);
+}
+
+.dark .VPFeature:hover {
+  box-shadow: 0 8px 30px rgba(103, 80, 164, 0.15) !important;
+}
+
+.VPFeature .icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.VPFeature .title {
+  font-weight: 700 !important;
+  font-size: 16px !important;
+}
+
+.VPFeature .details {
+  font-size: 14px !important;
+  line-height: 1.6 !important;
+  color: var(--vp-c-text-2);
+}
+
+/* --- Navigation --- */
+.VPNavBar {
+  backdrop-filter: blur(12px) saturate(150%) !important;
+}
+
+.VPNavBarTitle .title {
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+}
+
+/* Active nav link indicator */
+.VPNavBarMenuLink.active {
+  color: var(--vp-c-brand-1) !important;
+}
+
+/* --- Sidebar --- */
+.VPSidebar {
+  backdrop-filter: blur(8px);
+}
+
+.VPSidebarItem .text {
+  font-size: 14px !important;
+  transition: color 0.15s;
+}
+
+.VPSidebarItem.is-active > .item > .text {
+  color: var(--vp-c-brand-1) !important;
+  font-weight: 600 !important;
+}
+
+/* Sidebar group titles */
+.VPSidebarItem.level-0 > .item > .text {
+  font-weight: 700 !important;
+  font-size: 13px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--vp-c-text-3);
+}
+
+/* --- Content --- */
+.vp-doc h1 {
+  font-size: 32px !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+  background: var(--akash-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.vp-doc h2 {
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+  padding-top: 24px;
+  border-top: 1px solid var(--vp-c-divider);
+  margin-top: 48px !important;
+}
+
+.vp-doc h3 {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+}
+
+/* --- Code blocks --- */
+.vp-doc div[class*='language-'] {
+  border-radius: 12px !important;
+  border: 1px solid var(--vp-c-divider);
+  margin: 20px 0 !important;
+}
+
+.vp-doc div[class*='language-'] pre {
+  padding: 20px 24px !important;
+}
+
+.vp-doc div[class*='language-'] code {
+  font-family: var(--vp-font-family-mono) !important;
+  font-size: 13.5px !important;
+  line-height: 1.7 !important;
+}
+
+/* Language label */
+.vp-doc div[class*='language-'] span.lang {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.5;
+}
+
+/* Inline code */
+.vp-doc :not(pre) > code {
+  background: var(--vp-c-brand-soft) !important;
+  color: var(--vp-c-brand-1) !important;
+  border-radius: 6px !important;
+  padding: 2px 7px !important;
+  font-size: 13px !important;
+  font-weight: 500;
+}
+
+/* --- Callout blocks (tip, warning, info, danger) --- */
+.vp-doc .custom-block {
+  border-radius: 12px !important;
+  padding: 20px 24px !important;
+  margin: 24px 0 !important;
+  border-left: 4px solid;
+}
+
+.vp-doc .custom-block .custom-block-title {
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.vp-doc .custom-block.tip {
+  border-left-color: var(--vp-c-tip-1);
+  background: var(--vp-c-tip-soft);
+}
+
+.vp-doc .custom-block.warning {
+  border-left-color: var(--vp-c-warning-1);
+  background: var(--vp-c-warning-soft);
+}
+
+.vp-doc .custom-block.danger {
+  border-left-color: var(--vp-c-danger-1);
+  background: var(--vp-c-danger-soft);
+}
+
+.vp-doc .custom-block.info {
+  border-left-color: var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+}
+
+/* --- Tables --- */
+.vp-doc table {
+  border-radius: 12px !important;
+  overflow: hidden;
+  border: 1px solid var(--vp-c-divider);
+  width: 100%;
+}
+
+.vp-doc th {
+  background: var(--akash-gradient-subtle) !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 12px 16px !important;
+}
+
+.vp-doc td {
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+}
+
+.vp-doc tr:nth-child(even) {
+  background: var(--vp-c-bg-soft);
+}
+
+/* --- Links --- */
+.vp-doc a {
+  color: var(--vp-c-brand-1) !important;
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+
+.vp-doc a:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* --- Buttons --- */
+.VPButton.brand {
+  background: var(--akash-gradient) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 10px 24px !important;
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  transition: all 0.2s !important;
+  box-shadow: 0 4px 14px rgba(103, 80, 164, 0.3);
+}
+
+.VPButton.brand:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(103, 80, 164, 0.4);
+}
+
+.VPButton.alt {
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  border: 2px solid var(--vp-c-divider) !important;
+  transition: all 0.2s !important;
+}
+
+.VPButton.alt:hover {
+  border-color: var(--vp-c-brand-1) !important;
+  color: var(--vp-c-brand-1) !important;
+}
+
+/* --- Footer --- */
+.VPFooter {
+  border-top: 1px solid var(--vp-c-divider);
+}
+
+.VPFooter .message,
+.VPFooter .copyright {
+  font-size: 13px !important;
+  color: var(--vp-c-text-3);
+}
+
+/* --- Search --- */
+.DocSearch-Button {
+  border-radius: 12px !important;
+}
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--vp-c-divider);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vp-c-text-3);
+}
+
+/* --- Smooth transitions --- */
+* {
+  scroll-behavior: smooth;
+}
+
+/* --- Page transition --- */
+.VPContent {
+  transition: opacity 0.2s ease;
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .VPHero .text {
+    font-size: 32px !important;
+  }
+
+  .VPHero .tagline {
+    font-size: 16px !important;
+  }
+
+  .vp-doc h1 {
+    font-size: 26px !important;
+  }
+
+  .vp-doc h2 {
+    font-size: 20px !important;
+  }
+}
+
+/* --- Selection color --- */
+::selection {
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+}
+
+/* --- Print styles --- */
+@media print {
+  .VPNav,
+  .VPSidebar,
+  .VPFooter,
+  .edit-link,
+  .prev-next {
+    display: none !important;
+  }
+}
