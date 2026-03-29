@@ -100,6 +100,27 @@ onMount(() => {
     expect(result.code).toMatch(/import\s*\{[^}]*onMount[^}]*\}/);
   });
 
+  it('auto-imports Show and For when used in template only', () => {
+    const source = `
+<script lang="ts">
+const visible = signal(true);
+const items = signal(['a', 'b']);
+</script>
+
+<template>
+  <Show when={visible()}>
+    <For each={items()}>
+      <span>item</span>
+    </For>
+  </Show>
+</template>
+`;
+
+    const result = compile(source);
+    expect(result.code).toMatch(/import\s*\{[^}]*Show[^}]*\}/);
+    expect(result.code).toMatch(/import\s*\{[^}]*For[^}]*\}/);
+  });
+
   it('extracts Props interface as generic parameter', () => {
     const source = `
 <script lang="ts">

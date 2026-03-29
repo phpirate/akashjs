@@ -20,7 +20,8 @@ export function transform(sfc: ParsedSFC, options: CompileOptions = {}): Compile
 
   // Analyze script for auto-imports
   const script = sfc.script?.content ?? '';
-  detectAutoImports(script, runtimeImports);
+  const template = sfc.template?.content ?? '';
+  detectAutoImports(script, template, runtimeImports);
 
   const isServer = options.mode === 'server';
 
@@ -92,21 +93,29 @@ export function transform(sfc: ParsedSFC, options: CompileOptions = {}): Compile
   return { code, css };
 }
 
-/** Detect which runtime APIs are used in the script and need auto-importing */
-function detectAutoImports(script: string, imports: Set<string>): void {
-  const apis = [
+/** Detect which runtime APIs are used in script/template and need auto-importing */
+function detectAutoImports(script: string, template: string, imports: Set<string>): void {
+  // APIs that may appear in the script block
+  const scriptApis = [
     'signal', 'computed', 'effect', 'batch', 'untrack',
     'onMount', 'onUnmount', 'onError', 'ref',
     'createContext', 'provide', 'inject',
     'Show', 'For',
   ];
 
-  for (const api of apis) {
-    // Check if the API is used but not explicitly imported
+  for (const api of scriptApis) {
     const usagePattern = new RegExp(`\\b${api}\\b`);
     const importPattern = new RegExp(`import\\s+.*\\b${api}\\b.*from`);
     if (usagePattern.test(script) && !importPattern.test(script)) {
       imports.add(api);
+    }
+  }
+
+  // Template primitives — auto-import when used as tags in the template
+  const templatePrimitives = ['Show', 'For'];
+  for (const tag of templatePrimitives) {
+    if (new RegExp(`<${tag}[\\s/>]`).test(template) && !imports.has(tag)) {
+      imports.add(tag);
     }
   }
 }
