@@ -1,0 +1,28 @@
+{
+  "name": "@akashjs/cli",
+  "version": "0.1.0",
+  "description": "AkashJS CLI — project scaffolding, dev server, build tool",
+  "type": "module",
+  "bin": {
+    "akash": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "picocolors": "^1.1.1"
+  },
+  "files": ["dist"],
+  "license": "MIT"
+}

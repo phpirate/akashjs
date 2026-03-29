@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "jsx": "react-jsx",
+    "jsxImportSource": "@akashjs/runtime"
+  },
+  "include": ["src/**/*.ts"]
+}

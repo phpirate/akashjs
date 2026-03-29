@@ -1,0 +1,293 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "AkashJS",
+  "scopeName": "source.akash",
+  "fileTypes": ["akash"],
+  "patterns": [
+    { "include": "#script-block" },
+    { "include": "#template-block" },
+    { "include": "#style-block" },
+    { "include": "#comment" }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.block.html.akash",
+      "begin": "<!--",
+      "end": "-->",
+      "captures": {
+        "0": { "name": "punctuation.definition.comment.akash" }
+      }
+    },
+
+    "script-block": {
+      "name": "meta.script.akash",
+      "begin": "(<)(script)((?:\\s+[^>]*)?)?(>)",
+      "end": "(</)(script)(>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.akash" },
+        "2": { "name": "entity.name.tag.script.akash" },
+        "3": { "patterns": [{ "include": "#tag-attributes" }] },
+        "4": { "name": "punctuation.definition.tag.end.akash" }
+      },
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.akash" },
+        "2": { "name": "entity.name.tag.script.akash" },
+        "3": { "name": "punctuation.definition.tag.end.akash" }
+      },
+      "contentName": "source.ts",
+      "patterns": [
+        { "include": "source.ts" }
+      ]
+    },
+
+    "template-block": {
+      "name": "meta.template.akash",
+      "begin": "(<)(template)((?:\\s+[^>]*)?)?(>)",
+      "end": "(</)(template)(>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.akash" },
+        "2": { "name": "entity.name.tag.template.akash" },
+        "3": { "patterns": [{ "include": "#tag-attributes" }] },
+        "4": { "name": "punctuation.definition.tag.end.akash" }
+      },
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.akash" },
+        "2": { "name": "entity.name.tag.template.akash" },
+        "3": { "name": "punctuation.definition.tag.end.akash" }
+      },
+      "patterns": [
+        { "include": "#template-content" }
+      ]
+    },
+
+    "template-content": {
+      "patterns": [
+        { "include": "#template-comment" },
+        { "include": "#template-interpolation" },
+        { "include": "#template-directive" },
+        { "include": "#template-component-tag" },
+        { "include": "#template-self-closing-tag" },
+        { "include": "#template-open-tag" },
+        { "include": "#template-close-tag" },
+        { "include": "#template-text" }
+      ]
+    },
+
+    "template-comment": {
+      "name": "comment.block.html.akash",
+      "begin": "<!--",
+      "end": "-->"
+    },
+
+    "template-interpolation": {
+      "name": "meta.interpolation.akash",
+      "begin": "\\{",
+      "end": "\\}",
+      "beginCaptures": {
+        "0": { "name": "punctuation.section.interpolation.begin.akash" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.section.interpolation.end.akash" }
+      },
+      "contentName": "source.ts",
+      "patterns": [
+        { "include": "source.ts#expression" }
+      ]
+    },
+
+    "template-directive": {
+      "patterns": [
+        {
+          "name": "meta.directive.akash",
+          "match": "(:)(if|else-if|else|for|show|bind|on|ref|class|style)",
+          "captures": {
+            "1": { "name": "punctuation.definition.directive.akash" },
+            "2": { "name": "entity.other.attribute-name.directive.akash" }
+          }
+        },
+        {
+          "name": "meta.directive.bind.akash",
+          "match": "(bind:)(\\w+)",
+          "captures": {
+            "1": { "name": "entity.other.attribute-name.directive.akash" },
+            "2": { "name": "entity.other.attribute-name.akash" }
+          }
+        },
+        {
+          "name": "meta.directive.on.akash",
+          "match": "(on:)(\\w+)",
+          "captures": {
+            "1": { "name": "entity.other.attribute-name.directive.akash" },
+            "2": { "name": "entity.other.attribute-name.akash" }
+          }
+        }
+      ]
+    },
+
+    "template-component-tag": {
+      "name": "meta.tag.component.akash",
+      "begin": "(<)([A-Z][a-zA-Z0-9]*)",
+      "end": "(/?>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.akash" },
+        "2": { "name": "support.class.component.akash" }
+      },
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.end.akash" }
+      },
+      "patterns": [
+        { "include": "#tag-attributes" }
+      ]
+    },
+
+    "template-self-closing-tag": {
+      "name": "meta.tag.self-closing.akash",
+      "begin": "(<)(\\w[\\w-]*)",
+      "end": "(/?>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.akash" },
+        "2": { "name": "entity.name.tag.akash" }
+      },
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.end.akash" }
+      },
+      "patterns": [
+        { "include": "#tag-attributes" }
+      ]
+    },
+
+    "template-open-tag": {
+      "name": "meta.tag.open.akash",
+      "begin": "(<)(\\w[\\w-]*)",
+      "end": "(>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.akash" },
+        "2": { "name": "entity.name.tag.akash" }
+      },
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.end.akash" }
+      },
+      "patterns": [
+        { "include": "#tag-attributes" }
+      ]
+    },
+
+    "template-close-tag": {
+      "name": "meta.tag.close.akash",
+      "match": "(</)(\\w[\\w-]*)(>)",
+      "captures": {
+        "1": { "name": "punctuation.definition.tag.begin.akash" },
+        "2": { "name": "entity.name.tag.akash" },
+        "3": { "name": "punctuation.definition.tag.end.akash" }
+      }
+    },
+
+    "template-text": {
+      "name": "text.akash"
+    },
+
+    "tag-attributes": {
+      "patterns": [
+        { "include": "#template-directive" },
+        {
+          "name": "meta.attribute.event.akash",
+          "begin": "(on[A-Z]\\w*)(=)(\\{)",
+          "end": "(\\})",
+          "beginCaptures": {
+            "1": { "name": "entity.other.attribute-name.event.akash" },
+            "2": { "name": "punctuation.separator.key-value.akash" },
+            "3": { "name": "punctuation.section.interpolation.begin.akash" }
+          },
+          "endCaptures": {
+            "1": { "name": "punctuation.section.interpolation.end.akash" }
+          },
+          "contentName": "source.ts",
+          "patterns": [
+            { "include": "source.ts#expression" }
+          ]
+        },
+        {
+          "name": "meta.attribute.dynamic.akash",
+          "begin": "([a-zA-Z][\\w-]*)(=)(\\{)",
+          "end": "(\\})",
+          "beginCaptures": {
+            "1": { "name": "entity.other.attribute-name.akash" },
+            "2": { "name": "punctuation.separator.key-value.akash" },
+            "3": { "name": "punctuation.section.interpolation.begin.akash" }
+          },
+          "endCaptures": {
+            "1": { "name": "punctuation.section.interpolation.end.akash" }
+          },
+          "contentName": "source.ts",
+          "patterns": [
+            { "include": "source.ts#expression" }
+          ]
+        },
+        {
+          "name": "meta.attribute.static.akash",
+          "match": "([a-zA-Z][\\w:-]*)(=)(\"[^\"]*\")",
+          "captures": {
+            "1": { "name": "entity.other.attribute-name.akash" },
+            "2": { "name": "punctuation.separator.key-value.akash" },
+            "3": { "name": "string.quoted.double.akash" }
+          }
+        },
+        {
+          "name": "meta.attribute.static.akash",
+          "match": "([a-zA-Z][\\w:-]*)(=)('[^']*')",
+          "captures": {
+            "1": { "name": "entity.other.attribute-name.akash" },
+            "2": { "name": "punctuation.separator.key-value.akash" },
+            "3": { "name": "string.quoted.single.akash" }
+          }
+        },
+        {
+          "name": "entity.other.attribute-name.akash",
+          "match": "[a-zA-Z][\\w:-]*"
+        }
+      ]
+    },
+
+    "style-block": {
+      "name": "meta.style.akash",
+      "begin": "(<)(style)((?:\\s+[^>]*)?)?(>)",
+      "end": "(</)(style)(>)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.akash" },
+        "2": { "name": "entity.name.tag.style.akash" },
+        "3": { "patterns": [{ "include": "#style-attributes" }] },
+        "4": { "name": "punctuation.definition.tag.end.akash" }
+      },
+      "endCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.akash" },
+        "2": { "name": "entity.name.tag.style.akash" },
+        "3": { "name": "punctuation.definition.tag.end.akash" }
+      },
+      "contentName": "source.css",
+      "patterns": [
+        { "include": "source.css" }
+      ]
+    },
+
+    "style-attributes": {
+      "patterns": [
+        {
+          "name": "meta.attribute.scoped.akash",
+          "match": "\\bscoped\\b",
+          "captures": {
+            "0": { "name": "entity.other.attribute-name.akash" }
+          }
+        },
+        {
+          "name": "meta.attribute.lang.akash",
+          "match": "(lang)(=)(\"(?:css|scss|less)\")",
+          "captures": {
+            "1": { "name": "entity.other.attribute-name.akash" },
+            "2": { "name": "punctuation.separator.key-value.akash" },
+            "3": { "name": "string.quoted.double.akash" }
+          }
+        }
+      ]
+    }
+  }
+}

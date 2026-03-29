@@ -1,0 +1,29 @@
+{
+  "name": "akashjs",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A TypeScript-first UI framework with Angular's structure and Svelte's simplicity",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "build": "pnpm -r run build",
+    "dev": "pnpm -r run dev --parallel",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "lint": "eslint packages/*/src/**/*.ts",
+    "format": "prettier --write \"packages/*/src/**/*.ts\"",
+    "typecheck": "tsc --build"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "happy-dom": "^20.8.9",
+    "prettier": "^3.2.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

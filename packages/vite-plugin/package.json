@@ -1,0 +1,30 @@
+{
+  "name": "@akashjs/vite-plugin",
+  "version": "0.1.0",
+  "description": "AkashJS Vite plugin — .akash file transformation and HMR",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest"
+  },
+  "peerDependencies": {
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "@akashjs/compiler": "workspace:*"
+  },
+  "files": ["dist"],
+  "license": "MIT"
+}

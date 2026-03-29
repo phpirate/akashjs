@@ -1,0 +1,24 @@
+{
+  "name": "@akashjs/compiler",
+  "version": "0.1.0",
+  "description": "AkashJS compiler — .akash SFC parsing, analysis, and code generation",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest"
+  },
+  "files": ["dist"],
+  "license": "MIT"
+}

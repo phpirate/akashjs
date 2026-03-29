@@ -1,0 +1,29 @@
+{
+  "name": "@akashjs/runtime",
+  "version": "0.1.0",
+  "description": "AkashJS core runtime — signals, components, DOM rendering",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./test": {
+      "types": "./dist/test.d.ts",
+      "import": "./dist/test.js",
+      "require": "./dist/test.cjs"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest"
+  },
+  "files": ["dist"],
+  "license": "MIT"
+}

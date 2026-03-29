@@ -1,0 +1,44 @@
+{
+  "name": "vscode-akash",
+  "displayName": "AkashJS",
+  "description": "Syntax highlighting for AkashJS .akash single-file components",
+  "version": "0.1.0",
+  "publisher": "akashjs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/akashjs/akashjs"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "akash",
+        "aliases": ["AkashJS", "akash"],
+        "extensions": [".akash"],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/akash-light.png",
+          "dark": "./icons/akash-dark.png"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "akash",
+        "scopeName": "source.akash",
+        "path": "./syntaxes/akash.tmLanguage.json",
+        "embeddedLanguages": {
+          "source.ts": "typescript",
+          "source.js": "javascript",
+          "text.html.basic": "html",
+          "source.css": "css",
+          "source.css.scss": "scss"
+        }
+      }
+    ]
+  }
+}
