@@ -474,6 +474,22 @@ function useWindowSize(): {
 };
 ```
 
+### useClickOutside(target, handler, options?)
+
+Detect clicks outside an element. Returns a dispose function.
+
+```ts
+function useClickOutside(
+  target: HTMLElement | (() => HTMLElement | null),
+  handler: (event: Event) => void,
+  options?: {
+    events?: string[];           // default: ['pointerdown']
+    ignore?: (string | HTMLElement)[];  // selectors/elements to ignore
+    active?: boolean;            // default: true
+  },
+): () => void;
+```
+
 ## Portal
 
 ### Portal

@@ -279,3 +279,91 @@ export function useWindowSize() {
     height: (() => height()) as ReadonlySignal<number>,
   };
 }
+
+// --- useClickOutside ---
+
+/**
+ * Detect clicks outside an element. Essential for closing
+ * dropdowns, modals, popovers, and context menus.
+ *
+ * ```ts
+ * const dropdown = document.querySelector('.dropdown')!;
+ * const dispose = useClickOutside(dropdown, () => {
+ *   closeDropdown();
+ * });
+ *
+ * // With options:
+ * useClickOutside(dropdown, onClose, {
+ *   events: ['mousedown', 'touchstart'],
+ *   ignore: ['.trigger-button'],
+ * });
+ * ```
+ */
+export function useClickOutside(
+  target: HTMLElement | (() => HTMLElement | null),
+  handler: (event: Event) => void,
+  options: {
+    /** Events to listen for (default: ['pointerdown']) */
+    events?: string[];
+    /** Selectors or elements to ignore (clicks on these won't trigger) */
+    ignore?: (string | HTMLElement)[];
+    /** Whether the listener is active (default: true) */
+    active?: boolean;
+  } = {},
+): () => void {
+  if (typeof document === 'undefined') return () => {};
+
+  const {
+    events = ['pointerdown'],
+    ignore = [],
+    active = true,
+  } = options;
+
+  let isActive = active;
+
+  function getTarget(): HTMLElement | null {
+    return typeof target === 'function' ? target() : target;
+  }
+
+  function shouldIgnore(event: Event): boolean {
+    const eventTarget = event.target as HTMLElement;
+    if (!eventTarget) return false;
+
+    for (const pattern of ignore) {
+      if (typeof pattern === 'string') {
+        if (eventTarget.closest(pattern)) return true;
+      } else {
+        if (pattern === eventTarget || pattern.contains(eventTarget)) return true;
+      }
+    }
+    return false;
+  }
+
+  function listener(event: Event): void {
+    if (!isActive) return;
+    const el = getTarget();
+    if (!el) return;
+
+    const eventTarget = event.target as Node;
+    if (el === eventTarget || el.contains(eventTarget)) return;
+    if (shouldIgnore(event)) return;
+
+    handler(event);
+  }
+
+  for (const eventName of events) {
+    document.addEventListener(eventName, listener, { passive: true, capture: true });
+  }
+
+  const dispose = () => {
+    for (const eventName of events) {
+      document.removeEventListener(eventName, listener, { capture: true } as EventListenerOptions);
+    }
+  };
+
+  // Attach enable/disable to dispose function
+  (dispose as any).enable = () => { isActive = true; };
+  (dispose as any).disable = () => { isActive = false; };
+
+  return dispose;
+}

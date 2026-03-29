@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useStorage, useOnline } from '../src/browser.js';
+import { useStorage, useOnline, useClickOutside } from '../src/browser.js';
 import { flushSync } from '../src/scheduler.js';
 
 beforeEach(() => {
@@ -50,5 +50,91 @@ describe('useOnline', () => {
   it('returns a boolean signal', () => {
     const online = useOnline();
     expect(typeof online()).toBe('boolean');
+  });
+});
+
+describe('useClickOutside', () => {
+  it('calls handler when clicking outside the target', () => {
+    const target = document.createElement('div');
+    document.body.appendChild(target);
+
+    let called = false;
+    const dispose = useClickOutside(target, () => { called = true; });
+
+    // Click outside
+    document.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(called).toBe(true);
+
+    dispose();
+    target.remove();
+  });
+
+  it('does not call handler when clicking inside the target', () => {
+    const target = document.createElement('div');
+    const child = document.createElement('span');
+    target.appendChild(child);
+    document.body.appendChild(target);
+
+    let called = false;
+    const dispose = useClickOutside(target, () => { called = true; });
+
+    // Click inside
+    child.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(called).toBe(false);
+
+    dispose();
+    target.remove();
+  });
+
+  it('returns a dispose function that removes the listener', () => {
+    const target = document.createElement('div');
+    document.body.appendChild(target);
+
+    let callCount = 0;
+    const dispose = useClickOutside(target, () => { callCount++; });
+
+    document.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(callCount).toBe(1);
+
+    dispose();
+
+    document.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(callCount).toBe(1); // not called again
+
+    target.remove();
+  });
+
+  it('ignores clicks on elements matching ignore selectors', () => {
+    const target = document.createElement('div');
+    const trigger = document.createElement('button');
+    trigger.className = 'trigger';
+    document.body.appendChild(target);
+    document.body.appendChild(trigger);
+
+    let called = false;
+    const dispose = useClickOutside(target, () => { called = true; }, {
+      ignore: ['.trigger'],
+    });
+
+    trigger.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(called).toBe(false);
+
+    dispose();
+    target.remove();
+    trigger.remove();
+  });
+
+  it('accepts a function target', () => {
+    const target = document.createElement('div');
+    document.body.appendChild(target);
+
+    let called = false;
+    const dispose = useClickOutside(() => target, () => { called = true; });
+
+    document.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(called).toBe(true);
+
+    dispose();
+    target.remove();
   });
 });

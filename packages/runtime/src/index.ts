@@ -87,7 +87,7 @@ export {
 
 export {
   useMediaQuery, useBreakpoint, useStorage, useClipboard,
-  useOnline, useGeolocation, useWindowSize,
+  useOnline, useGeolocation, useWindowSize, useClickOutside,
 } from './browser.js';
 export type { Breakpoints, GeolocationState } from './browser.js';
 
