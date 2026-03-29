@@ -24,7 +24,8 @@
     "picocolors": "^1.1.1"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "license": "MIT",
   "publishConfig": {

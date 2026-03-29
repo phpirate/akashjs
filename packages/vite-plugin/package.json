@@ -26,7 +26,8 @@
     "@akashjs/compiler": "^0.1.0"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "license": "MIT",
   "publishConfig": {
