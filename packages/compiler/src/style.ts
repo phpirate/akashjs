@@ -18,44 +18,126 @@ export function generateScopeId(filename: string): string {
  *
  * .counter { } → .counter[data-a-x7k3f] { }
  *
- * This is a simplified implementation that handles the most common cases.
- * A production version would use a proper CSS parser like PostCSS.
+ * Properly handles @-rules like @media, @supports, @keyframes —
+ * only selectors inside rule blocks are scoped, never the at-rule itself.
  */
 export function scopeStyles(css: string, scopeId: string): string {
-  return css.replace(
-    // Match selectors before { blocks
-    /([^{}@/]+?)(\s*\{)/g,
-    (match, selector: string, brace: string) => {
-      // Don't scope @-rules like @keyframes, @media, @font-face
-      if (selector.trim().startsWith('@')) {
-        return match;
+  return scopeBlock(css, scopeId, false);
+}
+
+/**
+ * Recursively scope a CSS block. Parses brace-delimited structure
+ * so @media/at-rules are preserved and only selectors are scoped.
+ */
+function scopeBlock(css: string, scopeId: string, insideKeyframes: boolean): string {
+  let result = '';
+  let pos = 0;
+
+  while (pos < css.length) {
+    // Skip whitespace
+    const wsMatch = /^\s+/.exec(css.slice(pos));
+    if (wsMatch) {
+      result += wsMatch[0];
+      pos += wsMatch[0].length;
+      if (pos >= css.length) break;
+    }
+
+    // Skip comments
+    if (css.slice(pos, pos + 2) === '/*') {
+      const endComment = css.indexOf('*/', pos + 2);
+      if (endComment === -1) {
+        result += css.slice(pos);
+        break;
+      }
+      result += css.slice(pos, endComment + 2);
+      pos = endComment + 2;
+      continue;
+    }
+
+    // Closing brace — end of current block
+    if (css[pos] === '}') {
+      result += '}';
+      pos++;
+      continue;
+    }
+
+    // Find the next opening brace to get the selector/at-rule
+    const braceIdx = css.indexOf('{', pos);
+    if (braceIdx === -1) {
+      // No more blocks — append remaining text
+      result += css.slice(pos);
+      break;
+    }
+
+    const prelude = css.slice(pos, braceIdx);
+    const trimmedPrelude = prelude.trim();
+
+    // Find the matching closing brace
+    const bodyStart = braceIdx + 1;
+    const bodyEnd = findMatchingBrace(css, braceIdx);
+    const body = css.slice(bodyStart, bodyEnd);
+
+    if (trimmedPrelude.startsWith('@')) {
+      // At-rule
+      const atRule = trimmedPrelude.split(/\s/)[0]; // e.g. @media, @keyframes
+
+      if (atRule === '@keyframes' || atRule === '@-webkit-keyframes') {
+        // Don't scope inside keyframes — just pass through
+        result += prelude + '{' + body + '}';
+      } else if (atRule === '@font-face') {
+        result += prelude + '{' + body + '}';
+      } else {
+        // @media, @supports, @layer, etc. — recurse into the body
+        result += prelude + '{' + scopeBlock(body, scopeId, false) + '}';
+      }
+    } else if (insideKeyframes) {
+      // Inside @keyframes — don't scope (from, to, percentages)
+      result += prelude + '{' + body + '}';
+    } else {
+      // Regular selector — scope it
+      const scopedSelector = scopeSelectorList(trimmedPrelude, scopeId);
+      result += prelude.replace(trimmedPrelude, scopedSelector) + '{' + body + '}';
+    }
+
+    pos = bodyEnd + 1;
+  }
+
+  return result;
+}
+
+/** Find the index of the closing brace matching the opening brace at `openIdx`. */
+function findMatchingBrace(css: string, openIdx: number): number {
+  let depth = 1;
+  let pos = openIdx + 1;
+
+  while (pos < css.length && depth > 0) {
+    if (css[pos] === '{') depth++;
+    else if (css[pos] === '}') depth--;
+    if (depth > 0) pos++;
+  }
+
+  return pos;
+}
+
+/** Scope a comma-separated selector list. */
+function scopeSelectorList(selectorList: string, scopeId: string): string {
+  return selectorList
+    .split(',')
+    .map((s: string) => {
+      const trimmed = s.trim();
+      if (!trimmed) return s;
+
+      if (
+        trimmed === ':root' ||
+        trimmed === ':host' ||
+        trimmed.includes(scopeId)
+      ) {
+        return s;
       }
 
-      // Scope each comma-separated selector
-      const scopedSelectors = selector
-        .split(',')
-        .map((s: string) => {
-          const trimmed = s.trim();
-          if (!trimmed) return s;
-
-          // Don't scope :root, :host, or selectors that are already scoped
-          if (
-            trimmed === ':root' ||
-            trimmed === ':host' ||
-            trimmed.includes(scopeId)
-          ) {
-            return s;
-          }
-
-          // Find the first element/class/id selector and add the scope attribute
-          // Handle combinators (>, +, ~, space) by scoping the last part
-          return scopeSelector(trimmed, scopeId);
-        })
-        .join(',');
-
-      return scopedSelectors + brace;
-    },
-  );
+      return scopeSelector(trimmed, scopeId);
+    })
+    .join(',');
 }
 
 function scopeSelector(selector: string, scopeId: string): string {

@@ -60,4 +60,34 @@ describe('scopeStyles', () => {
     expect(result).toContain('.a[data-a-abc123]');
     expect(result).toContain('.b[data-a-abc123]');
   });
+
+  it('scopes selectors inside @media without touching the at-rule', () => {
+    const css = '@media (max-width: 960px) { .sidebar { display: none; } }';
+    const result = scopeStyles(css, 'data-a-abc123');
+    expect(result).toContain('@media (max-width: 960px)');
+    expect(result).not.toContain('960px)[data-a-abc123]');
+    expect(result).toContain('.sidebar[data-a-abc123]');
+  });
+
+  it('scopes multiple selectors inside @media', () => {
+    const css = '@media (max-width: 768px) { .a { color: red; } .b { color: blue; } }';
+    const result = scopeStyles(css, 'data-a-abc123');
+    expect(result).toContain('.a[data-a-abc123]');
+    expect(result).toContain('.b[data-a-abc123]');
+    expect(result).not.toContain('768px)[data-a-abc123]');
+  });
+
+  it('does not scope inside @keyframes', () => {
+    const css = '@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }';
+    const result = scopeStyles(css, 'data-a-abc123');
+    expect(result).not.toContain('[data-a-abc123]');
+    expect(result).toContain('from { opacity: 0; }');
+  });
+
+  it('handles @supports with nested selectors', () => {
+    const css = '@supports (display: grid) { .grid { display: grid; } }';
+    const result = scopeStyles(css, 'data-a-abc123');
+    expect(result).toContain('@supports (display: grid)');
+    expect(result).toContain('.grid[data-a-abc123]');
+  });
 });
