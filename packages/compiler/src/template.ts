@@ -62,8 +62,9 @@ export function parseTemplate(content: string): TemplateNode[] {
       }
     }
 
-    // Text content
-    const textEnd = findNextBoundary(content, pos);
+    // Text content — advance at least 1 character to prevent infinite loops
+    // (e.g., a stray '<' that doesn't start a valid tag)
+    const textEnd = findNextBoundary(content, pos + 1);
     const text = content.slice(pos, textEnd).trim();
     if (text) {
       nodes.push({ type: 'text', content: text });
