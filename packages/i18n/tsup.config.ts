@@ -7,5 +7,8 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   treeshake: true,
+  splitting: true,
+  minify: true,
+  target: 'es2022',
   external: ['@akashjs/runtime', '@akashjs/compiler'],
 });

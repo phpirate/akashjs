@@ -8,14 +8,38 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    },
+    "./core": {
+      "import": "./dist/core.js",
+      "require": "./dist/core.cjs"
     },
     "./test": {
-      "types": "./dist/test.d.ts",
       "import": "./dist/test.js",
       "require": "./dist/test.cjs"
+    },
+    "./store": {
+      "import": "./dist/store.js"
+    },
+    "./ssr": {
+      "import": "./dist/ssr.js"
+    },
+    "./sync": {
+      "import": "./dist/sync.js"
+    },
+    "./offline": {
+      "import": "./dist/offline.js"
+    },
+    "./animate": {
+      "import": "./dist/animate.js"
+    },
+    "./machine": {
+      "import": "./dist/machine.js"
+    },
+    "./pwa": {
+      "import": "./dist/pwa.js"
     }
   },
   "sideEffects": false,
