@@ -123,6 +123,7 @@ export function defineComponent<P extends Record<string, unknown> = Record<strin
 
     try {
       renderFn = setup(ctx);
+      if (typeof renderFn !== 'function') { throw akashError('AK0040'); }
       const rendered = renderFn();
       domNode = nodeToDOM(rendered);
     } catch (err) {

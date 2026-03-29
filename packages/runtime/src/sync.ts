@@ -130,7 +130,10 @@ export function createWebSocketTransport(options: WebSocketTransportOptions): Sy
     },
     onReceive(handler) {
       opHandlers.push(handler);
+      let removed = false;
       return () => {
+        if (removed) return;
+        removed = true;
         const i = opHandlers.indexOf(handler);
         if (i !== -1) opHandlers.splice(i, 1);
       };
@@ -180,7 +183,10 @@ export function createLocalTransport(): SyncTransport {
     },
     onReceive(handler) {
       opHandlers.push(handler);
+      let removed = false;
       return () => {
+        if (removed) return;
+        removed = true;
         const i = opHandlers.indexOf(handler);
         if (i !== -1) opHandlers.splice(i, 1);
       };

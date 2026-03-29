@@ -18,6 +18,8 @@ let flushing = false;
 let batchDepth = 0;
 let flushScheduled = false;
 
+const MAX_FLUSH_ITERATIONS = 1000;
+
 function flush(): void {
   if (flushing) return;
   flushing = true;
@@ -25,7 +27,10 @@ function flush(): void {
 
   // Process render effects first, then user effects.
   // Effects may enqueue more effects during flush, so loop until empty.
-  while (pendingRender.size > 0 || pendingUser.size > 0) {
+  let iterations = 0;
+  while ((pendingRender.size > 0 || pendingUser.size > 0) && iterations < MAX_FLUSH_ITERATIONS) {
+    iterations++;
+
     // Drain render effects (sorted by depth — parents before children)
     if (pendingRender.size > 0) {
       const queue = [...pendingRender].sort(byDepth);
@@ -43,6 +48,10 @@ function flush(): void {
         fx.run();
       }
     }
+  }
+
+  if (iterations >= MAX_FLUSH_ITERATIONS) {
+    console.error('[AkashJS] Effect flush limit reached. Possible circular dependency.');
   }
 
   flushing = false;

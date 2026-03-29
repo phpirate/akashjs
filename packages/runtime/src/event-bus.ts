@@ -90,7 +90,7 @@ export function createEventBus<T extends EventMap = Record<string, unknown>>(): 
     emit<K extends keyof T & string>(event: K, data: T[K]): void {
       const set = listeners.get(event);
       if (set) {
-        for (const handler of set) {
+        for (const handler of Array.from(set)) {
           handler(data);
         }
       }

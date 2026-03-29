@@ -86,19 +86,26 @@ interface PendingOp<T> {
 // =========================================================================
 
 async function openDB(name: string, version = 1): Promise<IDBDatabase> {
+  if (typeof indexedDB === 'undefined') {
+    return Promise.reject(new Error('IndexedDB not available'));
+  }
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(name, version);
-    request.onupgradeneeded = () => {
-      const db = request.result;
-      if (!db.objectStoreNames.contains('items')) {
-        db.createObjectStore('items');
-      }
-      if (!db.objectStoreNames.contains('pending')) {
-        db.createObjectStore('pending', { autoIncrement: true });
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    try {
+      const request = indexedDB.open(name, version);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains('items')) {
+          db.createObjectStore('items');
+        }
+        if (!db.objectStoreNames.contains('pending')) {
+          db.createObjectStore('pending', { autoIncrement: true });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error ?? new Error('IndexedDB open failed'));
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 
@@ -178,10 +185,10 @@ export function createOfflineStore<T extends Record<string, unknown>>(
       items.set(stored);
       const ops = await idbGetAll<PendingOp<T>>(db, 'pending');
       pendingOps.set(ops);
-    } catch { /* IndexedDB not available */ }
+    } catch (err) { console.error('[AkashJS] Offline store init failed:', err); }
   }
 
-  init();
+  const initPromise = init();
 
   // Start periodic sync
   if (options.sync) {
@@ -228,6 +235,7 @@ export function createOfflineStore<T extends Record<string, unknown>>(
   }
 
   async function syncNow(): Promise<void> {
+    await initPromise;
     if (!options.sync || syncing() || disposed) return;
     const ops = pendingOps();
     if (ops.length === 0) return;
@@ -265,7 +273,7 @@ export function createOfflineStore<T extends Record<string, unknown>>(
           }
         }
       }
-    } catch { /* Sync failed — ops stay queued */ }
+    } catch (err) { console.warn('[AkashJS] Offline sync failed:', err); }
     finally {
       syncing.set(false);
     }

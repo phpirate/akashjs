@@ -97,6 +97,7 @@ export function useDebounce<T>(source: () => T, delay: number): ReadonlySignal<T
     const value = source();
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => debounced.set(value), delay);
+    return () => { if (timer) clearTimeout(timer); };
   });
 
   return (() => debounced()) as ReadonlySignal<T>;
@@ -132,6 +133,7 @@ export function useThrottle<T>(source: () => T, interval: number): ReadonlySigna
         lastUpdate = Date.now();
       }, interval - elapsed);
     }
+    return () => { if (timer) clearTimeout(timer); };
   });
 
   return (() => throttled()) as ReadonlySignal<T>;

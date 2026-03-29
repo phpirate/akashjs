@@ -130,7 +130,7 @@ export function renderConditional(
       // Remove old nodes
       if (current) {
         for (const node of current.nodes) {
-          parent.removeChild(node);
+          try { node.parentNode?.removeChild(node); } catch {}
         }
         current.dispose?.();
         current = null;
@@ -156,7 +156,7 @@ export function renderConditional(
     dispose();
     if (current) {
       for (const node of current.nodes) {
-        if (node.parentNode) node.parentNode.removeChild(node);
+        try { node.parentNode?.removeChild(node); } catch {}
       }
       current.dispose?.();
     }

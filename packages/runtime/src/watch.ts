@@ -127,6 +127,7 @@ export function watch(
       }
 
       if (once) {
+        if (debounceTimer) clearTimeout(debounceTimer);
         disposed = true;
         dispose();
       }
