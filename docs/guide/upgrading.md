@@ -6,6 +6,14 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.5
+
+**Bug fixes:**
+
+- **Compiler:** component children and JSX in dynamic props (e.g., `fallback={<div>...</div>}`) are now compiled into real render functions. Previously, children were stubbed as `() => null` and JSX in props was not compiled, breaking patterns like nested `<Show>` with `fallback`.
+- **Runtime:** added `runInScope()` and exported `getCurrentScope()` so async code (like the router's lazy-loaded routes) can create components within the correct provide/inject scope.
+- **Router:** `<Outlet>` now correctly propagates router context to lazy-loaded route components. Previously, `useNavigate()`, `useRoute()`, etc. would fail inside route pages because the component was created outside the provide/inject scope chain.
+
 ### 0.1.4
 
 **Bug fixes:**
