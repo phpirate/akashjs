@@ -44,6 +44,21 @@ export function getCurrentScope(): ContextScope | null {
   return currentScope;
 }
 
+/**
+ * Run a function within a given scope so that provide/inject
+ * work correctly for components created asynchronously
+ * (e.g., lazy-loaded route components).
+ */
+export function runInScope<T>(scope: ContextScope, fn: () => T): T {
+  const prev = currentScope;
+  currentScope = scope;
+  try {
+    return fn();
+  } finally {
+    currentScope = prev;
+  }
+}
+
 // --- Public API ---
 
 /**

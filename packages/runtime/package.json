@@ -1,6 +1,6 @@
 {
   "name": "@akashjs/runtime",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "description": "AkashJS core runtime — signals, components, DOM rendering",
   "type": "module",
   "main": "dist/index.cjs",

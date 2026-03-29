@@ -7,12 +7,15 @@
  * for the next level, and so on.
  */
 
-import { defineComponent, effect, signal } from '@akashjs/runtime';
+import { defineComponent, effect, signal, getCurrentScope, runInScope } from '@akashjs/runtime';
 import { useRouterInternal } from './router.js';
 
 export const Outlet = defineComponent(() => {
   const routerCtx = useRouterInternal();
   const currentDepth = routerCtx.depth();
+
+  // Capture scope so lazy-loaded children can inherit provide/inject context
+  const outletScope = getCurrentScope()!;
 
   // Container element that we swap content in/out of
   const container = document.createElement('div');
@@ -53,10 +56,10 @@ export const Outlet = defineComponent(() => {
         container.removeChild(container.firstChild);
       }
 
-      // Render the component
-      const node = Comp({
+      // Render the component within the outlet's scope so it inherits context
+      const node = runInScope(outletScope, () => Comp({
         children: undefined,
-      });
+      }));
       container.appendChild(node);
       currentNode = node;
     });

@@ -7,7 +7,7 @@ export { batch, flushSync } from './scheduler.js';
 export { defineComponent, onMount, onUnmount, onError, ref } from './component.js';
 export type { Component, ComponentContext, Ref } from './component.js';
 
-export { createContext, provide, inject } from './context.js';
+export { createContext, provide, inject, getCurrentScope, runInScope } from './context.js';
 export type { InjectionKey } from './context.js';
 
 export {
