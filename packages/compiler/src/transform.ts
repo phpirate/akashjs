@@ -211,7 +211,7 @@ function generateNode(
       break;
 
     case 'component':
-      generateComponentCall(node, lines, imports, indent, varName);
+      generateComponentCall(node, lines, imports, indent, varName, scopeId);
       break;
 
     case 'text':
@@ -365,6 +365,7 @@ function generateComponentCall(
   imports: Set<string>,
   indent: number,
   varName: string,
+  scopeId?: string,
 ): void {
   const pad = ' '.repeat(indent);
   const tag = node.tag!;
@@ -374,26 +375,77 @@ function generateComponentCall(
   if (node.attrs) {
     for (const attr of node.attrs) {
       if (attr.dynamic) {
-        propParts.push(`${attr.name}: ${attr.value}`);
+        // Check if the value contains JSX (starts with <Tag)
+        const jsxContent = tryCompileJSXProp(attr.value, imports, indent, scopeId);
+        if (jsxContent) {
+          propParts.push(`${attr.name}: ${jsxContent}`);
+        } else {
+          propParts.push(`${attr.name}: ${attr.value}`);
+        }
       } else {
         propParts.push(`${attr.name}: ${JSON.stringify(attr.value)}`);
       }
     }
   }
 
-  // Children
+  // Children — compile into a render function that builds real DOM
   if (node.children && node.children.length > 0) {
-    const childLines: string[] = [];
-    for (let i = 0; i < node.children.length; i++) {
-      generateNode(node.children[i], childLines, imports, indent + 2, `__cc${i}`);
-    }
-    // For now, pass children as a function
-    // This is simplified — a real implementation would handle this better
-    propParts.push(`children: () => null`);
+    const childBody = generateChildrenBody(node.children, imports, indent + 2, scopeId);
+    propParts.push(`children: ${childBody}`);
   }
 
   const propsStr = propParts.length > 0 ? `{ ${propParts.join(', ')} }` : '{}';
   lines.push(`${pad}const ${varName} = ${tag}(${propsStr});`);
+}
+
+/**
+ * Compile children nodes into a render function body: () => { ... return node; }
+ */
+function generateChildrenBody(
+  children: TemplateNode[],
+  imports: Set<string>,
+  indent: number,
+  scopeId?: string,
+): string {
+  const pad = ' '.repeat(indent);
+  const innerLines: string[] = [];
+
+  if (children.length === 1) {
+    generateNode(children[0], innerLines, imports, indent, '__child', scopeId);
+    innerLines.push(`${pad}return __child;`);
+  } else {
+    innerLines.push(`${pad}const __frag = document.createDocumentFragment();`);
+    for (let i = 0; i < children.length; i++) {
+      const cVar = `__child${i}`;
+      generateNode(children[i], innerLines, imports, indent, cVar, scopeId);
+      innerLines.push(`${pad}__frag.appendChild(${cVar});`);
+    }
+    innerLines.push(`${pad}return __frag;`);
+  }
+
+  return `() => {\n${innerLines.join('\n')}\n${' '.repeat(indent - 2)}}`;
+}
+
+/**
+ * Detect if a dynamic prop value contains JSX and compile it into a render function.
+ * Returns the compiled function string, or null if the value is not JSX.
+ */
+function tryCompileJSXProp(
+  value: string,
+  imports: Set<string>,
+  indent: number,
+  scopeId?: string,
+): string | null {
+  const trimmed = value.trim();
+  // Check if the value looks like JSX: starts with < followed by a tag name
+  if (!/^<[a-zA-Z]/.test(trimmed)) return null;
+
+  // Parse the JSX as template content
+  const nodes = parseTemplate(trimmed);
+  if (nodes.length === 0) return null;
+
+  // Generate a render function
+  return generateChildrenBody(nodes, imports, indent + 2, scopeId);
 }
 
 // --- Server-mode code generation (string concatenation) ---

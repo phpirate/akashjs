@@ -169,4 +169,70 @@ function handleClick() {}
     expect(result.code).toContain("addEventListener('click'");
     expect(result.code).toContain('handleClick');
   });
+
+  it('compiles component children into a render function', () => {
+    const source = `
+<script lang="ts">
+const visible = signal(true);
+</script>
+
+<template>
+  <Show when={visible()}>
+    <div class="content">Hello</div>
+  </Show>
+</template>
+`;
+
+    const result = compile(source);
+    // Children should be a function, not () => null
+    expect(result.code).not.toContain('children: () => null');
+    expect(result.code).toContain('children: () =>');
+    expect(result.code).toContain("document.createElement('div')");
+  });
+
+  it('compiles JSX in dynamic props like fallback', () => {
+    const source = `
+<script lang="ts">
+const user = signal(null);
+</script>
+
+<template>
+  <Show when={user()} fallback={<div class="loading">Loading...</div>}>
+    <span>Welcome</span>
+  </Show>
+</template>
+`;
+
+    const result = compile(source);
+    // fallback should be compiled into a render function
+    expect(result.code).toContain('fallback: () =>');
+    expect(result.code).toContain('"loading"');
+    // children should also be compiled
+    expect(result.code).not.toContain('children: () => null');
+  });
+
+  it('compiles nested Show with fallback containing multiple elements', () => {
+    const source = `
+<script lang="ts">
+const isAuth = signal(false);
+const isLoading = signal(true);
+</script>
+
+<template>
+  <Show when={isAuth()} fallback={<div><p>Please log in</p></div>}>
+    <Show when={!isLoading()} fallback={<span>Loading...</span>}>
+      <div>Dashboard</div>
+    </Show>
+  </Show>
+</template>
+`;
+
+    const result = compile(source);
+    // Both Show calls should have real children and fallback
+    expect(result.code).not.toContain('children: () => null');
+    // Should contain the fallback content
+    expect(result.code).toContain('fallback: () =>');
+    expect(result.code).toContain('"Please log in"');
+    expect(result.code).toContain('"Loading..."');
+  });
 });
