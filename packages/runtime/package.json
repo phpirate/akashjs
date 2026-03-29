@@ -24,6 +24,11 @@
     "dev": "tsup --watch",
     "test": "vitest"
   },
-  "files": ["dist"],
-  "license": "MIT"
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }

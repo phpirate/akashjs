@@ -20,8 +20,13 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@akashjs/runtime": "workspace:*"
+    "@akashjs/runtime": "^0.1.0"
   },
-  "files": ["dist"],
-  "license": "MIT"
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
 }
