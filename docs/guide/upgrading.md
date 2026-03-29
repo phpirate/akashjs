@@ -6,6 +6,12 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.6
+
+**Bug fixes:**
+
+- **Compiler:** arrow function children containing JSX (e.g., `{(user) => <div>{user.name}</div>}`) are now compiled into proper DOM creation code. Previously, these were output as `String(...)` text nodes instead of compiled elements. This fixes the `<Show>` type-narrowing children pattern and arrow functions in dynamic props like `fallback`.
+
 ### 0.1.5
 
 **Bug fixes:**
