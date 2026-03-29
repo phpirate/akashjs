@@ -288,25 +288,54 @@ function findClosingTag(content: string, start: number, tag: string): number {
   const closeTag = `</${tag}>`;
   let depth = 1;
   let pos = start;
+  const maxIter = content.length * 2; // safety limit
+  let iter = 0;
 
-  while (pos < content.length) {
+  while (pos < content.length && iter++ < maxIter) {
     const openIdx = content.indexOf(`<${tag}`, pos);
     const closeIdx = content.indexOf(closeTag, pos);
 
     if (closeIdx === -1) return -1;
 
     if (openIdx !== -1 && openIdx < closeIdx) {
-      // Check if this is a real open tag (not self-closing)
-      const afterTag = content.indexOf('>', openIdx);
-      if (afterTag !== -1 && content[afterTag - 1] !== '/') {
+      // Find the actual closing > of this open tag, skipping over { } blocks
+      const tagEnd = findTagEnd(content, openIdx);
+      if (tagEnd !== -1 && content[tagEnd - 1] === '/') {
+        // Self-closing — don't increase depth, skip past it
+        pos = tagEnd + 1;
+      } else if (tagEnd !== -1) {
         depth++;
+        pos = tagEnd + 1;
+      } else {
+        pos = openIdx + 1;
       }
-      pos = openIdx + 1;
     } else {
       depth--;
       if (depth === 0) return closeIdx;
       pos = closeIdx + 1;
     }
+  }
+
+  return -1;
+}
+
+/** Find the closing > of an opening tag, skipping over {...} attribute expressions */
+function findTagEnd(content: string, tagStart: number): number {
+  let pos = tagStart;
+  let braceDepth = 0;
+
+  while (pos < content.length) {
+    const ch = content[pos];
+
+    if (ch === '{') {
+      braceDepth++;
+    } else if (ch === '}') {
+      braceDepth--;
+    } else if (ch === '>' && braceDepth === 0) {
+      return pos;
+    }
+
+    pos++;
   }
 
   return -1;
