@@ -93,6 +93,12 @@ console.log(doubled()); // 10
 ## Install
 
 ```bash
+npm install @akashjs/akashjs
+```
+
+Or scaffold a new project:
+
+```bash
 npx @akashjs/cli new my-app
 cd my-app
 npm install

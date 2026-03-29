@@ -1,6 +1,16 @@
 # Quick Start
 
+## Install
+
+Add to an existing project:
+
+```sh
+npm install @akashjs/akashjs
+```
+
 ## Create a Project
+
+Or scaffold a new project:
 
 ```sh
 npx @akashjs/cli new my-app

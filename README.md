@@ -40,6 +40,12 @@ button { font-size: 1.5rem; padding: 0.5rem 1rem; }
 ## Install
 
 ```bash
+npm install @akashjs/akashjs
+```
+
+Or scaffold a new project:
+
+```bash
 npx @akashjs/cli new my-app
 cd my-app
 npm install

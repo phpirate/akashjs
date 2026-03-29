@@ -5,7 +5,7 @@ A TypeScript-first UI framework with Angular's structure and Svelte's simplicity
 ## Install
 
 ```bash
-npm install akashjs
+npm install @akashjs/akashjs
 ```
 
 ## What's included
