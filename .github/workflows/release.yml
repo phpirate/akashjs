@@ -32,6 +32,8 @@ jobs:
         run: |
           VERSION="${GITHUB_REF#refs/tags/v}"
           echo "Publishing version $VERSION"
+          # Bump root version
+          npm version $VERSION --no-git-tag-version --allow-same-version
           for pkg in runtime compiler vite-plugin router forms http i18n cli devtools ui; do
             cd packages/$pkg
             npm version $VERSION --no-git-tag-version --allow-same-version

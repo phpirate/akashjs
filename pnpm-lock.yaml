@@ -33,6 +33,39 @@ importers:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@25.5.0)(happy-dom@20.8.9)(jsdom@29.0.1)
 
+  apps/taskflow:
+    dependencies:
+      '@akashjs/forms':
+        specifier: workspace:*
+        version: link:../../packages/forms
+      '@akashjs/http':
+        specifier: workspace:*
+        version: link:../../packages/http
+      '@akashjs/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
+      '@akashjs/router':
+        specifier: workspace:*
+        version: link:../../packages/router
+      '@akashjs/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      '@akashjs/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+    devDependencies:
+      '@akashjs/vite-plugin':
+        specifier: workspace:*
+        version: link:../../packages/vite-plugin
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      vite:
+        specifier: ^5.4.0
+        version: 5.4.21(@types/node@25.5.0)
+
+  extensions/vscode-akash: {}
+
   packages/cli:
     dependencies:
       commander:
