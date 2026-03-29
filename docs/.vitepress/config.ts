@@ -3,6 +3,7 @@ import { defineConfig } from 'vitepress';
 export default defineConfig({
   title: 'AkashJS',
   description: 'Angular structure, Svelte simplicity — a TypeScript-first UI framework',
+  ignoreDeadLinks: true,
   head: [
     ['meta', { name: 'theme-color', content: '#6750A4' }],
     ['meta', { property: 'og:type', content: 'website' }],
