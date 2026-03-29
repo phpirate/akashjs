@@ -102,6 +102,29 @@ akash update --no-migrate     # Skip automatic migration scripts
 
 When run without flags, `akash update` updates every `@akashjs/*` dependency in your project to the latest stable version, installs the new packages, and runs any migration scripts that ship with the update (e.g., renaming deprecated APIs, updating config files).
 
+## akash codemod \[id\]
+
+Run a codemod transformation on your source code. Codemods are automatic rewrites that migrate deprecated patterns to their modern equivalents.
+
+```sh
+akash codemod rename-createHttpClient          # Run a specific codemod
+akash codemod --list                           # List available codemods
+akash codemod --dry-run rename-createHttpClient # Preview without writing
+akash codemod --from 0.1.0 --to 0.2.0         # Run all for version range
+```
+
+### Options
+
+| Flag | Description |
+|---|---|
+| `[id]` | Run a specific codemod by its unique ID |
+| `--list` | List all available codemods with descriptions |
+| `--dry-run` | Preview changes without modifying any files |
+| `--from <version>` | Source version (used with `--to` to select a range) |
+| `--to <version>` | Target version (used with `--from` to select a range) |
+
+When called with `--from` and `--to`, all codemods whose version range falls within the given span are executed in order. When called with a specific `[id]`, only that single codemod runs.
+
 ## akash deploy
 
 Zero-config deployment to any platform. Auto-detects the target from project files and environment, generates platform-specific adapters, and deploys.

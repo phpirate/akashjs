@@ -237,5 +237,12 @@ export {
 } from './security.js';
 export type { SanitizeOptions, CSPConfig, SecurityHeadersConfig } from './security.js';
 
+export {
+  deprecated, deprecatedValue, setDeprecationWarnings, setWarningHandler,
+  resetDeprecationWarnings, registerAPI, getRegisteredAPIs, getAPIsByStability,
+  isDeprecated, getDeprecationInfo, checkCompatibility,
+} from './deprecation.js';
+export type { APIStability, DeprecationInfo, APIInfo, CompatibilityResult } from './deprecation.js';
+
 export { akashError, formatError, getErrorDef, getAllErrorCodes } from './errors.js';
 export type { ErrorDef } from './errors.js';

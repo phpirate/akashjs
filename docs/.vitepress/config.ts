@@ -50,6 +50,7 @@ export default defineConfig({
           items: [
             { text: 'Introduction', link: '/guide/introduction' },
             { text: 'Quick Start', link: '/guide/getting-started' },
+            { text: 'Upgrading', link: '/guide/upgrading' },
           ],
         },
         {
