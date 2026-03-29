@@ -6,6 +6,12 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.7
+
+**Bug fixes:**
+
+- **Compiler:** rewrote the scoped CSS processor to properly handle `@media`, `@supports`, and other nested at-rules. Previously, `@media (max-width: 960px)` was incorrectly scoped as `@media (max-width: 960px)[data-a-*]`, producing invalid CSS that broke all scoped styles in the same style block.
+
 ### 0.1.6
 
 **Bug fixes:**
