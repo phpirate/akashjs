@@ -260,6 +260,9 @@ export function renderBoardPage(container: HTMLElement, projectId: string): void
 
 // ---- Kanban Board ----
 
+// Drag state for kanban
+let _dragTaskId: string | null = null;
+
 function renderKanban(content: HTMLElement, tasks: Task[], projectId: string): void {
   const board = createElement('div');
   Object.assign(board.style, {
@@ -273,6 +276,7 @@ function renderKanban(content: HTMLElement, tasks: Task[], projectId: string): v
   for (const col of BOARD_COLUMNS) {
     const colTasks = tasks.filter((t) => t.status === col.status);
     const column = createElement('div');
+    column.dataset.dropStatus = col.status;
     Object.assign(column.style, {
       minWidth: '280px',
       width: '280px',
@@ -281,6 +285,34 @@ function renderKanban(content: HTMLElement, tasks: Task[], projectId: string): v
       display: 'flex',
       flexDirection: 'column',
       maxHeight: '100%',
+      transition: 'background 0.2s, outline 0.2s',
+    });
+
+    // --- Drop zone ---
+    column.addEventListener('dragover', (e: DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+      column.style.background = 'var(--color-primary-container)';
+      column.style.outline = '2px dashed var(--color-primary)';
+      column.style.outlineOffset = '-2px';
+    });
+
+    column.addEventListener('dragleave', (e: DragEvent) => {
+      const related = e.relatedTarget as HTMLElement | null;
+      if (!related || !column.contains(related)) {
+        column.style.background = 'var(--color-surface-container)';
+        column.style.outline = 'none';
+      }
+    });
+
+    column.addEventListener('drop', (e: DragEvent) => {
+      e.preventDefault();
+      column.style.background = 'var(--color-surface-container)';
+      column.style.outline = 'none';
+      if (_dragTaskId) {
+        taskStore.moveToStatus(_dragTaskId, col.status);
+        _dragTaskId = null;
+      }
     });
 
     // Column header
@@ -332,6 +364,7 @@ function renderKanban(content: HTMLElement, tasks: Task[], projectId: string): v
       gap: '8px',
       overflowY: 'auto',
       flex: '1',
+      minHeight: '40px',
     });
 
     for (const task of colTasks) {
@@ -346,7 +379,7 @@ function renderKanban(content: HTMLElement, tasks: Task[], projectId: string): v
         fontSize: 'var(--font-sm)',
         color: 'var(--color-outline)',
       });
-      empty.textContent = 'No tasks';
+      empty.textContent = 'Drop tasks here';
       colBody.appendChild(empty);
     }
 
@@ -359,14 +392,17 @@ function renderKanban(content: HTMLElement, tasks: Task[], projectId: string): v
 
 function createKanbanCard(task: Task): HTMLElement {
   const card = createElement('div');
+  card.draggable = true;
+  card.dataset.taskId = task.id;
   Object.assign(card.style, {
     background: 'var(--color-surface)',
     borderRadius: 'var(--radius-sm)',
     padding: '12px',
     boxShadow: 'var(--shadow-sm)',
-    cursor: 'pointer',
-    transition: 'box-shadow var(--transition-fast), transform var(--transition-fast)',
+    cursor: 'grab',
+    transition: 'box-shadow var(--transition-fast), transform var(--transition-fast), opacity 0.2s',
     border: '1px solid var(--color-outline-variant)',
+    userSelect: 'none',
   });
   card.addEventListener('mouseenter', () => {
     card.style.boxShadow = 'var(--shadow-md)';
@@ -375,6 +411,27 @@ function createKanbanCard(task: Task): HTMLElement {
   card.addEventListener('mouseleave', () => {
     card.style.boxShadow = 'var(--shadow-sm)';
     card.style.transform = 'translateY(0)';
+  });
+
+  // --- Drag events ---
+  card.addEventListener('dragstart', (e: DragEvent) => {
+    _dragTaskId = task.id;
+    card.style.opacity = '0.4';
+    card.style.cursor = 'grabbing';
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', task.id);
+    }
+  });
+  card.addEventListener('dragend', () => {
+    card.style.opacity = '1';
+    card.style.cursor = 'grab';
+    _dragTaskId = null;
+    // Reset all columns
+    document.querySelectorAll('[data-drop-status]').forEach((c) => {
+      (c as HTMLElement).style.background = 'var(--color-surface-container)';
+      (c as HTMLElement).style.outline = 'none';
+    });
   });
 
   // Title
