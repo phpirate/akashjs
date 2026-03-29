@@ -4,6 +4,18 @@ AkashJS follows [semantic versioning](https://semver.org/) (semver). During the 
 
 Every release comes with deprecation warnings, codemods, and migration hints so you can upgrade incrementally.
 
+## Release Notes
+
+### 0.1.4
+
+**Bug fixes:**
+
+- **Compiler:** import statements in `.akash` `<script>` blocks are now correctly hoisted to the module top level. Previously they were placed inside the `defineComponent()` body, causing runtime errors when importing third-party libraries.
+- **Router:** `createRouter()` now automatically provides router context to the component tree. Previously, `<Outlet>`, `useRoute()`, `useParams()`, and `useNavigate()` would fail because the context was never provided.
+- **Vite plugin:** added Vite 6 support (`peerDependencies` now accepts `^5.0.0 || ^6.0.0`).
+
+---
+
 ## `akash update`
 
 The fastest way to upgrade is the built-in update command:

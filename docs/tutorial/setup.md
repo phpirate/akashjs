@@ -74,7 +74,7 @@ Let's understand each key file.
     "@akashjs/compiler": "^0.1.0",
     "@akashjs/vite-plugin": "^0.1.0",
     "typescript": "^5.4.0",
-    "vite": "^5.0.0",
+    "vite": "^6.0.0",
     "vitest": "^2.0.0"
   }
 }
@@ -183,7 +183,7 @@ pnpm dev
 You should see:
 
 ```
-  VITE v5.x.x  ready in 200ms
+  VITE v6.x.x  ready in 200ms
 
   > Local:   http://localhost:5173/
   > Network: http://192.168.x.x:5173/
