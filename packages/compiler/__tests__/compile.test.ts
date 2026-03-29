@@ -387,8 +387,9 @@ const config = { theme: 'dark' };
 `;
 
     const result = compile(source);
-    // Signal call — needs wrapper
-    expect(result.code).toContain('activeValue: () => activeTab()');
+    // Non-primitive component — signal call passed directly, not wrapped
+    expect(result.code).toContain('activeValue: activeTab()');
+    expect(result.code).not.toContain('activeValue: () =>');
     // Plain identifier — no wrapper
     expect(result.code).toContain('options: config');
     expect(result.code).not.toContain('options: () =>');
