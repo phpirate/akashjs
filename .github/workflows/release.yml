@@ -14,14 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install
@@ -36,7 +35,6 @@ jobs:
           for pkg in runtime compiler vite-plugin router forms http i18n cli devtools ui; do
             cd packages/$pkg
             npm version $VERSION --no-git-tag-version --allow-same-version
-            # Update @akashjs/* deps to match
             node -e "
               const fs = require('fs');
               const pkg = JSON.parse(fs.readFileSync('package.json','utf-8'));
