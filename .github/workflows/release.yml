@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Build & Publish to npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: npx vitest run
+
+      - name: Bump versions to tag
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "Publishing version $VERSION"
+          for pkg in runtime compiler vite-plugin router forms http i18n cli devtools ui; do
+            cd packages/$pkg
+            npm version $VERSION --no-git-tag-version --allow-same-version
+            # Update @akashjs/* deps to match
+            node -e "
+              const fs = require('fs');
+              const pkg = JSON.parse(fs.readFileSync('package.json','utf-8'));
+              for (const dt of ['dependencies','devDependencies','peerDependencies']) {
+                if (!pkg[dt]) continue;
+                for (const [name,ver] of Object.entries(pkg[dt])) {
+                  if (name.startsWith('@akashjs/')) pkg[dt][name] = '^' + '$VERSION';
+                }
+              }
+              fs.writeFileSync('package.json', JSON.stringify(pkg,null,2)+'\n');
+            "
+            cd ../..
+          done
+
+      - name: Build all packages
+        run: |
+          for pkg in runtime compiler vite-plugin router forms http i18n cli devtools ui; do
+            echo "Building @akashjs/$pkg..."
+            (cd packages/$pkg && npx tsup)
+          done
+
+      - name: Publish all packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for pkg in runtime compiler vite-plugin router forms http i18n cli devtools ui; do
+            echo "Publishing @akashjs/$pkg..."
+            (cd packages/$pkg && npm publish --access public) || true
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
