@@ -8,6 +8,8 @@ A TypeScript-first UI framework with signals reactivity, direct DOM rendering, a
 
 > **Early stage** — AkashJS is at v0.1.x. The APIs work and tests pass, but the framework is new and hasn't been battle-tested in production yet. Feedback and contributions welcome.
 
+> **Note on naming:** This project is unrelated to [akash-network/akashjs](https://github.com/akash-network/akashjs) (the Akash Network blockchain SDK). We are a UI framework.
+
 ---
 
 ## What is this?
@@ -147,18 +149,32 @@ What's still needed before 1.0:
 - Performance benchmarks against other frameworks
 - API stabilization
 
+## Versioning
+
+AkashJS follows [Semantic Versioning](https://semver.org/). During 0.x, minor versions may contain breaking changes. After 1.0, the usual semver guarantees apply.
+
+- **`akash update`** — updates packages and runs codemods automatically
+- **`akash codemod`** — applies code transformations for API changes
+- **Deprecation warnings** — old APIs warn in console with migration hints before removal
+
+See [CHANGELOG.md](CHANGELOG.md) and the [Upgrading Guide](docs/guide/upgrading.md).
+
+## Community
+
+- [GitHub Issues](https://github.com/phpirate/akashjs/issues) — bug reports and feature requests
+- [GitHub Discussions](https://github.com/phpirate/akashjs/discussions) — questions and ideas
+
 ## Contributing
 
-Contributions, bug reports, and feedback are welcome.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup instructions, code style, and PR guidelines.
 
-1. Fork the repo
-2. Create a branch (`git checkout -b feature/my-feature`)
-3. Run tests (`npx vitest run`)
-4. Open a Pull Request
+## Security
+
+See [SECURITY.md](SECURITY.md) for reporting vulnerabilities. AkashJS includes built-in security features (`sanitize()`, CSP, CSRF, `akash audit`).
 
 ## License
 
-MIT
+[MIT](LICENSE)
 
 ---
 
