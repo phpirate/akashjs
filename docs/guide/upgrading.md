@@ -6,6 +6,14 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.9 (compiler) / 0.1.5 (runtime)
+
+**Bug fixes:**
+
+- **Compiler:** dynamic component props are now wrapped in reactive getters. Previously, `when={activeTab() === 'login'}` was eagerly evaluated to `true`/`false` at creation time, making `<Show>` and `<For>` non-reactive. Event handlers (`on*`) and function values are passed through as-is.
+- **Compiler:** `<Show>` and `<For>` used in templates are now auto-imported from `@akashjs/runtime` without needing an explicit import in the `<script>` block.
+- **Runtime:** `Show` and `For` now accept both getter functions and static values for `when`/`each`, so they work with both the new compiler output and hand-written code.
+
 ### 0.1.7 / vite-plugin 0.1.5
 
 **Bug fixes:**
