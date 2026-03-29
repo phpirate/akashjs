@@ -103,6 +103,41 @@ function isAlreadyFunction(value: string): boolean {
   return false;
 }
 
+/**
+ * Check if a dynamic expression contains reactive reads (function calls)
+ * that need getter wrapping for reactivity.
+ *
+ * Static values like [...], {...}, "...", 42, true, plain identifiers
+ * should NOT be wrapped — only expressions containing () calls.
+ */
+function needsReactiveWrapper(value: string): boolean {
+  const trimmed = value.trim();
+
+  // Literal array or object — static even if dynamic attribute
+  if (/^\[/.test(trimmed) && !trimmed.includes('(')) return false;
+  if (/^\{/.test(trimmed) && !trimmed.includes('(')) return false;
+
+  // String/number/boolean literals
+  if (/^["'`]/.test(trimmed)) return false;
+  if (/^\d/.test(trimmed)) return false;
+  if (trimmed === 'true' || trimmed === 'false' || trimmed === 'null' || trimmed === 'undefined') return false;
+
+  // Template literal without function calls
+  if (trimmed.startsWith('`') && !trimmed.includes('(')) return false;
+
+  // Contains a function call — needs wrapping for reactivity
+  // Matches: foo(), foo.bar(), foo()?.bar, etc.
+  if (/\w\(/.test(trimmed)) return true;
+
+  // Plain identifier (variable reference) — no call, no reactivity needed
+  if (/^[a-zA-Z_$][\w$.]*$/.test(trimmed)) return false;
+
+  // Property access without calls — static
+  if (!trimmed.includes('(')) return false;
+
+  return true;
+}
+
 /** Detect which runtime APIs are used in script/template and need auto-importing */
 function detectAutoImports(script: string, template: string, imports: Set<string>): void {
   // APIs that may appear in the script block
@@ -401,10 +436,12 @@ function generateComponentCall(
         } else if (attr.name.startsWith('on') || isAlreadyFunction(attr.value)) {
           // Event handlers and function values — pass through as-is
           propParts.push(`${attr.name}: ${attr.value}`);
-        } else {
-          // Wrap in getter for reactivity — expressions like activeTab() === 'login'
-          // must be re-evaluated by the consuming component, not eagerly evaluated
+        } else if (needsReactiveWrapper(attr.value)) {
+          // Contains signal reads — wrap in getter for reactivity
           propParts.push(`${attr.name}: () => ${attr.value}`);
+        } else {
+          // Static value (literal, identifier, etc.) — pass through
+          propParts.push(`${attr.name}: ${attr.value}`);
         }
       } else {
         propParts.push(`${attr.name}: ${JSON.stringify(attr.value)}`);

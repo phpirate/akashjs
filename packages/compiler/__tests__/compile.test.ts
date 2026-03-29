@@ -354,4 +354,43 @@ function handleClick() {}
     expect(result.code).toContain('onClick: handleClick');
     expect(result.code).not.toContain('onClick: () =>');
   });
+
+  it('does not wrap static props like literal arrays and strings in getters', () => {
+    const source = `
+<script lang="ts">
+</script>
+
+<template>
+  <Tabs items={['Login', 'Register']} variant="primary" activeIndex={0} />
+</template>
+`;
+
+    const result = compile(source);
+    // Literal array — no wrapper
+    expect(result.code).toContain("items: ['Login', 'Register']");
+    expect(result.code).not.toContain("items: () =>");
+    // Number literal — no wrapper
+    expect(result.code).toContain('activeIndex: 0');
+    expect(result.code).not.toContain('activeIndex: () =>');
+  });
+
+  it('wraps props with signal calls but not plain identifiers', () => {
+    const source = `
+<script lang="ts">
+const activeTab = signal('login');
+const config = { theme: 'dark' };
+</script>
+
+<template>
+  <Tabs activeValue={activeTab()} options={config} />
+</template>
+`;
+
+    const result = compile(source);
+    // Signal call — needs wrapper
+    expect(result.code).toContain('activeValue: () => activeTab()');
+    // Plain identifier — no wrapper
+    expect(result.code).toContain('options: config');
+    expect(result.code).not.toContain('options: () =>');
+  });
 });
