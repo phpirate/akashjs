@@ -42,6 +42,13 @@ export function parseTemplate(content: string): TemplateNode[] {
 
   while (pos < content.length) {
     if (content[pos] === '<') {
+      // HTML comment — skip entirely
+      if (content.slice(pos, pos + 4) === '<!--') {
+        const endComment = content.indexOf('-->', pos + 4);
+        pos = endComment === -1 ? content.length : endComment + 3;
+        continue;
+      }
+
       // Closing tag — handled by parent parseElement call
       if (content[pos + 1] === '/') break;
 

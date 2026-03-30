@@ -6,6 +6,13 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.20 (compiler) / 0.1.9 (runtime)
+
+**Bug fixes:**
+
+- **Compiler + Runtime:** component props containing signal reads are now reactive. The compiler wraps signal-containing expressions with `__getter()`, and `defineComponent` uses a Proxy on `ctx.props` to unwrap them on access. Props like `pageSize={store.page().pageSize}` now update when the store changes.
+- **Compiler:** HTML comments (`<!-- ... -->`) in templates are now stripped instead of being rendered as visible text nodes.
+
 ### 0.1.18 (compiler) / 0.1.8 (runtime)
 
 **Bug fixes:**
