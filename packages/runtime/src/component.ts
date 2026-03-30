@@ -12,6 +12,14 @@ import { nodeToDOM } from './dom.js';
 import { akashError } from './errors.js';
 import type { AkashNode } from './types.js';
 
+// --- Reactive getter marker (used by compiler) ---
+
+/** Mark a function as a compiler-generated reactive getter */
+export function __getter<T>(fn: () => T): (() => T) & { __reactive: true } {
+  (fn as any).__reactive = true;
+  return fn as any;
+}
+
 // --- Types ---
 
 export interface Ref<T = HTMLElement> {
@@ -95,9 +103,18 @@ export function defineComponent<P extends Record<string, unknown> = Record<strin
   setup: (ctx: ComponentContext<P>) => () => AkashNode,
 ): Component<P> {
   const component = (rawProps: P & { children?: AkashNode | (() => AkashNode) }): Node => {
-    // Separate children from props
+    // Separate children from props, unwrap getter functions for reactivity
     const { children: childrenProp, ...restProps } = rawProps ?? {};
-    const props = restProps as unknown as P;
+    const props = new Proxy(restProps as unknown as P, {
+      get(target, key, receiver) {
+        const val = Reflect.get(target, key, receiver);
+        // Unwrap compiler-generated reactive getters (marked with __reactive)
+        if (typeof val === 'function' && (val as any).__reactive) {
+          return val();
+        }
+        return val;
+      },
+    });
 
     const childrenFn: () => AkashNode =
       typeof childrenProp === 'function'

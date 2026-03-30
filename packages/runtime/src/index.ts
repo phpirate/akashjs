@@ -4,7 +4,7 @@ export type { Signal, ReadonlySignal } from './signals.js';
 
 export { batch, flushSync } from './scheduler.js';
 
-export { defineComponent, onMount, onUnmount, onError, ref } from './component.js';
+export { defineComponent, onMount, onUnmount, onError, ref, __getter } from './component.js';
 export type { Component, ComponentContext, Ref } from './component.js';
 
 export { createContext, provide, inject, getCurrentScope, runInScope } from './context.js';

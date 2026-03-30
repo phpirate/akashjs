@@ -335,7 +335,8 @@ const activeTab = signal('login');
 
     const result = compile(source);
     // when should be a getter, not an eagerly evaluated value
-    expect(result.code).toContain("when: () => activeTab() === 'login'");
+    // Show is a built-in — gets __getter wrapped prop
+    expect(result.code).toContain("when: __getter(() => activeTab() === 'login')");
   });
 
   it('does not wrap event handler props in getters', () => {
@@ -387,9 +388,8 @@ const config = { theme: 'dark' };
 `;
 
     const result = compile(source);
-    // Non-primitive component — signal call passed directly, not wrapped
-    expect(result.code).toContain('activeValue: activeTab()');
-    expect(result.code).not.toContain('activeValue: () =>');
+    // Signal call — wrapped in __getter for reactivity
+    expect(result.code).toContain('activeValue: __getter(() => activeTab())');
     // Plain identifier — no wrapper
     expect(result.code).toContain('options: config');
     expect(result.code).not.toContain('options: () =>');

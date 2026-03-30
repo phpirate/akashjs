@@ -492,9 +492,6 @@ function generateComponentCall(
   const pad = ' '.repeat(indent);
   const tag = node.tag!;
 
-  // Only built-in reactive primitives understand getter-wrapped props
-  const isReactivePrimitive = tag === 'Show' || tag === 'For' || tag === 'Switch';
-
   // Build props object
   const propParts: string[] = [];
   if (node.attrs) {
@@ -507,11 +504,12 @@ function generateComponentCall(
         } else if (attr.name.startsWith('on') || isAlreadyFunction(attr.value)) {
           // Event handlers and function values — pass through as-is
           propParts.push(`${attr.name}: ${attr.value}`);
-        } else if (isReactivePrimitive && needsReactiveWrapper(attr.value)) {
-          // Built-in primitives (Show, For, Switch) — wrap in getter for reactivity
-          propParts.push(`${attr.name}: () => ${attr.value}`);
+        } else if (needsReactiveWrapper(attr.value)) {
+          // Contains signal reads — wrap in marked getter for reactivity
+          imports.add('__getter');
+          propParts.push(`${attr.name}: __getter(() => ${attr.value})`);
         } else {
-          // All other components — pass value directly
+          // Static value (literal, identifier, etc.) — pass through
           propParts.push(`${attr.name}: ${attr.value}`);
         }
       } else {
