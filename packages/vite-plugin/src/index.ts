@@ -6,7 +6,8 @@
  * template-only changes.
  */
 
-import { compile } from '@akashjs/compiler';
+import { compile, parse } from '@akashjs/compiler';
+import { transform as esbuildTransform } from 'esbuild';
 import type { Plugin } from 'vite';
 import { analyzeHmrChange, generateHmrCode } from './hmr.js';
 
@@ -32,8 +33,12 @@ export default function akash(options: AkashPluginOptions = {}): Plugin {
       isProduction = config.command === 'build';
     },
 
-    transform(code, id) {
+    async transform(code, id) {
       if (!id.endsWith('.akash')) return null;
+
+      // Check if the script block uses TypeScript
+      const sfc = parse(code);
+      const isTS = sfc.script?.lang === 'ts' || sfc.script?.lang === 'typescript';
 
       const result = compile(code, {
         filename: id,
@@ -41,6 +46,15 @@ export default function akash(options: AkashPluginOptions = {}): Plugin {
       });
 
       let output = result.code;
+
+      // Strip TypeScript annotations if the script block uses lang="ts"
+      if (isTS) {
+        const stripped = await esbuildTransform(output, {
+          loader: 'ts',
+          sourcemap: false,
+        });
+        output = stripped.code;
+      }
 
       // Inject CSS
       if (result.css) {
