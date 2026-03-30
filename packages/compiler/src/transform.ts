@@ -455,8 +455,12 @@ function generateElement(
   }
 
   // 4. Set value property AFTER children (so <select> options exist)
+  // Set initial value synchronously, then use effect for reactive updates
   for (const attr of valueAttrs) {
     if (attr.dynamic) {
+      // Synchronous initial set — MUST happen before event listeners
+      lines.push(`${pad}${varName}.value = ${attr.value};`);
+      // Reactive effect for future signal updates
       imports.add('effect');
       lines.push(`${pad}effect(() => {`);
       lines.push(`${pad}  const __v = ${attr.value};`);

@@ -6,11 +6,11 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
-### 0.1.17 (compiler) / 0.1.8 (runtime)
+### 0.1.18 (compiler) / 0.1.8 (runtime)
 
 **Bug fixes:**
 
-- **Compiler:** fixed `<select>` onChange firing during render with undefined value. Element initialization order is now: attributes → children → value → event listeners. This ensures `<option>` elements exist before `.value` is set, and listeners are attached last so they don't fire during setup. Value and bind assignments also compare before setting to prevent effect loops.
+- **Compiler:** fixed `<select>` onChange firing during render with undefined value. Element initialization order is now: attributes → children → value (sync) → event listeners. The initial value is set synchronously before listeners are attached, with a reactive effect registered for future updates. This ensures `<option>` elements exist before `.value` is set, and listeners don't fire during setup.
 - **Runtime:** `defineStore()` actions now have `this` bound to the full store (state + getters + actions), so `this.otherAction()` works inside actions.
 
 ### 0.1.8 (runtime)
