@@ -10,6 +10,9 @@
 
 import { defineComponent } from './component.js';
 import { provide } from './context.js';
+import { signal } from './signals.js';
+import { flushSync } from './scheduler.js';
+import type { Signal } from './signals.js';
 import type { Component } from './component.js';
 import type { InjectionKey } from './context.js';
 
@@ -276,4 +279,128 @@ function findImplicitRole(root: HTMLElement, role: string): HTMLElement | null {
 
   const selector = tags.join(', ');
   return root.querySelector<HTMLElement>(selector);
+}
+
+// =========================================================================
+// Async helpers
+// =========================================================================
+
+export interface WaitForOptions {
+  /** Timeout in ms (default: 1000) */
+  timeout?: number;
+  /** Poll interval in ms (default: 50) */
+  interval?: number;
+}
+
+/**
+ * Wait for an assertion to pass. Retries until it doesn't throw or times out.
+ *
+ * ```ts
+ * await waitFor(() => expect(getByText('loaded')).toBeTruthy());
+ * ```
+ */
+export async function waitFor(
+  assertion: () => void | Promise<void>,
+  options?: WaitForOptions,
+): Promise<void> {
+  const { timeout = 1000, interval = 50 } = options ?? {};
+  const start = Date.now();
+
+  while (true) {
+    try {
+      await assertion();
+      return;
+    } catch (err) {
+      if (Date.now() - start >= timeout) throw err;
+      await new Promise(r => setTimeout(r, interval));
+    }
+  }
+}
+
+/**
+ * Wait for an element matching a selector to appear in the container.
+ *
+ * ```ts
+ * const el = await waitForElement(container, '.loaded');
+ * ```
+ */
+export async function waitForElement(
+  container: HTMLElement,
+  selector: string,
+  options?: WaitForOptions,
+): Promise<HTMLElement> {
+  let found: HTMLElement | null = null;
+  await waitFor(() => {
+    found = container.querySelector<HTMLElement>(selector);
+    if (!found) throw new Error(`Element "${selector}" not found`);
+  }, options);
+  return found!;
+}
+
+/**
+ * Synchronously flush all pending effects. Use after signal writes
+ * when you need the DOM to update before asserting.
+ *
+ * ```ts
+ * count.set(5);
+ * flush();
+ * expect(getByText('5')).toBeTruthy();
+ * ```
+ */
+export { flushSync as flush };
+
+// =========================================================================
+// Signal test helpers
+// =========================================================================
+
+export interface TestSignal<T> extends Signal<T> {
+  /** History of all values set on this signal (including initial) */
+  history: T[];
+  /** Number of times set() or update() was called */
+  setCount: number;
+  /** Reset history and set count */
+  resetHistory(): void;
+}
+
+/**
+ * Create a signal with test inspection capabilities.
+ *
+ * ```ts
+ * const count = createTestSignal(0);
+ * count.set(1);
+ * count.set(2);
+ * expect(count.history).toEqual([0, 1, 2]);
+ * expect(count.setCount).toBe(2);
+ * ```
+ */
+export function createTestSignal<T>(initialValue: T): TestSignal<T> {
+  const inner = signal(initialValue);
+  const history: T[] = [initialValue];
+  let setCount = 0;
+
+  const read = (() => inner()) as TestSignal<T>;
+
+  read.set = (value: T) => {
+    inner.set(value);
+    history.push(value);
+    setCount++;
+  };
+
+  read.update = (fn: (prev: T) => T) => {
+    const newVal = fn(inner.peek());
+    read.set(newVal);
+  };
+
+  read.peek = () => inner.peek();
+
+  Object.defineProperty(read, 'history', { get: () => [...history] });
+  Object.defineProperty(read, 'setCount', { get: () => setCount });
+
+  read.resetHistory = () => {
+    history.length = 0;
+    history.push(inner.peek());
+    setCount = 0;
+  };
+
+  return read;
 }

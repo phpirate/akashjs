@@ -119,6 +119,29 @@ effect(() => {
 });
 ```
 
+## class:name Directive
+
+Toggle individual CSS classes reactively with the `class:name` directive. The compiler transforms this into `classList.toggle()` calls for efficient DOM updates:
+
+```html
+<template>
+  <button class="btn" class:active={isActive()} class:pulse={shouldPulse()}>
+    Submit
+  </button>
+</template>
+```
+
+Compiled output (simplified):
+
+```ts
+const el = document.createElement('button');
+el.className = 'btn';
+effect(() => el.classList.toggle('active', isActive()));
+effect(() => el.classList.toggle('pulse', shouldPulse()));
+```
+
+Each `class:name` directive creates a fine-grained effect that only touches that specific class. Static classes set via the `class` attribute are never affected. This is more efficient than re-computing the entire `className` string on every change.
+
 ## Scoped Styles
 
 Single-file `.akash` components support `<style scoped>` blocks. Scoped styles are automatically transformed at build time to only target elements within the component, preventing style leakage.
@@ -154,7 +177,34 @@ h2 {
 
 The compiler adds a unique attribute (e.g., `data-v-a1b2c3`) to each element and rewrites selectors to include it, so `.card` becomes `.card[data-v-a1b2c3]`. This means scoped styles never affect parent or sibling components.
 
-For global styles, omit the `scoped` attribute:
+### :global() Selector
+
+Use `:global()` inside a scoped style block to target elements outside the component. The wrapped selector is emitted without the scope attribute.
+
+```html
+<style scoped>
+/* Targets .modal-overlay globally — no scope attribute added */
+:global(.modal-overlay) {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* .local is scoped, .third-party is global */
+.local :global(.third-party) {
+  color: red;
+}
+</style>
+```
+
+Output:
+
+```css
+.modal-overlay { background: rgba(0,0,0,0.5); }
+.local[data-a-x7k3f] .third-party { color: red; }
+```
+
+### Global Styles
+
+For entirely global styles, omit the `scoped` attribute:
 
 ```html
 <style>

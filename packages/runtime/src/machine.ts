@@ -64,6 +64,8 @@ export interface MachineContext<TContext> {
   data: TContext;
   /** The current event that triggered the transition */
   event: string;
+  /** Optional payload passed with the event via send(event, payload) */
+  payload?: unknown;
 }
 
 export interface Machine<TState extends string, TEvent extends string, TContext = unknown> {
@@ -120,7 +122,7 @@ export function createMachine<
     initialStateCfg.entry({ data: contextData() as TContext, event: '' });
   }
 
-  function send(event: TEvent): void {
+  function send(event: TEvent, payload?: unknown): void {
     if (done()) return; // Final state — no more transitions
 
     const state = currentState();
@@ -146,6 +148,7 @@ export function createMachine<
     const ctx: MachineContext<TContext> = {
       data: contextData() as TContext,
       event,
+      payload,
     };
 
     // Check guard
@@ -156,9 +159,9 @@ export function createMachine<
       stateCfg.exit(ctx);
     }
 
-    // Transition action
+    // Transition action — pass payload as second argument for convenience
     if (action) {
-      action(ctx);
+      (action as Function)(ctx, payload);
     }
 
     // Update context if modified

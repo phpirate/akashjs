@@ -18,12 +18,17 @@ let flushing = false;
 let batchDepth = 0;
 let flushScheduled = false;
 
-const MAX_FLUSH_ITERATIONS = 1000;
+const MAX_EFFECT_RUNS = 3;
+const MAX_FLUSH_ITERATIONS = 100;
 
 function flush(): void {
   if (flushing) return;
   flushing = true;
   flushScheduled = false;
+
+  // Fresh per-effect run counter for THIS flush — reset every time
+  const runCounts = new Map<ScheduledEffect, number>();
+  let circularDetected = false;
 
   // Process render effects first, then user effects.
   // Effects may enqueue more effects during flush, so loop until empty.
@@ -36,6 +41,12 @@ function flush(): void {
       const queue = [...pendingRender].sort(byDepth);
       pendingRender.clear();
       for (const fx of queue) {
+        const count = (runCounts.get(fx) ?? 0) + 1;
+        runCounts.set(fx, count);
+        if (count > MAX_EFFECT_RUNS) {
+          circularDetected = true;
+          continue; // skip this effect — it's in a cycle
+        }
         fx.run();
       }
     }
@@ -45,13 +56,30 @@ function flush(): void {
       const queue = [...pendingUser].sort(byDepth);
       pendingUser.clear();
       for (const fx of queue) {
+        const count = (runCounts.get(fx) ?? 0) + 1;
+        runCounts.set(fx, count);
+        if (count > MAX_EFFECT_RUNS) {
+          circularDetected = true;
+          continue; // skip this effect — it's in a cycle
+        }
         fx.run();
       }
     }
+
+    // If all remaining effects were skipped due to cycle detection, break
+    if (circularDetected && pendingRender.size === 0 && pendingUser.size === 0) {
+      break;
+    }
   }
 
-  if (iterations >= MAX_FLUSH_ITERATIONS) {
-    console.error('[AkashJS] Effect flush limit reached. Possible circular dependency.');
+  if (circularDetected || iterations >= MAX_FLUSH_ITERATIONS) {
+    pendingRender.clear();
+    pendingUser.clear();
+    console.error(
+      '[AkashJS] Circular dependency detected between effects. ' +
+      'Two or more effects are writing to each other\'s dependencies. ' +
+      'The cycle has been broken after ' + iterations + ' iterations.'
+    );
   }
 
   flushing = false;
@@ -64,9 +92,8 @@ export function scheduleEffect(fx: ScheduledEffect): void {
     pendingUser.add(fx);
   }
 
-  if (batchDepth === 0 && !flushing && !flushScheduled) {
-    flushScheduled = true;
-    queueMicrotask(flush);
+  if (batchDepth === 0 && !flushing) {
+    flush();
   }
 }
 
@@ -84,6 +111,13 @@ export function batch(fn: () => void): void {
       flush();
     }
   }
+}
+
+/** Enter/exit batch depth — used by computed recompute to prevent mid-evaluation flush */
+export function enterBatch(): void { batchDepth++; }
+export function exitBatch(): void {
+  batchDepth--;
+  if (batchDepth === 0) flush();
 }
 
 /** Sort effects by depth (lower depth first = parents before children) */

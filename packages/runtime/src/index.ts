@@ -1,5 +1,5 @@
 // @akashjs/runtime — Core runtime entry point
-export { signal, computed, effect, untrack } from './signals.js';
+export { signal, computed, effect, untrack, on } from './signals.js';
 export type { Signal, ReadonlySignal } from './signals.js';
 
 export { batch, flushSync } from './scheduler.js';
@@ -61,7 +61,8 @@ export {
 } from './ssr.js';
 export type { SSRElement, SSRText, SSRRaw, SSRNode } from './ssr.js';
 
-export { defineStore, clearStores } from './store.js';
+export { defineStore, clearStores, configureStores, __getStoreInstances } from './store.js';
+export type { StorePlugin } from './store.js';
 export type { Store, StoreDefinition } from './store.js';
 
 export {
@@ -246,3 +247,6 @@ export type { APIStability, DeprecationInfo, APIInfo, CompatibilityResult } from
 
 export { akashError, formatError, getErrorDef, getAllErrorCodes } from './errors.js';
 export type { ErrorDef } from './errors.js';
+
+export { installDevtools } from './devtools.js';
+export type { DevToolsAPI } from './devtools.js';

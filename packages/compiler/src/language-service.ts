@@ -8,6 +8,7 @@
 
 import { parse } from './parse.js';
 import { parseTemplate } from './template.js';
+import { getTsDiagnostics, getTsCompletions, getTsHoverInfo } from './ts-service.js';
 import type { ParsedSFC } from './types.js';
 import type { TemplateNode } from './template.js';
 
@@ -134,6 +135,24 @@ export function createLanguageService() {
           const nodes = parseTemplate(sfc.template.content);
           validateNodes(nodes, diagnostics, sfc.template.start);
         }
+
+        // TypeScript diagnostics (script block type errors + template expression errors)
+        try {
+          const tsDiags = getTsDiagnostics(source, filename);
+          for (const td of tsDiags) {
+            diagnostics.push({
+              range: {
+                start: { line: td.line, character: td.column },
+                end: { line: td.line, character: td.column + 1 },
+              },
+              message: td.message,
+              severity: td.severity === 'error' ? 'error' : td.severity === 'warning' ? 'warning' : 'info',
+              code: td.code,
+            });
+          }
+        } catch {
+          // TypeScript not available or failed — skip TS diagnostics
+        }
       } catch (err) {
         diagnostics.push({
           range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
@@ -148,12 +167,27 @@ export function createLanguageService() {
     /**
      * Get completion items at a position.
      */
-    getCompletions(source: string, position: Position): CompletionItem[] {
+    getCompletions(source: string, positionOrFilename?: Position | string | any, maybePosition?: Position | any): CompletionItem[] {
+      // Support (source, position), (source, filename, position), and { line, column } as alias for { line, character }
+      const rawPos = maybePosition ?? (typeof positionOrFilename === 'object' ? positionOrFilename! : { line: 0, character: 0 });
+      const position: Position = { line: rawPos.line ?? 0, character: rawPos.character ?? rawPos.column ?? 0 };
+      const filename = typeof positionOrFilename === 'string' ? positionOrFilename : undefined;
       const line = source.split('\n')[position.line] ?? '';
       const before = line.slice(0, position.character);
 
-      // Inside <script> — suggest runtime APIs
+      // Inside <script> — TypeScript completions + runtime APIs
       if (isInScript(source, position)) {
+        try {
+          const tsCompletions = getTsCompletions(source, position, filename);
+          if (tsCompletions.length > 0) {
+            return tsCompletions.map(c => ({
+              label: c.label,
+              kind: 'property' as const,
+              detail: c.detail,
+              sortText: c.sortText,
+            }));
+          }
+        } catch { /* fall through to static completions */ }
         return [...RUNTIME_APIS];
       }
 
@@ -183,9 +217,22 @@ export function createLanguageService() {
     /**
      * Get hover information at a position.
      */
-    getHoverInfo(source: string, position: Position): HoverInfo | null {
+    getHoverInfo(source: string, positionOrFilename?: Position | string | any, maybePosition?: Position | any): HoverInfo | null {
+      const rawPos = maybePosition ?? (typeof positionOrFilename === 'object' ? positionOrFilename! : { line: 0, character: 0 });
+      const position: Position = { line: rawPos.line ?? 0, character: rawPos.character ?? rawPos.column ?? 0 };
+      const filename = typeof positionOrFilename === 'string' ? positionOrFilename : undefined;
       const line = source.split('\n')[position.line] ?? '';
       const word = getWordAt(line, position.character);
+
+      // Try TypeScript hover first (gives type information)
+      try {
+        const tsHover = getTsHoverInfo(source, position, filename);
+        if (tsHover) {
+          return {
+            contents: tsHover.content + (tsHover.documentation ? `\n\n${tsHover.documentation}` : ''),
+          };
+        }
+      } catch { /* fall through */ }
 
       // Check runtime APIs
       const api = RUNTIME_APIS.find((a) => a.label === word);

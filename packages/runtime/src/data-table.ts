@@ -125,11 +125,12 @@ export function createDataTable<T extends Record<string, unknown>>(
     const text = filterText().toLowerCase().trim();
     if (!text) return data();
 
+    // If no columns explicitly marked filterable, filter all columns
     const filterableCols = columns.filter((c) => c.filterable);
-    if (filterableCols.length === 0) return data();
+    const colsToSearch = filterableCols.length > 0 ? filterableCols : columns;
 
     return data().filter((row) => {
-      return filterableCols.some((col) => {
+      return colsToSearch.some((col) => {
         const value = getNestedValue(row, col.key);
         return String(value).toLowerCase().includes(text);
       });

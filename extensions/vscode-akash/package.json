@@ -1,8 +1,8 @@
 {
   "name": "vscode-akash",
   "displayName": "AkashJS",
-  "description": "Syntax highlighting for AkashJS .akash single-file components",
-  "version": "0.1.0",
+  "description": "IntelliSense, diagnostics, and syntax highlighting for AkashJS .akash components",
+  "version": "0.2.0",
   "private": true,
   "publisher": "akashjs",
   "license": "MIT",
@@ -13,13 +13,24 @@
   "engines": {
     "vscode": "^1.85.0"
   },
-  "categories": ["Programming Languages"],
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:akash"
+  ],
+  "main": "./dist/extension.js",
   "contributes": {
     "languages": [
       {
         "id": "akash",
-        "aliases": ["AkashJS", "akash"],
-        "extensions": [".akash"],
+        "aliases": [
+          "AkashJS",
+          "akash"
+        ],
+        "extensions": [
+          ".akash"
+        ],
         "configuration": "./language-configuration.json",
         "icon": {
           "light": "./icons/akash-light.png",
@@ -41,5 +52,20 @@
         }
       }
     ]
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "@akashjs/compiler": "^0.1.40",
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12"
+  },
+  "devDependencies": {
+    "@types/vscode": "1.85",
+    "esbuild": "^0.21.5"
   }
 }

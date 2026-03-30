@@ -10,6 +10,14 @@ import type { ParsedSFC, CompileOptions, CompileResult } from './types.js';
 import { parseTemplate, type TemplateNode } from './template.js';
 import { scopeStyles, generateScopeId } from './style.js';
 
+// SVG elements that require createElementNS
+const SVG_ELEMENTS = new Set([
+  'svg', 'circle', 'rect', 'ellipse', 'line', 'polyline', 'polygon', 'path',
+  'text', 'tspan', 'g', 'defs', 'use', 'symbol', 'clipPath', 'mask', 'filter',
+  'linearGradient', 'radialGradient', 'stop', 'pattern', 'image', 'foreignObject',
+  'animate', 'animateTransform', 'animateMotion', 'set', 'marker', 'textPath',
+]);
+
 export function transform(sfc: ParsedSFC, options: CompileOptions = {}): CompileResult {
   const scopeId = options.scopeId ?? (options.filename ? generateScopeId(options.filename) : undefined);
   const imports = new Set<string>();
@@ -212,8 +220,25 @@ function extractUserImports(script: string): {
         inMultiLineExport = true;
       }
     } else if (/^export\s+(const|let|var|function|class)\s/.test(trimmed)) {
-      // Value exports — strip 'export' keyword and keep in body
-      bodyLines.push(line.replace(/\bexport\s+/, ''));
+      // Value exports — hoist to module scope with export keyword preserved
+      userImports.push(line.trim());
+      // Multi-line: function/class bodies, or const with object/array literals
+      if (/^export\s+(function|class)\s/.test(trimmed) && !trimmed.endsWith('}')) {
+        inMultiLineExport = true;
+      }
+    } else if (/^export\s+default\s/.test(trimmed)) {
+      // export default — hoist to module scope
+      userImports.push(line.trim());
+      if (!trimmed.endsWith(';') && !trimmed.endsWith('}')) {
+        inMultiLineExport = true;
+      }
+    } else if (/^export\s*\{/.test(trimmed)) {
+      // Named re-exports: export { foo, bar } — just drop them (they reference local vars)
+      if (!trimmed.endsWith('}') && !trimmed.endsWith('};')) {
+        inMultiLineExport = true;
+        userImports.push(''); // placeholder for multi-line accumulation
+      }
+      continue;
     } else if (/^declare\s/.test(trimmed)) {
       // TypeScript declare statements — hoist to module scope
       userImports.push(line.trim());
@@ -284,12 +309,13 @@ function generateNode(
   indent: number,
   varName: string,
   scopeId?: string,
+  isSvg?: boolean,
 ): void {
   const pad = ' '.repeat(indent);
 
   switch (node.type) {
     case 'element':
-      generateElement(node, lines, imports, indent, varName, scopeId);
+      generateElement(node, lines, imports, indent, varName, scopeId, isSvg);
       break;
 
     case 'component':
@@ -300,11 +326,77 @@ function generateNode(
       lines.push(`${pad}const ${varName} = document.createTextNode(${JSON.stringify(node.content ?? '')});`);
       break;
 
-    case 'expression':
+    case 'expression': {
+      const expr = node.content ?? '';
+
+      // Detect && with JSX: cond && <Tag>...</Tag>
+      const andMatch = /^(.+?)\s*&&\s*(<[a-zA-Z].*)$/s.exec(expr);
+      if (andMatch) {
+        const condExpr = andMatch[1].trim();
+        const jsxStr = andMatch[2].trim();
+        const jsxNodes = parseTemplate(jsxStr);
+        if (jsxNodes.length > 0) {
+          imports.add('renderConditional');
+          lines.push(`${pad}const ${varName}_anchor = document.createComment('cond');`);
+          lines.push(`${pad}const ${varName} = document.createDocumentFragment();`);
+          lines.push(`${pad}${varName}.appendChild(${varName}_anchor);`);
+          lines.push(`${pad}renderConditional(${varName}, ${varName}_anchor, () => !!(${condExpr}), () => {`);
+          const innerLines: string[] = [];
+          if (jsxNodes.length === 1) {
+            generateNode(jsxNodes[0], innerLines, imports, indent + 2, '__cond_el', scopeId, isSvg);
+            innerLines.push(`${pad}  return __cond_el;`);
+          } else {
+            innerLines.push(`${pad}  const __frag = document.createDocumentFragment();`);
+            for (let j = 0; j < jsxNodes.length; j++) {
+              generateNode(jsxNodes[j], innerLines, imports, indent + 2, `__cond_el${j}`, scopeId, isSvg);
+              innerLines.push(`${pad}  __frag.appendChild(__cond_el${j});`);
+            }
+            innerLines.push(`${pad}  return __frag;`);
+          }
+          lines.push(...innerLines);
+          lines.push(`${pad}});`);
+          break;
+        }
+      }
+
+      // Detect ternary with JSX: cond ? <TagA> : <TagB>
+      const ternaryMatch = /^(.+?)\s*\?\s*(<[a-zA-Z].*?)\s*:\s*(<[a-zA-Z].*)$/s.exec(expr);
+      if (ternaryMatch) {
+        const condExpr = ternaryMatch[1].trim();
+        const trueJsx = ternaryMatch[2].trim();
+        const falseJsx = ternaryMatch[3].trim();
+        const trueNodes = parseTemplate(trueJsx);
+        const falseNodes = parseTemplate(falseJsx);
+        if (trueNodes.length > 0 && falseNodes.length > 0) {
+          imports.add('renderConditional');
+          lines.push(`${pad}const ${varName}_anchor = document.createComment('cond');`);
+          lines.push(`${pad}const ${varName} = document.createDocumentFragment();`);
+          lines.push(`${pad}${varName}.appendChild(${varName}_anchor);`);
+
+          // True branch
+          lines.push(`${pad}renderConditional(${varName}, ${varName}_anchor, () => !!(${condExpr}), () => {`);
+          const trueLines: string[] = [];
+          generateNode(trueNodes[0], trueLines, imports, indent + 2, '__cond_t', scopeId, isSvg);
+          trueLines.push(`${pad}  return __cond_t;`);
+          lines.push(...trueLines);
+
+          // False branch
+          lines.push(`${pad}}, () => {`);
+          const falseLines: string[] = [];
+          generateNode(falseNodes[0], falseLines, imports, indent + 2, '__cond_f', scopeId, isSvg);
+          falseLines.push(`${pad}  return __cond_f;`);
+          lines.push(...falseLines);
+          lines.push(`${pad}});`);
+          break;
+        }
+      }
+
+      // Default: plain reactive text expression
       imports.add('effect');
       lines.push(`${pad}const ${varName} = document.createTextNode('');`);
-      lines.push(`${pad}effect(() => { ${varName}.textContent = String(${node.content}); }, { render: true });`);
+      lines.push(`${pad}effect(() => { ${varName}.textContent = String(${expr}); }, { render: true });`);
       break;
+    }
   }
 }
 
@@ -315,6 +407,7 @@ function generateElement(
   indent: number,
   varName: string,
   scopeId?: string,
+  parentIsSvg?: boolean,
 ): void {
   const pad = ' '.repeat(indent);
   const tag = node.tag!;
@@ -332,7 +425,7 @@ function generateElement(
     // Generate the element inside the true branch
     const innerLines: string[] = [];
     const innerNode = { ...node, directives: node.directives?.filter((d) => d.name !== 'if') };
-    generateElement(innerNode, innerLines, imports, indent + 2, '__el', scopeId);
+    generateElement(innerNode, innerLines, imports, indent + 2, '__el', scopeId, parentIsSvg);
     innerLines.push(`${pad}  return __el;`);
     lines.push(...innerLines);
 
@@ -361,7 +454,7 @@ function generateElement(
       // Generate the element inside the loop
       const innerLines: string[] = [];
       const innerNode = { ...node, directives: node.directives?.filter((d) => d.name !== 'for' && d.name !== 'key') };
-      generateElement(innerNode, innerLines, imports, indent + 2, '__el', scopeId);
+      generateElement(innerNode, innerLines, imports, indent + 2, '__el', scopeId, parentIsSvg);
       innerLines.push(`${pad}  return __el;`);
       lines.push(...innerLines);
 
@@ -377,8 +470,23 @@ function generateElement(
     node.directives = node.directives.filter((d) => d.name !== 'bind');
   }
 
+  // Extract class: directives (class:active={expr})
+  const classDirectives = node.directives?.filter((d) => d.name === 'class') ?? [];
+  if (classDirectives.length > 0 && node.directives) {
+    node.directives = node.directives.filter((d) => d.name !== 'class');
+  }
+
+  // Determine if this element is SVG (or inherits SVG context from parent)
+  // foreignObject is SVG itself but its children are HTML
+  const isSvg = parentIsSvg || SVG_ELEMENTS.has(tag);
+  const childrenAreSvg = isSvg && tag !== 'foreignObject';
+
   // Regular element creation
-  lines.push(`${pad}const ${varName} = document.createElement('${tag}');`);
+  if (isSvg) {
+    lines.push(`${pad}const ${varName} = document.createElementNS('http://www.w3.org/2000/svg', '${tag}');`);
+  } else {
+    lines.push(`${pad}const ${varName} = document.createElement('${tag}');`);
+  }
 
   // Add scope ID for scoped styles
   if (scopeId) {
@@ -389,15 +497,23 @@ function generateElement(
   // This prevents onChange from firing when value is set during render
   const eventAttrs: typeof node.attrs = [];
   const propAttrs: typeof node.attrs = [];
+  let refAttr: { name: string; value: string; dynamic: boolean } | null = null;
 
   if (node.attrs) {
     for (const attr of node.attrs) {
-      if (attr.name.startsWith('on')) {
+      if (attr.name === 'ref' && attr.dynamic) {
+        refAttr = attr;
+      } else if (attr.name.startsWith('on')) {
         eventAttrs.push(attr);
       } else {
         propAttrs.push(attr);
       }
     }
+  }
+
+  // Wire ref to the DOM element
+  if (refAttr) {
+    lines.push(`${pad}${refAttr.value}.current = ${varName};`);
   }
 
   // Separate value attrs from other props — value must be set after children
@@ -414,30 +530,82 @@ function generateElement(
   }
 
   // Boolean DOM properties that must use property assignment, not setAttribute
-  const booleanProps = new Set(['checked', 'disabled', 'selected', 'readonly', 'required', 'multiple', 'hidden', 'open']);
+  // Boolean/IDL DOM properties that must use property assignment, not setAttribute
+  const booleanProps = new Set([
+    'checked', 'disabled', 'selected', 'readonly', 'required', 'multiple', 'hidden', 'open',
+    // Media element booleans
+    'autoplay', 'controls', 'loop', 'muted', 'default', 'novalidate',
+    // IDL properties
+    'autofocus', 'formnovalidate', 'nomodule', 'playsinline', 'reversed', 'allowfullscreen',
+  ]);
+  // Properties that need property assignment but aren't boolean (IDL string/number properties)
+  const idlProps = new Set([
+    'tabIndex', 'contentEditable', 'draggable', 'spellcheck', 'translate',
+    'id', 'name', 'type', 'placeholder', 'src', 'href', 'alt', 'title',
+    'width', 'height', 'colSpan', 'rowSpan', 'htmlFor',
+  ]);
+  // Map HTML attribute names to their correct DOM property names (when they differ)
+  const attrToProp: Record<string, string> = {
+    readonly: 'readOnly', tabindex: 'tabIndex', contenteditable: 'contentEditable',
+    colspan: 'colSpan', rowspan: 'rowSpan', for: 'htmlFor',
+  };
 
   // 1. Set non-value properties and attributes
   for (const attr of otherPropAttrs) {
     if (attr.dynamic) {
       imports.add('effect');
       lines.push(`${pad}effect(() => {`);
-      if (attr.name === 'class' || attr.name === 'className') {
+      if (isSvg) {
+        // SVG: always use setAttribute (properties don't work reliably on SVG elements)
+        if (attr.name === 'class' || attr.name === 'className') {
+          lines.push(`${pad}  ${varName}.setAttribute('class', ${attr.value});`);
+        } else {
+          lines.push(`${pad}  ${varName}.setAttribute('${attr.name}', String(${attr.value}));`);
+        }
+      } else if (attr.name === 'class' || attr.name === 'className') {
         lines.push(`${pad}  ${varName}.className = ${attr.value};`);
       } else if (booleanProps.has(attr.name)) {
-        lines.push(`${pad}  ${varName}.${attr.name} = !!(${attr.value});`);
+        const domProp = attrToProp[attr.name] ?? attr.name;
+        lines.push(`${pad}  ${varName}.${domProp} = !!(${attr.value});`);
+      } else if (attr.name === 'innerHTML') {
+        lines.push(`${pad}  ${varName}.innerHTML = ${attr.value};`);
+      } else if (attr.name === 'style') {
+        lines.push(`${pad}  ${varName}.style.cssText = ${attr.value};`);
+      } else if (idlProps.has(attr.name) || attrToProp[attr.name]) {
+        const domProp = attrToProp[attr.name] ?? attr.name;
+        lines.push(`${pad}  ${varName}.${domProp} = ${attr.value};`);
       } else {
         lines.push(`${pad}  ${varName}.setAttribute('${attr.name}', String(${attr.value}));`);
       }
       lines.push(`${pad}}, { render: true });`);
     } else {
-      if (attr.name === 'class' || attr.name === 'className') {
+      if (isSvg) {
+        // SVG: always use setAttribute
+        if (attr.name === 'class' || attr.name === 'className') {
+          lines.push(`${pad}${varName}.setAttribute('class', ${JSON.stringify(attr.value)});`);
+        } else {
+          lines.push(`${pad}${varName}.setAttribute('${attr.name}', ${JSON.stringify(attr.value)});`);
+        }
+      } else if (attr.name === 'class' || attr.name === 'className') {
         lines.push(`${pad}${varName}.className = ${JSON.stringify(attr.value)};`);
       } else if (booleanProps.has(attr.name)) {
-        lines.push(`${pad}${varName}.${attr.name} = true;`);
+        const domProp = attrToProp[attr.name] ?? attr.name;
+        lines.push(`${pad}${varName}.${domProp} = true;`);
+      } else if (attr.name === 'style') {
+        lines.push(`${pad}${varName}.style.cssText = ${JSON.stringify(attr.value)};`);
+      } else if (idlProps.has(attr.name) || attrToProp[attr.name]) {
+        const domProp = attrToProp[attr.name] ?? attr.name;
+        lines.push(`${pad}${varName}.${domProp} = ${JSON.stringify(attr.value)};`);
       } else {
         lines.push(`${pad}${varName}.setAttribute('${attr.name}', ${JSON.stringify(attr.value)});`);
       }
     }
+  }
+
+  // 1b. Apply class: directives (class:active={expr})
+  for (const dir of classDirectives) {
+    imports.add('effect');
+    lines.push(`${pad}effect(() => { ${varName}.classList.toggle('${dir.arg}', !!(${dir.value})); }, { render: true });`);
   }
 
   // 2. Process bind: directives — value effect (before children is OK for input/textarea)
@@ -449,17 +617,41 @@ function generateElement(
     // Read: bind signal value to element property (compare to avoid event loops)
     lines.push(`${pad}effect(() => { const __v = ${signalExpr}(); if (${varName}.${prop} !== __v) ${varName}.${prop} = __v; }, { render: true });`);
 
-    // Write: listen for input events and update the signal
-    const eventName = prop === 'value' || prop === 'checked' ? 'input' : 'change';
-    const valuePath = prop === 'checked' ? 'checked' : 'value';
-    lines.push(`${pad}${varName}.addEventListener('${eventName}', (e) => { ${signalExpr}.set(e.target.${valuePath}); });`);
+    // Write: listen for events and update the signal
+    // checkbox/radio use 'change' event; text/number/etc use 'input'
+    const isCheckbox = prop === 'checked';
+    const eventName = isCheckbox ? 'change' : 'input';
+    const valuePath = isCheckbox ? 'checked' : 'value';
+    // Detect number/range inputs for type conversion
+    const isNumberInput = node.attrs?.some(a => a.name === 'type' && (a.value === 'number' || a.value === 'range'));
+    const setter = isNumberInput
+      ? `${signalExpr}.set(Number(e.target.${valuePath}))`
+      : `${signalExpr}.set(e.target.${valuePath})`;
+    lines.push(`${pad}${varName}.addEventListener('${eventName}', (e) => { ${setter}; });`);
+  }
+
+  // Apply spread attributes
+  if (node.spreads) {
+    for (const spreadExpr of node.spreads) {
+      lines.push(`${pad}for (const [__k, __v] of Object.entries(${spreadExpr})) {`);
+      lines.push(`${pad}  if (__k.startsWith('on') && typeof __v === 'function') {`);
+      lines.push(`${pad}    ${varName}.addEventListener(__k.slice(2).toLowerCase(), __v);`);
+      lines.push(`${pad}  } else if (__k === 'class' || __k === 'className') {`);
+      lines.push(`${pad}    ${varName}.className = __v;`);
+      lines.push(`${pad}  } else if (__k in ${varName}) {`);
+      lines.push(`${pad}    ${varName}[__k] = __v;`);
+      lines.push(`${pad}  } else {`);
+      lines.push(`${pad}    ${varName}.setAttribute(__k, String(__v));`);
+      lines.push(`${pad}  }`);
+      lines.push(`${pad}}`);
+    }
   }
 
   // 3. Append children (must happen before setting value on <select>)
   if (node.children && node.children.length > 0) {
     for (let i = 0; i < node.children.length; i++) {
       const childVar = `${varName}_c${i}`;
-      generateNode(node.children[i], lines, imports, indent, childVar, scopeId);
+      generateNode(node.children[i], lines, imports, indent, childVar, scopeId, childrenAreSvg);
       lines.push(`${pad}${varName}.appendChild(${childVar});`);
     }
   }
@@ -482,9 +674,46 @@ function generateElement(
   }
 
   // 5. Attach event listeners LAST (after value is set and children exist)
+  // For <select> onChange: skip the first fire that happens during render/insertion
+  const isSelect = tag === 'select';
   for (const attr of eventAttrs) {
     if (attr.dynamic) {
-      lines.push(`${pad}${varName}.addEventListener('${attr.name.slice(2).toLowerCase()}', ${attr.value});`);
+      // Parse event name and modifiers: onClick|preventDefault|stopPropagation
+      const parts = attr.name.split('|');
+      const eventName = parts[0].slice(2).toLowerCase();
+      const modifiers = parts.slice(1);
+
+      const needsWrapper = modifiers.length > 0 || (isSelect && eventName === 'change');
+
+      if (needsWrapper) {
+        const modCode: string[] = [];
+        if (isSelect && eventName === 'change') {
+          lines.push(`${pad}{ let __mounted = false; queueMicrotask(() => { __mounted = true; });`);
+          modCode.push('if (!__mounted) return');
+        }
+        for (const mod of modifiers) {
+          if (mod === 'preventDefault') modCode.push('e.preventDefault()');
+          else if (mod === 'stopPropagation') modCode.push('e.stopPropagation()');
+          else if (mod === 'stopImmediatePropagation') modCode.push('e.stopImmediatePropagation()');
+          else if (mod === 'once') {} // handled via addEventListener options
+          else if (mod === 'capture') {} // handled via addEventListener options
+          else if (mod === 'passive') {} // handled via addEventListener options
+          else if (mod === 'self') modCode.push(`if (e.target !== ${varName}) return`);
+        }
+
+        const listenerOpts: string[] = [];
+        if (modifiers.includes('once')) listenerOpts.push('once: true');
+        if (modifiers.includes('capture')) listenerOpts.push('capture: true');
+        if (modifiers.includes('passive')) listenerOpts.push('passive: true');
+        const optsStr = listenerOpts.length > 0 ? `, { ${listenerOpts.join(', ')} }` : '';
+
+        lines.push(`${pad}  ${varName}.addEventListener('${eventName}', (e) => { ${modCode.join('; ')}; (${attr.value})(e); }${optsStr});`);
+        if (isSelect && eventName === 'change') {
+          lines.push(`${pad}}`);
+        }
+      } else {
+        lines.push(`${pad}${varName}.addEventListener('${eventName}', ${attr.value});`);
+      }
     } else {
       lines.push(`${pad}${varName}.setAttribute('${attr.name}', ${JSON.stringify(attr.value)});`);
     }
@@ -530,11 +759,33 @@ function generateComponentCall(
 
   // Children — compile into a render function that builds real DOM
   if (node.children && node.children.length > 0) {
-    const childBody = generateChildrenBody(node.children, imports, indent + 2, scopeId);
+    // For block syntax {#each}: wrap children with the item variable as parameter
+    const itemVar = (node as any)._itemVar as string | undefined;
+    const childBody = generateChildrenBody(node.children, imports, indent + 2, scopeId, itemVar);
     propParts.push(`children: ${childBody}`);
   }
 
-  const propsStr = propParts.length > 0 ? `{ ${propParts.join(', ')} }` : '{}';
+  // Block syntax fallback ({:else} / {:else if}) — compiled to fallback prop
+  const fallbackNodes = (node as any)._fallbackNodes as TemplateNode[] | undefined;
+  if (fallbackNodes && fallbackNodes.length > 0) {
+    // Remove the __blockFallback placeholder attr if present
+    const filtered = propParts.filter(p => !p.startsWith('__blockFallback'));
+    propParts.length = 0;
+    propParts.push(...filtered);
+    const fallbackBody = generateChildrenBody(fallbackNodes, imports, indent + 2, scopeId);
+    propParts.push(`fallback: ${fallbackBody}`);
+  }
+
+  // Include spread props
+  const spreadParts: string[] = [];
+  if (node.spreads) {
+    for (const spreadExpr of node.spreads) {
+      spreadParts.push(`...${spreadExpr}`);
+    }
+  }
+
+  const allParts = [...spreadParts, ...propParts];
+  const propsStr = allParts.length > 0 ? `{ ${allParts.join(', ')} }` : '{}';
   lines.push(`${pad}const ${varName} = ${tag}(${propsStr});`);
 }
 
@@ -551,6 +802,7 @@ function generateChildrenBody(
   imports: Set<string>,
   indent: number,
   scopeId?: string,
+  itemVar?: string,
 ): string {
   // Single expression child — check for arrow function
   if (children.length === 1 && children[0].type === 'expression') {
@@ -583,7 +835,8 @@ function generateChildrenBody(
     innerLines.push(`${pad}return __frag;`);
   }
 
-  return `() => {\n${innerLines.join('\n')}\n${' '.repeat(indent - 2)}}`;
+  const params = itemVar ? `(${itemVar})` : '()';
+  return `${params} => {\n${innerLines.join('\n')}\n${' '.repeat(indent - 2)}}`;
 }
 
 /**

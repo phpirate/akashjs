@@ -13,6 +13,14 @@
  * ```
  */
 
+// Fallback for non-browser environments (Node.js, SSR)
+const raf = typeof requestAnimationFrame === 'function'
+  ? requestAnimationFrame
+  : (fn: (t: number) => void) => setTimeout(() => fn(Date.now()), 16) as unknown as number;
+const caf = typeof cancelAnimationFrame === 'function'
+  ? cancelAnimationFrame
+  : (id: number) => clearTimeout(id);
+
 import { signal } from './signals.js';
 import type { Signal, ReadonlySignal } from './signals.js';
 
@@ -129,7 +137,7 @@ export function tweened<T>(
 
     // Cancel any running animation
     if (running) {
-      cancelAnimationFrame(rafId);
+      caf(rafId);
       running = false;
     }
 
@@ -142,7 +150,7 @@ export function tweened<T>(
 
         const elapsed = now - start;
         if (elapsed < 0) {
-          rafId = requestAnimationFrame(tick);
+          rafId = raf(tick);
           return;
         }
 
@@ -151,19 +159,19 @@ export function tweened<T>(
         current.set(interp(from, value, easedT));
 
         if (t < 1) {
-          rafId = requestAnimationFrame(tick);
+          rafId = raf(tick);
         } else {
           running = false;
           resolve();
         }
       }
 
-      rafId = requestAnimationFrame(tick);
+      rafId = raf(tick);
     });
   };
 
   read.setImmediate = (value: T): void => {
-    if (running) { cancelAnimationFrame(rafId); running = false; }
+    if (running) { caf(rafId); running = false; }
     current.set(value);
     targetValue.set(value);
   };

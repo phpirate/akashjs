@@ -31,7 +31,7 @@ export type Slots = Record<string, SlotFn>;
  * ```
  */
 export function renderSlot(slot: SlotFn | undefined, fallback?: SlotFn): Node {
-  if (slot) {
+  if (slot && typeof slot === 'function') {
     const content = slot();
     return nodeToDOM(content);
   }
@@ -43,10 +43,17 @@ export function renderSlot(slot: SlotFn | undefined, fallback?: SlotFn): Node {
 
 /**
  * Check if a slot has content.
+ *
+ * Supports two call patterns:
+ * - `hasSlot(slotFn)` — check a single slot function
+ * - `hasSlot(slots, 'name')` — look up a named slot in a Slots object
  */
-export function hasSlot(slot: SlotFn | undefined): boolean {
+export function hasSlot(slot: SlotFn | Slots | undefined, name?: string): boolean {
   if (!slot) return false;
-  const content = slot();
+  // If a name is provided, look up the slot in the record
+  const fn = name && typeof slot === 'object' ? (slot as Slots)[name] : slot as SlotFn;
+  if (!fn || typeof fn !== 'function') return false;
+  const content = fn();
   if (content == null || content === false) return false;
   if (typeof content === 'string' && content.trim() === '') return false;
   return true;
@@ -74,10 +81,12 @@ export function hasSlot(slot: SlotFn | undefined): boolean {
  */
 export function createSlots<T extends Record<string, unknown>>(
   props: T,
-  slotNames: (keyof T)[],
+  slotNames?: (keyof T)[],
 ): Slots {
   const slots: Slots = {};
-  for (const name of slotNames) {
+  // If no slotNames provided, treat all function props as slots
+  const keys = slotNames ?? Object.keys(props) as (keyof T)[];
+  for (const name of keys) {
     const value = props[name];
     if (typeof value === 'function') {
       slots[name as string] = value as SlotFn;

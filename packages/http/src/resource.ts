@@ -41,6 +41,7 @@ export function createResource<T>(
   let lastFetchTime = 0;
   let lastKey: unknown = undefined;
   let disposed = false;
+  let requestId = 0;
 
   function doFetch(): void {
     if (disposed) return;
@@ -59,6 +60,9 @@ export function createResource<T>(
     }
     currentAbort = new AbortController();
 
+    // Track this request so stale responses are discarded
+    const myRequestId = ++requestId;
+
     loading.set(true);
     error.set(undefined);
 
@@ -67,13 +71,13 @@ export function createResource<T>(
 
     fetchPromise
       .then((result) => {
-        if (disposed) return;
+        if (disposed || myRequestId !== requestId) return; // discard stale response
         data.set(result);
         lastFetchTime = Date.now();
         loading.set(false);
       })
       .catch((err) => {
-        if (disposed) return;
+        if (disposed || myRequestId !== requestId) return; // discard stale error
         // Ignore abort errors
         if (err instanceof DOMException && err.name === 'AbortError') return;
         error.set(err instanceof Error ? err : new Error(String(err)));

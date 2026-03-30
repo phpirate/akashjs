@@ -16,6 +16,9 @@ export {
 export type { HoistedTemplate, OptimizationStats } from './optimize.js';
 export { createLanguageService } from './language-service.js';
 export type { Diagnostic, CompletionItem, HoverInfo, Position, Range, Definition } from './language-service.js';
+export { validateProps, validatePropsAgainst, extractPropDefs } from './prop-checker.js';
+export type { PropError } from './prop-checker.js';
+export { getTsDiagnostics, getTsCompletions, getTsHoverInfo, akashToVirtualTs } from './ts-service.js';
 
 import { parse } from './parse.js';
 import { transform } from './transform.js';

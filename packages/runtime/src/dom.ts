@@ -278,16 +278,20 @@ export function Show<T>(props: ShowProps<T>): Node {
   const container = document.createDocumentFragment();
   container.appendChild(anchor);
 
-  // Resolve when — only treat __reactive-marked functions as getters
-  const getWhen = typeof props.when === 'function' && (props.when as any).__reactive
+  // Resolve when — if it's a function, always call it (supports both
+  // compiler-generated __reactive getters and plain programmatic functions)
+  const getWhen = typeof props.when === 'function'
     ? props.when as () => T | null | undefined | false
     : () => props.when as T | null | undefined | false;
 
+  // Capture the when value once per evaluation so the condition check
+  // and the children callback receive the same value (fixes nested For contexts)
+  let whenValue: T | null | undefined | false;
   renderConditional(
     container,
     anchor,
-    () => !!getWhen(),
-    () => nodeToDOM(props.children(getWhen() as T)),
+    () => { whenValue = getWhen(); return !!whenValue; },
+    () => nodeToDOM(props.children(whenValue as T)),
     props.fallback ? () => nodeToDOM(props.fallback!()) : undefined,
   );
 
@@ -310,8 +314,9 @@ export function For<T>(props: ForProps<T>): Node {
   const container = document.createDocumentFragment();
   container.appendChild(anchor);
 
-  // Resolve each — only treat __reactive-marked functions as getters
-  const getEach = typeof props.each === 'function' && (props.each as any).__reactive
+  // Resolve each — if it's a function, always call it (supports both
+  // compiler-generated __reactive getters and plain programmatic functions)
+  const getEach = typeof props.each === 'function'
     ? props.each as () => T[]
     : () => props.each as T[];
 

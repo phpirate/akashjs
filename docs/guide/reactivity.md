@@ -95,6 +95,27 @@ const sum = computed(() => a() + untrack(() => b()));
 // Only re-runs when `a` changes, not when `b` changes
 ```
 
+## on()
+
+Create an effect that only tracks specific signals. All other signal reads inside the callback are untracked.
+
+```ts
+import { effect, on } from '@akashjs/runtime';
+
+// Only re-runs when url changes, not when options changes
+effect(on(url, (currentUrl, prevUrl) => {
+  fetch(currentUrl, options()); // options() not tracked
+}));
+
+// Multiple signals
+effect(on([url, page], ([currentUrl, currentPage]) => {
+  fetch(`${currentUrl}?page=${currentPage}`);
+}));
+
+// Run immediately (by default, on() skips the initial run)
+effect(on(url, (val) => console.log(val), { defer: false }));
+```
+
 ## How It Works
 
 1. When a signal is read inside a `computed()` or `effect()`, it registers a dependency.

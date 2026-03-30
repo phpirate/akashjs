@@ -85,7 +85,15 @@ export function inspect(
     when,
   } = options;
 
-  return effect(() => {
+  const result = {
+    dispose: null as unknown as () => void,
+    get values() { return sources.map(s => s()); },
+    get value() { return sources.length === 1 ? sources[0]() : sources.map(s => s()); },
+    label,
+    sources: sources.length,
+  };
+
+  result.dispose = effect(() => {
     if (when && !when()) return;
 
     const values = sources.map((s) => s());
@@ -96,6 +104,8 @@ export function inspect(
       (console as any)[level](`[${label}]`, ...values);
     }
   });
+
+  return result as any;
 }
 
 // =========================================================================

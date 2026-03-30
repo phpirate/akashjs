@@ -10,5 +10,5 @@ export default defineConfig({
   splitting: true,
   minify: true,
   target: 'es2022',
-  external: ['@akashjs/runtime', '@akashjs/compiler'],
+  external: ['@akashjs/runtime', '@akashjs/compiler', 'typescript'],
 });

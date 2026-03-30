@@ -84,6 +84,95 @@ it('increments on click', async () => {
 
 All return `Promise<void>` — await them to let effects flush.
 
+## waitFor()
+
+Poll until an assertion passes. Useful for waiting on async effects or DOM updates that may not happen immediately:
+
+```ts
+import { mount, waitFor } from '@akashjs/runtime/test';
+
+it('loads data', async () => {
+  const { getByText } = mount(UserList);
+
+  await waitFor(() => {
+    expect(getByText('Alice')).toBeTruthy();
+  });
+});
+
+// With options
+await waitFor(() => expect(el.textContent).toBe('Done'), {
+  timeout: 5000,   // max wait time in ms (default: 1000)
+  interval: 50,    // polling interval in ms (default: 50)
+});
+```
+
+## waitForElement()
+
+Wait for a specific element to appear in the DOM:
+
+```ts
+import { mount, waitForElement } from '@akashjs/runtime/test';
+
+it('shows modal after click', async () => {
+  const { container } = mount(App);
+  fireEvent.click(getByText('Open'));
+
+  const modal = await waitForElement(container, '.modal');
+  expect(modal.textContent).toContain('Modal content');
+});
+
+// With options
+await waitForElement(container, '.toast', { timeout: 3000 });
+```
+
+## flush()
+
+Synchronously flush all pending effects. Useful when you need to assert immediately after a signal update without awaiting:
+
+```ts
+import { flush } from '@akashjs/runtime/test';
+import { signal, effect } from '@akashjs/runtime';
+
+it('flushes effects synchronously', () => {
+  const count = signal(0);
+  let logged = 0;
+  effect(() => { logged = count(); });
+
+  count.set(5);
+  flush();
+  expect(logged).toBe(5);
+});
+```
+
+## createTestSignal()
+
+Create a signal with built-in history tracking for test assertions:
+
+```ts
+import { createTestSignal } from '@akashjs/runtime/test';
+
+it('tracks signal changes', () => {
+  const count = createTestSignal(0);
+
+  count.set(1);
+  count.set(2);
+  count.set(3);
+
+  expect(count.history).toEqual([0, 1, 2, 3]);
+  expect(count.setCount).toBe(3);
+
+  count.resetHistory();
+  expect(count.history).toEqual([3]);
+  expect(count.setCount).toBe(0);
+});
+```
+
+| Property / Method | Description |
+|---|---|
+| `.history` | Array of all values the signal has held (including initial) |
+| `.setCount` | Number of times `.set()` was called |
+| `.resetHistory()` | Clears history (keeps current value) and resets `.setCount` to 0 |
+
 ## Testing Signals Directly
 
 Signals are just functions — test them without any framework:

@@ -57,23 +57,38 @@ export interface VirtualRange {
  * Calculate the visible range given scroll position and dimensions.
  */
 export function calculateRange(
-  scrollTop: number,
-  containerHeight: number,
-  itemHeight: number,
-  totalItems: number,
+  scrollTopOrOpts: number | { scrollTop: number; containerHeight: number; itemHeight: number; totalItems: number; overscan?: number },
+  containerHeight?: number,
+  itemHeight?: number,
+  totalItems?: number,
   overscan = 3,
 ): VirtualRange {
-  const firstVisible = Math.floor(scrollTop / itemHeight);
-  const visibleCount = Math.ceil(containerHeight / itemHeight);
+  let st: number, ch: number, ih: number, ti: number, os: number;
+  if (typeof scrollTopOrOpts === 'object') {
+    st = scrollTopOrOpts.scrollTop;
+    ch = scrollTopOrOpts.containerHeight;
+    ih = scrollTopOrOpts.itemHeight;
+    ti = scrollTopOrOpts.totalItems;
+    os = scrollTopOrOpts.overscan ?? 3;
+  } else {
+    st = scrollTopOrOpts;
+    ch = containerHeight!;
+    ih = itemHeight!;
+    ti = totalItems!;
+    os = overscan;
+  }
 
-  const start = Math.max(0, firstVisible - overscan);
-  const end = Math.min(totalItems, firstVisible + visibleCount + overscan);
+  const firstVisible = Math.floor(st / ih);
+  const visibleCount = Math.ceil(ch / ih);
+
+  const start = Math.max(0, firstVisible - os);
+  const end = Math.min(ti, firstVisible + visibleCount + os);
 
   return {
     start,
     end,
-    totalHeight: totalItems * itemHeight,
-    offsetTop: start * itemHeight,
+    totalHeight: ti * ih,
+    offsetTop: start * ih,
   };
 }
 

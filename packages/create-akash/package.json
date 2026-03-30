@@ -1,0 +1,24 @@
+{
+  "name": "@akashjs/create",
+  "version": "0.1.0",
+  "description": "Create a new AkashJS project",
+  "type": "module",
+  "bin": {
+    "create-akash": "./dist/index.js"
+  },
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

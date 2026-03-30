@@ -1,6 +1,6 @@
 {
   "name": "@akashjs/http",
-  "version": "0.1.0",
+  "version": "0.1.5",
   "description": "AkashJS HTTP client — promise-based fetch wrapper with interceptors",
   "type": "module",
   "main": "dist/index.cjs",

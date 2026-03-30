@@ -10,16 +10,20 @@
 import { defineComponent, effect, signal, getCurrentScope, runInScope } from '@akashjs/runtime';
 import { useRouterInternal, provideRouter } from './router.js';
 
+/** Track depth per Outlet instance to avoid scope chain issues with async loading */
+let outletCounter = 0;
+
 export const Outlet = defineComponent(() => {
   const routerCtx = useRouterInternal();
   const currentDepth = routerCtx.depth();
 
-  // Provide a new router context with incremented depth for nested Outlets
+  // Provide incremented depth for any nested Outlets within our children
+  const childDepth = signal(currentDepth + 1);
   provideRouter({
     route: routerCtx.route,
     navigate: routerCtx.navigate,
     loaderData: routerCtx.loaderData,
-    depth: signal(currentDepth + 1),
+    depth: childDepth,
   });
 
   // Capture scope so lazy-loaded children can inherit provide/inject context

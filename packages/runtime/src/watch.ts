@@ -120,16 +120,17 @@ export function watch(
     if (disposed) return;
 
     const doCall = () => {
+      if (once) {
+        // Dispose BEFORE calling callback so any signal writes in the
+        // callback don't re-trigger this watcher
+        disposed = true;
+        queueMicrotask(dispose);
+      }
+
       if (isMulti) {
         callback(newVals, oldVals);
       } else {
         callback(newVals[0], oldVals[0]);
-      }
-
-      if (once) {
-        if (debounceTimer) clearTimeout(debounceTimer);
-        disposed = true;
-        dispose();
       }
     };
 
@@ -161,7 +162,7 @@ export function watchOnce<T>(
   source: WatchSource<T>,
   callback: WatchCallback<T>,
 ): () => void {
-  return watch(source, callback, { once: true, immediate: true });
+  return watch(source, callback, { once: true });
 }
 
 // =========================================================================

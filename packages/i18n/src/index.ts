@@ -59,6 +59,9 @@ function flattenMessages(messages: Messages, prefix = ''): FlatMessages {
   for (const [key, value] of Object.entries(messages)) {
     const fullKey = prefix ? `${prefix}.${key}` : key;
     if (typeof value === 'string') {
+      if (fullKey in result) {
+        console.warn(`[AkashJS i18n] Duplicate key "${fullKey}" — nested object and flat dotted key both define this path. The flat key will be used.`);
+      }
       result[fullKey] = value;
     } else {
       Object.assign(result, flattenMessages(value, fullKey));
@@ -69,9 +72,18 @@ function flattenMessages(messages: Messages, prefix = ''): FlatMessages {
 
 // --- Interpolation ---
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function interpolate(template: string, params: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (_, key) => {
-    return key in params ? String(params[key]) : `{${key}}`;
+    return key in params ? escapeHtml(String(params[key])) : `{${key}}`;
   });
 }
 
@@ -121,9 +133,10 @@ export function createI18n(config: I18nConfig): I18n {
   });
 
   function t(key: string, params?: Record<string, string | number>): string {
-    // Check for pluralization
-    if (params && 'count' in params) {
-      const count = Number(params.count);
+    // Check for pluralization — accept 'count' or 'n' as the plural param
+    const pluralCount = params && ('count' in params ? params.count : 'n' in params ? params.n : undefined);
+    if (pluralCount !== undefined) {
+      const count = Number(pluralCount);
       const rules = config.pluralRules ?? DEFAULT_PLURAL_RULES;
       const rule = rules[locale()] ?? rules.en;
       const pluralKey = `${key}.${rule(count)}`;
@@ -131,15 +144,37 @@ export function createI18n(config: I18nConfig): I18n {
       const pluralTemplate = currentMessages()[pluralKey]
         ?? fallbackMessages()[pluralKey];
       if (pluralTemplate) {
-        return interpolate(pluralTemplate, params);
+        return interpolate(pluralTemplate, params!);
       }
     }
 
+    // Direct key lookup — also check if this is a pluralization key
+    // that needs fallback (e.g., key missing in current locale but exists in fallback)
     const template = currentMessages()[key]
-      ?? fallbackMessages()[key]
-      ?? key;
+      ?? fallbackMessages()[key];
 
-    return params ? interpolate(template, params) : template;
+    if (template !== undefined) {
+      return params ? interpolate(template, params) : template;
+    }
+
+    // Key not found directly — check if fallback has pluralization sub-keys
+    if (params) {
+      const n = 'count' in params ? params.count : 'n' in params ? params.n : undefined;
+      if (n !== undefined) {
+        const count = Number(n);
+        const rules = config.pluralRules ?? DEFAULT_PLURAL_RULES;
+        // Use fallback locale's rule when current locale has no translation
+        const fallbackLoc = config.fallbackLocale ?? config.defaultLocale;
+        const rule = rules[fallbackLoc] ?? rules.en;
+        const pluralKey = `${key}.${rule(count)}`;
+        const fallbackTemplate = fallbackMessages()[pluralKey];
+        if (fallbackTemplate) {
+          return interpolate(fallbackTemplate, params);
+        }
+      }
+    }
+
+    return key;
   }
 
   function te(key: string): boolean {

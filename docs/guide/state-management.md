@@ -141,6 +141,20 @@ store.name();    // 'My Counter'
 
 This calls the `state()` factory again and sets every signal to the fresh value.
 
+## $patch
+
+Merge partial state into the store. Only the specified keys are updated — other state is untouched:
+
+```ts
+const store = useCounterStore();
+
+store.$patch({ count: 10, name: 'Updated' });
+store.count();  // 10
+store.name();   // 'Updated'
+```
+
+`$patch` calls `.set()` on each signal internally, so all updates are batched into a single flush.
+
 ## $snapshot
 
 Get a plain JavaScript object of the current state (no signals, just values):
@@ -158,7 +172,7 @@ console.log(JSON.stringify(snap));
 
 ## $subscribe
 
-Listen to all state changes in a store:
+Listen to all state changes in a store. The callback fires only when state actually changes — not on initial subscription:
 
 ```ts
 const store = useCounterStore();
@@ -166,13 +180,19 @@ const store = useCounterStore();
 const unsubscribe = store.$subscribe((state) => {
   console.log('State changed:', state);
 });
+// (no log yet — callback is not called on subscribe)
 
 store.count.set(1);
 // Logs: State changed: { count: 1, name: 'My Counter' }
 
+store.increment();
+// Logs: State changed: { count: 2, name: 'My Counter' }
+
 // Stop listening
 unsubscribe();
 ```
+
+The internal effect is automatically disposed when all subscribers unsubscribe.
 
 ## Multiple Stores
 
@@ -262,3 +282,38 @@ it('snapshots', () => {
   expect(store.$snapshot()).toEqual({ count: 7, name: 'My Counter' });
 });
 ```
+
+## Store Plugins
+
+Extend all stores with shared behavior using plugins. A plugin is an object with `init` and/or `onAction` hooks.
+
+```ts
+import { configureStores } from '@akashjs/runtime';
+
+configureStores({
+  plugins: [
+    {
+      init(store) {
+        // Called when a store is first created
+        console.log(`Store "${store.$id}" initialized`);
+      },
+      onAction({ store, name, args, after, onError }) {
+        console.log(`Action "${name}" called on "${store.$id}"`);
+        after((result) => {
+          console.log(`Action "${name}" completed`);
+        });
+        onError((err) => {
+          console.error(`Action "${name}" failed:`, err);
+        });
+      },
+    },
+  ],
+});
+```
+
+**Plugin interface:**
+
+| Hook | Description |
+|---|---|
+| `init(store)` | Called once when the store is first instantiated. Use it to add properties, subscribe, or set up side effects. |
+| `onAction({ store, name, args, after, onError })` | Called before every action. `after` registers a post-action callback, `onError` registers an error handler. |

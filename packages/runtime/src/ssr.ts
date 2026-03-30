@@ -119,15 +119,31 @@ function renderComponent<P extends Record<string, unknown>>(
   component: Component<P>,
   props: P,
 ): SSRNode {
-  // In SSR mode, component() would try to use DOM APIs.
-  // Instead, we intercept and build a virtual tree.
-  // For now, we rely on the server-mode compiler output
-  // which generates string concatenation instead of DOM calls.
-  //
-  // This runtime renderToString works with components that
-  // return SSRNode trees (from server-compiled code).
+  // Try calling the component — if it returns an SSR node tree, use it directly
+  try {
+    const result = (component as Function)(props);
+    // If result is an SSR node (has type: 'element'|'text'|'raw'), use it
+    if (result && typeof result === 'object' && 'type' in result) {
+      return result as SSRNode;
+    }
+    // If result is a string (server-compiled output), wrap as raw HTML
+    if (typeof result === 'string') {
+      return { type: 'raw', html: result };
+    }
+    // If result is a render function (defineComponent pattern), call it
+    if (typeof result === 'function') {
+      const rendered = result();
+      if (rendered && typeof rendered === 'object' && 'type' in rendered) {
+        return rendered as SSRNode;
+      }
+      if (typeof rendered === 'string') {
+        return { type: 'raw', html: rendered };
+      }
+    }
+  } catch {
+    // Component uses DOM APIs — can't render on server
+  }
 
-  // Create a lightweight SSR node
   return { type: 'raw', html: `<!-- SSR placeholder for ${component.name || 'component'} -->` };
 }
 
@@ -161,7 +177,7 @@ export type SSRNode = SSRElement | SSRText | SSRRaw;
 export function ssrElement(
   tag: string,
   attrs?: Record<string, string | boolean>,
-  children?: SSRNode[],
+  ...rest: (SSRNode | SSRNode[])[]
 ): SSRElement {
   const processedAttrs: Record<string, string> = {};
   if (attrs) {
@@ -178,7 +194,7 @@ export function ssrElement(
     type: 'element',
     tag,
     attrs: processedAttrs,
-    children: children ?? [],
+    children: rest.length === 1 && Array.isArray(rest[0]) ? rest[0] : rest.flat() as SSRNode[],
   };
 }
 

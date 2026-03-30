@@ -6,7 +6,13 @@
  * and glitch-free diamond dependency resolution.
  */
 
-import { scheduleEffect, type ScheduledEffect } from './scheduler.js';
+import { scheduleEffect, batch, enterBatch, exitBatch, type ScheduledEffect } from './scheduler.js';
+import { recordPerfEntry, isProfiling } from './perf.js';
+
+const __DEV__ = typeof process === 'undefined' || process.env?.NODE_ENV !== 'production';
+
+/** Depth counter to defer effect scheduling until all notifications complete (glitch-free) */
+let notifyDepth = 0;
 
 // --- Tracking scope ---
 
@@ -51,9 +57,13 @@ export function signal<T>(
   };
 
   read.set = (value: T): void => {
+    if (__DEV__ && currentSubscriber && currentSubscriber._tag === 'computed') {
+      console.warn('[AkashJS] Writing to a signal inside computed() is not allowed. The write will be lost on the next evaluation.');
+    }
     if (node.equals(node.value, value)) return;
     node.value = value;
-    notifySubscribers(node);
+    if (isProfiling()) recordPerfEntry('signal-update', 'signal.set', 0);
+    batch(() => { notifySubscribers(node); });
   };
 
   read.update = (fn: (prev: T) => T): void => {
@@ -115,7 +125,21 @@ export function computed<T>(
   return read;
 }
 
+const computingSet = new Set<ComputedNode<unknown>>();
+
 function recompute<T>(node: ComputedNode<T>): void {
+  // Detect circular computed dependencies — only if THIS node is already being computed
+  if (computingSet.has(node as ComputedNode<unknown>)) {
+    throw new Error('[AkashJS] Circular dependency detected between computed values.');
+  }
+  computingSet.add(node as ComputedNode<unknown>);
+
+  // Prevent effects from flushing while computed is evaluating.
+  // Without this, a computed that reads other dirty computeds can trigger
+  // notifySubscribers → scheduleEffect → flush → re-enter recompute on
+  // a node still in computingSet (false circular detection).
+  enterBatch();
+
   // Clean up old source subscriptions
   for (const source of node.sources) {
     source.subscribers.delete(node);
@@ -125,6 +149,7 @@ function recompute<T>(node: ComputedNode<T>): void {
   const prevSubscriber = currentSubscriber;
   currentSubscriber = node;
 
+  const _t0 = isProfiling() ? performance.now() : 0;
   try {
     const newValue = node.fn();
     const changed =
@@ -132,12 +157,15 @@ function recompute<T>(node: ComputedNode<T>): void {
     node.value = newValue;
     node.state = ComputedState.Clean;
 
-    // Only propagate if value actually changed
+    // Only propagate if value actually changed.
     if (changed) {
       notifySubscribers(node);
     }
   } finally {
+    if (_t0) recordPerfEntry('computed', 'computed', performance.now() - _t0);
+    computingSet.delete(node as ComputedNode<unknown>);
     currentSubscriber = prevSubscriber;
+    exitBatch();
   }
 }
 
@@ -209,6 +237,9 @@ function runEffect(node: EffectNode): void {
   // Clean up previous run
   cleanupEffect(node);
 
+  // Save old sources in case the effect throws — we need to re-subscribe
+  const prevSources = new Set(node.sources);
+
   // Clean up old source subscriptions
   for (const source of node.sources) {
     source.subscribers.delete(node);
@@ -217,20 +248,33 @@ function runEffect(node: EffectNode): void {
 
   const prevSubscriber = currentSubscriber;
   currentSubscriber = node;
+  const _t0 = isProfiling() ? performance.now() : 0;
 
   try {
     const result = node.fn();
     if (typeof result === 'function') {
       node.cleanup = result;
     }
+  } catch (err) {
+    // Re-subscribe to previous sources so the effect can recover on next change
+    for (const source of prevSources) {
+      source.subscribers.add(node);
+      node.sources.add(source);
+    }
+    console.error('[AkashJS] Error in effect (will retry on next signal change):', err);
   } finally {
+    if (_t0) recordPerfEntry('effect', 'effect', performance.now() - _t0);
     currentSubscriber = prevSubscriber;
   }
 }
 
 function cleanupEffect(node: EffectNode): void {
   if (node.cleanup) {
-    node.cleanup();
+    try {
+      node.cleanup();
+    } catch (err) {
+      console.error('[AkashJS] Error in effect cleanup (ignored):', err);
+    }
     node.cleanup = null;
   }
 }
@@ -246,6 +290,65 @@ export function untrack<T>(fn: () => T): T {
   } finally {
     currentSubscriber = prev;
   }
+}
+
+// --- on() helper ---
+
+/**
+ * Create an effect callback that only tracks specific signals.
+ * All other signal reads inside the callback are untracked.
+ *
+ * ```ts
+ * effect(on(url, (currentUrl, prevUrl) => {
+ *   fetch(currentUrl, options()); // options() not tracked
+ * }));
+ *
+ * effect(on([url, page], ([u, p], prev) => {
+ *   fetch(`${u}?page=${p}`);
+ * }));
+ * ```
+ */
+export function on<T>(
+  dep: () => T,
+  fn: (value: T, prev: T | undefined) => void | (() => void),
+  options?: { defer?: boolean },
+): () => void | (() => void);
+export function on<T extends readonly (() => unknown)[]>(
+  deps: [...T],
+  fn: (values: { [K in keyof T]: ReturnType<T[K]> }, prev: { [K in keyof T]: ReturnType<T[K]> } | undefined) => void | (() => void),
+  options?: { defer?: boolean },
+): () => void | (() => void);
+export function on(
+  deps: (() => unknown) | (() => unknown)[],
+  fn: (values: unknown, prev: unknown) => void | (() => void),
+  options?: { defer?: boolean },
+): () => void | (() => void) {
+  const isArray = Array.isArray(deps);
+  const depArray = isArray ? deps : [deps];
+  let prevValues: unknown[] | undefined;
+  let isFirst = true;
+
+  return () => {
+    // Track only the specified deps
+    const values = depArray.map(d => d());
+
+    // Skip the initial effect run — only fire on actual changes
+    // (pass { defer: false } to opt out and run immediately)
+    if (isFirst) {
+      isFirst = false;
+      prevValues = values.slice();
+      if (options?.defer !== false) return;
+    }
+
+    const prev = prevValues;
+    prevValues = values.slice();
+
+    // Run fn without tracking so reads inside don't create subscriptions
+    return untrack(() => fn(
+      isArray ? values : values[0],
+      prev ? (isArray ? prev : prev[0]) : undefined,
+    ));
+  };
 }
 
 // --- Internal helpers ---
@@ -265,7 +368,12 @@ function trackSubscriber(
 function notifySubscribers(
   node: SignalNode<unknown> | ComputedNode<unknown>,
 ): void {
-  for (const sub of node.subscribers) {
+  // Snapshot subscribers before iterating. Effects that run synchronously
+  // during flush() will delete and re-add themselves to the Set, and JS
+  // Set iterators visit newly added entries — causing an infinite loop
+  // without the snapshot.
+  const subs = [...node.subscribers];
+  for (const sub of subs) {
     if (sub._tag === 'computed') {
       // Mark dirty. The computed will re-evaluate lazily when read.
       sub.state = ComputedState.Dirty;

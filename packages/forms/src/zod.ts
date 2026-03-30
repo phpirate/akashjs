@@ -23,6 +23,9 @@
  * ```
  */
 
+// Re-export schema utilities so they're accessible from the zod subpath
+export { createFormFromSchema, getSchemaFields } from './schema.js';
+
 import type { Validator, AsyncValidator } from './types.js';
 
 // --- Types for Zod compatibility ---

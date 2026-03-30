@@ -67,6 +67,23 @@ interface Props {
 </template>
 ```
 
+## Spread Props
+
+Spread an object of attributes onto an element or component:
+
+```html
+<script lang="ts">
+const buttonProps = { class: 'btn', disabled: true, 'aria-label': 'Submit' };
+</script>
+
+<template>
+  <button {...buttonProps}>Submit</button>
+  <MyComponent {...sharedProps} extra="value" />
+</template>
+```
+
+For elements, spread keys are applied as attributes, DOM properties, or event listeners (keys starting with `on`). For components, spreads are merged into the props object.
+
 ## Children
 
 Components receive children via `ctx.children()`:
@@ -125,6 +142,52 @@ provide(ThemeContext, 'dark');
 const theme = inject(ThemeContext); // 'dark'
 ```
 
+## class:name Directive
+
+Toggle individual CSS classes with the `class:name` directive. It compiles to `classList.toggle()` for efficient updates:
+
+```html
+<template>
+  <div class="btn" class:active={isActive()} class:disabled={isDisabled()}>
+    Click me
+  </div>
+
+  <!-- Multiple class directives on one element -->
+  <li class="item" class:selected={item.selected()} class:dragging={isDragging()}>
+    {item.label()}
+  </li>
+</template>
+```
+
+The `class:name` directive works alongside the static `class` attribute. Static classes are always present; directive classes are toggled based on the expression.
+
+## Block Syntax
+
+AkashJS templates support block-level control flow with `{#if}`, `{#each}`, and their variants:
+
+```html
+<template>
+  {#if user()}
+    <Dashboard user={user()} />
+  {:else if isLoading()}
+    <Spinner />
+  {:else}
+    <LoginForm />
+  {/if}
+
+  {#each items() as item (item.id)}
+    <ListItem data={item} />
+  {:empty}
+    <p>No items found.</p>
+  {/each}
+</template>
+```
+
+- `{#if condition}` ... `{:else if condition}` ... `{:else}` ... `{/if}` — conditional rendering
+- `{#each list as item (key)}` ... `{:empty}` ... `{/each}` — list rendering with keyed reconciliation
+- The `(key)` expression in `{#each}` is used for efficient DOM reconciliation (similar to the `key` prop on `<For>`)
+- `{:empty}` is optional and renders when the list is empty
+
 ## Control Flow
 
 ```html
@@ -144,6 +207,28 @@ Or with directives:
 ```html
 <div :if={isVisible()}>Visible</div>
 <li :for={item of items()}>{item.name}</li>
+```
+
+Inline conditionals are also reactive:
+
+```html
+<template>
+  {show() && <span>Visible when show is true</span>}
+  {mode() === 'edit' ? <Editor /> : <Viewer />}
+</template>
+```
+
+## SVG
+
+SVG elements are compiled with `createElementNS` automatically. All standard SVG tags are recognized, and SVG context propagates to children:
+
+```html
+<template>
+  <svg width="100" height="100" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r={radius()} fill={color()} />
+    <path d="M10 80 Q 52.5 10, 95 80" stroke="black" fill="none" />
+  </svg>
+</template>
 ```
 
 ## Portal

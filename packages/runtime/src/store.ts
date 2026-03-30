@@ -26,7 +26,7 @@
  * ```
  */
 
-import { signal, computed } from './signals.js';
+import { signal, computed, effect } from './signals.js';
 import type { Signal, ReadonlySignal } from './signals.js';
 
 // --- Types ---
@@ -58,6 +58,8 @@ export type Store<S, G, A> = SignalifiedState<S> & {
 } & {
   /** Reset all state to initial values */
   $reset(): void;
+  /** Merge partial state into the store */
+  $patch(partial: Partial<S>): void;
   /** Subscribe to all state changes */
   $subscribe(callback: (state: S) => void): () => void;
   /** Get a plain snapshot of current state */
@@ -70,6 +72,21 @@ export interface StoreDefinition<S, G, A> {
   state: StateFactory<S>;
   getters?: Getters<S, G>;
   actions?: A;
+  plugins?: StorePlugin[];
+}
+
+// --- Plugin system ---
+
+export interface StorePlugin {
+  init?(store: Store<any, any, any>): void;
+  onAction?(store: Store<any, any, any>, actionName: string, args: unknown[]): void;
+}
+
+const globalPlugins: StorePlugin[] = [];
+
+/** Register global plugins that apply to all stores */
+export function configureStores(options: { plugins: StorePlugin[] }): void {
+  globalPlugins.push(...options.plugins);
 }
 
 // --- Store registry (singleton) ---
@@ -120,17 +137,7 @@ function createStoreInstance<
     stateSignals[key] = signal(initialState[key]);
   }
 
-  // Create computed getters
-  const getterComputeds: Record<string, ReadonlySignal<unknown>> = {};
-  if (definition.getters) {
-    for (const [key, getterFn] of Object.entries(definition.getters)) {
-      getterComputeds[key] = computed(() =>
-        (getterFn as Function)(stateSignals),
-      );
-    }
-  }
-
-  // Build the store object
+  // Build the store object first so getters can reference other getters via `this`
   const store: any = { $id: id };
 
   // Add state signals
@@ -138,16 +145,25 @@ function createStoreInstance<
     store[key] = stateSignals[key];
   }
 
-  // Add getters
-  for (const [key, comp] of Object.entries(getterComputeds)) {
-    store[key] = comp;
+  // Create computed getters — bound to store so `this.otherGetter()` works
+  if (definition.getters) {
+    for (const [key, getterFn] of Object.entries(definition.getters)) {
+      store[key] = computed(() =>
+        (getterFn as Function).call(store, stateSignals),
+      );
+    }
   }
+
+  // Collect all plugins (global + per-store)
+  const plugins = [...globalPlugins, ...(definition.plugins ?? [])];
 
   // Bind actions with `this` pointing to the full store (state + getters + actions)
   if (definition.actions) {
     for (const [key, actionFn] of Object.entries(definition.actions)) {
-      store[key] = (...args: unknown[]) =>
-        (actionFn as Function).apply(store, args);
+      store[key] = (...args: unknown[]) => {
+        for (const plugin of plugins) plugin.onAction?.(store, key, args);
+        return (actionFn as Function).apply(store, args);
+      };
     }
   }
 
@@ -156,6 +172,15 @@ function createStoreInstance<
     const fresh = definition.state();
     for (const key of stateKeys) {
       stateSignals[key].set(fresh[key as keyof S]);
+    }
+  };
+
+  // $patch — merge partial state
+  store.$patch = (partial: Partial<S>) => {
+    for (const [key, value] of Object.entries(partial)) {
+      if (key in stateSignals) {
+        stateSignals[key].set(value);
+      }
     }
   };
 
@@ -168,12 +193,42 @@ function createStoreInstance<
     return snapshot as S;
   };
 
-  // $subscribe
+  // $subscribe — watch all state signals and notify on change
   const subscribers = new Set<(state: S) => void>();
+  let subscribeEffect: (() => void) | null = null;
   store.$subscribe = (callback: (state: S) => void): (() => void) => {
     subscribers.add(callback);
-    return () => subscribers.delete(callback);
+    // Start watching if this is the first subscriber
+    if (!subscribeEffect) {
+      let isInitial = true;
+      subscribeEffect = effect(() => {
+        // Read all state signals to track them
+        for (const key of stateKeys) {
+          stateSignals[key]();
+        }
+        // Skip initial run — only notify on actual changes
+        if (isInitial) {
+          isInitial = false;
+          return;
+        }
+        const snapshot = store.$snapshot();
+        for (const cb of subscribers) {
+          cb(snapshot);
+        }
+      });
+    }
+    return () => {
+      subscribers.delete(callback);
+      // Dispose effect when no subscribers remain
+      if (subscribers.size === 0 && subscribeEffect) {
+        subscribeEffect();
+        subscribeEffect = null;
+      }
+    };
   };
+
+  // Initialize plugins
+  for (const plugin of plugins) plugin.init?.(store);
 
   return store as Store<S, G, A>;
 }
@@ -183,4 +238,9 @@ function createStoreInstance<
  */
 export function clearStores(): void {
   storeInstances.clear();
+}
+
+/** @internal — exposes store registry for devtools */
+export function __getStoreInstances(): Record<string, Store<any, any, any>> {
+  return Object.fromEntries(storeInstances);
 }

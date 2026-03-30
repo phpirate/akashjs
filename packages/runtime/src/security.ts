@@ -523,6 +523,8 @@ export function sanitizeURL(url: string, options: {
   allowedProtocols?: string[];
   allowRelative?: boolean;
 } = {}): string | null {
+  if (url == null) return null;
+
   const {
     allowedHosts,
     allowedProtocols = ['http:', 'https:'],

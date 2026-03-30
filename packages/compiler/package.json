@@ -1,6 +1,6 @@
 {
   "name": "@akashjs/compiler",
-  "version": "0.1.23",
+  "version": "0.1.45",
   "description": "AkashJS compiler — .akash SFC parsing, analysis, and code generation",
   "type": "module",
   "main": "dist/index.cjs",
@@ -26,6 +26,14 @@
   "license": "MIT",
   "publishConfig": {
     "access": "public"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=18.0.0"
