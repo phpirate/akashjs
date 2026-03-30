@@ -7,6 +7,7 @@
  */
 
 import { effect } from './signals.js';
+import { getCurrentScope, runInScope } from './context.js';
 import type { AkashNode } from './types.js';
 
 // --- DOM creation helpers (used by compiler output) ---
@@ -123,6 +124,9 @@ export function renderConditional(
 ): () => void {
   let current: ConditionalBlock | null = null;
 
+  // Capture scope so children created in branches inherit provide/inject context
+  const scope = getCurrentScope();
+
   const dispose = effect(
     () => {
       const value = condition();
@@ -141,7 +145,7 @@ export function renderConditional(
       const branch = value ? trueBranch : falseBranch;
       const liveParent = anchor.parentNode;
       if (branch && liveParent) {
-        const fragment = branch();
+        const fragment = scope ? runInScope(scope, branch) : branch();
         const nodes = fragment instanceof DocumentFragment
           ? Array.from(fragment.childNodes)
           : [fragment];
@@ -187,6 +191,9 @@ export function renderList<T>(
 ): () => void {
   let currentItems: ListItem<T>[] = [];
 
+  // Capture scope so children created in renderItem inherit provide/inject context
+  const scope = getCurrentScope();
+
   const dispose = effect(
     () => {
       const newData = items();
@@ -208,7 +215,7 @@ export function renderList<T>(
           existing.value = data;
           newItems.push(existing);
         } else {
-          const fragment = renderItem(data, i);
+          const fragment = scope ? runInScope(scope, () => renderItem(data, i)) : renderItem(data, i);
           const nodes = fragment instanceof DocumentFragment
             ? Array.from(fragment.childNodes)
             : [fragment];

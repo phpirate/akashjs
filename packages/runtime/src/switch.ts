@@ -25,6 +25,7 @@
 
 import { defineComponent } from './component.js';
 import { signal, effect } from './signals.js';
+import { getCurrentScope, runInScope } from './context.js';
 import { nodeToDOM } from './dom.js';
 import type { AkashNode } from './types.js';
 
@@ -43,6 +44,9 @@ export function renderSwitch(
 ): () => void {
   let currentNodes: Node[] = [];
 
+  // Capture scope so children inherit provide/inject context
+  const scope = getCurrentScope();
+
   const dispose = effect(
     () => {
       const value = String(expression());
@@ -57,7 +61,7 @@ export function renderSwitch(
       const branch = cases[value] ?? cases._default;
       const liveParent = anchor.parentNode;
       if (branch && liveParent) {
-        const node = branch();
+        const node = scope ? runInScope(scope, branch) : branch();
         const nodes = node instanceof DocumentFragment
           ? Array.from(node.childNodes)
           : [node];
