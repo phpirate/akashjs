@@ -382,34 +382,50 @@ function generateElement(
     lines.push(`${pad}${varName}.setAttribute('${scopeId}', '');`);
   }
 
-  // Set attributes
+  // Set attributes — process value/property attributes first, event listeners last
+  // This prevents onChange from firing when value is set during render
+  const eventAttrs: typeof node.attrs = [];
+  const propAttrs: typeof node.attrs = [];
+
   if (node.attrs) {
     for (const attr of node.attrs) {
-      if (attr.dynamic) {
-        // Dynamic attribute — create effect
-        imports.add('effect');
-        if (attr.name.startsWith('on')) {
-          lines.push(`${pad}${varName}.addEventListener('${attr.name.slice(2).toLowerCase()}', ${attr.value});`);
-        } else {
-          lines.push(`${pad}effect(() => {`);
-          if (attr.name === 'class' || attr.name === 'className') {
-            lines.push(`${pad}  ${varName}.className = ${attr.value};`);
-          } else {
-            lines.push(`${pad}  ${varName}.setAttribute('${attr.name}', String(${attr.value}));`);
-          }
-          lines.push(`${pad}}, { render: true });`);
-        }
+      if (attr.name.startsWith('on')) {
+        eventAttrs.push(attr);
       } else {
-        // Static attribute
-        if (attr.name === 'class' || attr.name === 'className') {
-          lines.push(`${pad}${varName}.className = ${JSON.stringify(attr.value)};`);
-        } else if (attr.name.startsWith('on')) {
-          // Static event handlers shouldn't exist, but handle gracefully
-          lines.push(`${pad}${varName}.setAttribute('${attr.name}', ${JSON.stringify(attr.value)});`);
-        } else {
-          lines.push(`${pad}${varName}.setAttribute('${attr.name}', ${JSON.stringify(attr.value)});`);
-        }
+        propAttrs.push(attr);
       }
+    }
+  }
+
+  // 1. Set properties and attributes first
+  for (const attr of propAttrs) {
+    if (attr.dynamic) {
+      imports.add('effect');
+      lines.push(`${pad}effect(() => {`);
+      if (attr.name === 'class' || attr.name === 'className') {
+        lines.push(`${pad}  ${varName}.className = ${attr.value};`);
+      } else if (attr.name === 'value') {
+        // Use property assignment for value (works for select, input, textarea)
+        lines.push(`${pad}  ${varName}.value = ${attr.value};`);
+      } else {
+        lines.push(`${pad}  ${varName}.setAttribute('${attr.name}', String(${attr.value}));`);
+      }
+      lines.push(`${pad}}, { render: true });`);
+    } else {
+      if (attr.name === 'class' || attr.name === 'className') {
+        lines.push(`${pad}${varName}.className = ${JSON.stringify(attr.value)};`);
+      } else {
+        lines.push(`${pad}${varName}.setAttribute('${attr.name}', ${JSON.stringify(attr.value)});`);
+      }
+    }
+  }
+
+  // 2. Attach event listeners after properties are set
+  for (const attr of eventAttrs) {
+    if (attr.dynamic) {
+      lines.push(`${pad}${varName}.addEventListener('${attr.name.slice(2).toLowerCase()}', ${attr.value});`);
+    } else {
+      lines.push(`${pad}${varName}.setAttribute('${attr.name}', ${JSON.stringify(attr.value)});`);
     }
   }
 
