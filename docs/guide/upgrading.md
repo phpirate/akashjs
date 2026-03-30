@@ -6,6 +6,12 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.23 (compiler)
+
+**Bug fixes:**
+
+- **Compiler:** boolean HTML properties (`checked`, `disabled`, `selected`, `readonly`, `required`, `multiple`, `hidden`, `open`) now use DOM property assignment (`el.checked = !!expr`) instead of `setAttribute`. Previously, `setAttribute("checked", "false")` still made checkboxes checked because the attribute's presence is what matters in HTML.
+
 ### 0.1.22 (compiler) / 0.1.10 (runtime)
 
 **Bug fixes:**

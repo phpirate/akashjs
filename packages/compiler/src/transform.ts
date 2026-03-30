@@ -413,6 +413,9 @@ function generateElement(
     }
   }
 
+  // Boolean DOM properties that must use property assignment, not setAttribute
+  const booleanProps = new Set(['checked', 'disabled', 'selected', 'readonly', 'required', 'multiple', 'hidden', 'open']);
+
   // 1. Set non-value properties and attributes
   for (const attr of otherPropAttrs) {
     if (attr.dynamic) {
@@ -420,6 +423,8 @@ function generateElement(
       lines.push(`${pad}effect(() => {`);
       if (attr.name === 'class' || attr.name === 'className') {
         lines.push(`${pad}  ${varName}.className = ${attr.value};`);
+      } else if (booleanProps.has(attr.name)) {
+        lines.push(`${pad}  ${varName}.${attr.name} = !!(${attr.value});`);
       } else {
         lines.push(`${pad}  ${varName}.setAttribute('${attr.name}', String(${attr.value}));`);
       }
@@ -427,6 +432,8 @@ function generateElement(
     } else {
       if (attr.name === 'class' || attr.name === 'className') {
         lines.push(`${pad}${varName}.className = ${JSON.stringify(attr.value)};`);
+      } else if (booleanProps.has(attr.name)) {
+        lines.push(`${pad}${varName}.${attr.name} = true;`);
       } else {
         lines.push(`${pad}${varName}.setAttribute('${attr.name}', ${JSON.stringify(attr.value)});`);
       }
