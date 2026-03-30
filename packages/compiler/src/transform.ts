@@ -165,7 +165,7 @@ function detectAutoImports(script: string, template: string, imports: Set<string
   }
 }
 
-/** Separate import statements from the rest of the script */
+/** Separate import and export statements from the rest of the script */
 function extractUserImports(script: string): {
   userImports: string[];
   bodyScript: string;
@@ -175,6 +175,7 @@ function extractUserImports(script: string): {
   const bodyLines: string[] = [];
 
   let inMultiLineImport = false;
+  let inMultiLineExport = false;
 
   for (const line of lines) {
     if (inMultiLineImport) {
@@ -185,12 +186,36 @@ function extractUserImports(script: string): {
       continue;
     }
 
+    if (inMultiLineExport) {
+      userImports[userImports.length - 1] += '\n' + line;
+      if (line.trimEnd().endsWith('}') || line.trimEnd().endsWith('};')) {
+        inMultiLineExport = false;
+      }
+      continue;
+    }
+
     const trimmed = line.trim();
     if (/^import\s/.test(trimmed)) {
       userImports.push(line.trim());
       // Check if this import spans multiple lines (no `from` on this line)
       if (!trimmed.includes('from ') && !trimmed.endsWith(';')) {
         inMultiLineImport = true;
+      }
+    } else if (/^export\s+(interface|type|enum)\s/.test(trimmed)) {
+      // Type-only exports — hoist to module scope (esbuild will strip them)
+      userImports.push(line.trim());
+      // Check if this spans multiple lines (e.g., multi-line interface)
+      if (!trimmed.endsWith('}') && !trimmed.endsWith('};') && !trimmed.endsWith(';')) {
+        inMultiLineExport = true;
+      }
+    } else if (/^export\s+(const|let|var|function|class)\s/.test(trimmed)) {
+      // Value exports — strip 'export' keyword and keep in body
+      bodyLines.push(line.replace(/\bexport\s+/, ''));
+    } else if (/^declare\s/.test(trimmed)) {
+      // TypeScript declare statements — hoist to module scope
+      userImports.push(line.trim());
+      if (!trimmed.endsWith('}') && !trimmed.endsWith('};') && !trimmed.endsWith(';')) {
+        inMultiLineExport = true;
       }
     } else {
       bodyLines.push(line);

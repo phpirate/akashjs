@@ -8,11 +8,19 @@
  */
 
 import { defineComponent, effect, signal, getCurrentScope, runInScope } from '@akashjs/runtime';
-import { useRouterInternal } from './router.js';
+import { useRouterInternal, provideRouter } from './router.js';
 
 export const Outlet = defineComponent(() => {
   const routerCtx = useRouterInternal();
   const currentDepth = routerCtx.depth();
+
+  // Provide a new router context with incremented depth for nested Outlets
+  provideRouter({
+    route: routerCtx.route,
+    navigate: routerCtx.navigate,
+    loaderData: routerCtx.loaderData,
+    depth: signal(currentDepth + 1),
+  });
 
   // Capture scope so lazy-loaded children can inherit provide/inject context
   const outletScope = getCurrentScope()!;
