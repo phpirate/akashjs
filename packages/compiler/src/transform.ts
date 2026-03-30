@@ -129,6 +129,9 @@ function needsReactiveWrapper(value: string): boolean {
   // Matches: foo(), foo.bar(), foo()?.bar, etc.
   if (/\w\(/.test(trimmed)) return true;
 
+  // Props access — potentially reactive (backed by __getter Proxy)
+  if (/\bprops\./.test(trimmed)) return true;
+
   // Plain identifier (variable reference) — no call, no reactivity needed
   if (/^[a-zA-Z_$][\w$.]*$/.test(trimmed)) return false;
 

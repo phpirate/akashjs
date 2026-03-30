@@ -6,6 +6,12 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.21 (compiler)
+
+**Bug fixes:**
+
+- **Compiler:** `props.*` accesses in child component templates are now recognized as reactive and wrapped in getters. Previously, expressions like `props.rows.length === 0` or `props.loading` were evaluated once and never updated, even though props are backed by reactive Proxy getters.
+
 ### 0.1.20 (compiler) / 0.1.9 (runtime)
 
 **Bug fixes:**
