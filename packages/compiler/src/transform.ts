@@ -545,10 +545,14 @@ function generateChildrenBody(
   indent: number,
   scopeId?: string,
 ): string {
-  // Single expression child — check for arrow function with JSX
+  // Single expression child — check for arrow function
   if (children.length === 1 && children[0].type === 'expression') {
-    const compiled = tryCompileArrowJSX(children[0].content ?? '', imports, indent, scopeId);
+    const expr = children[0].content ?? '';
+    // Arrow with JSX body — compile the JSX
+    const compiled = tryCompileArrowJSX(expr, imports, indent, scopeId);
     if (compiled) return compiled;
+    // Arrow with non-JSX body (e.g., render function call) — pass through directly
+    if (isAlreadyFunction(expr)) return expr;
   }
 
   const pad = ' '.repeat(indent);

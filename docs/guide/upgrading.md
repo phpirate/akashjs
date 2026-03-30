@@ -6,6 +6,12 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.22 (compiler)
+
+**Bug fixes:**
+
+- **Compiler:** arrow function children with non-JSX bodies (e.g., `{(renderFn) => renderFn(data)}`) are now passed through as callbacks instead of being compiled as `String()` text nodes. Fixes custom render function patterns like DataTable cell renderers.
+
 ### 0.1.21 (compiler)
 
 **Bug fixes:**
