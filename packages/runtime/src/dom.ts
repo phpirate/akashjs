@@ -278,8 +278,8 @@ export function Show<T>(props: ShowProps<T>): Node {
   const container = document.createDocumentFragment();
   container.appendChild(anchor);
 
-  // Resolve when — may be a getter (from compiler) or a static value
-  const getWhen = typeof props.when === 'function'
+  // Resolve when — only treat __reactive-marked functions as getters
+  const getWhen = typeof props.when === 'function' && (props.when as any).__reactive
     ? props.when as () => T | null | undefined | false
     : () => props.when as T | null | undefined | false;
 
@@ -310,8 +310,8 @@ export function For<T>(props: ForProps<T>): Node {
   const container = document.createDocumentFragment();
   container.appendChild(anchor);
 
-  // Resolve each — may be a getter (from compiler) or a static array
-  const getEach = typeof props.each === 'function'
+  // Resolve each — only treat __reactive-marked functions as getters
+  const getEach = typeof props.each === 'function' && (props.each as any).__reactive
     ? props.each as () => T[]
     : () => props.each as T[];
 

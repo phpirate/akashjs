@@ -6,6 +6,13 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.22 (compiler) / 0.1.10 (runtime)
+
+**Bug fixes:**
+
+- **Compiler:** arrow function children with non-JSX bodies (e.g., render function calls) are now passed through as callbacks instead of being compiled as `String()` text nodes.
+- **Runtime:** `Show` and `For` now only treat `__reactive`-marked functions as getters. Previously, any function passed as `when` or `each` was called as a getter, which broke patterns like `<Show when={col.render}>{(renderFn) => renderFn(data)}</Show>` where the function value should be passed to children, not called.
+
 ### 0.1.22 (compiler)
 
 **Bug fixes:**
