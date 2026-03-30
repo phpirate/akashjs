@@ -6,11 +6,11 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
-### 0.1.15 (compiler) / 0.1.8 (runtime)
+### 0.1.16 (compiler) / 0.1.8 (runtime)
 
 **Bug fixes:**
 
-- **Compiler:** event listeners (`onChange`, `onClick`, etc.) are now attached after value/property attributes are set. Previously, setting a `<select>` element's `value` during render triggered `onChange`, causing infinite re-render loops.
+- **Compiler:** event listeners (`onChange`, `onClick`, etc.) are now attached after value/property attributes are set. Value and bind directive assignments now compare before setting (`if (el.value !== v) el.value = v`) to prevent change events from re-triggering effect loops.
 - **Runtime:** `defineStore()` actions now have `this` bound to the full store (state + getters + actions), so `this.otherAction()` works inside actions.
 
 ### 0.1.8 (runtime)

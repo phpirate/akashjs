@@ -41,8 +41,9 @@ const name = signal('');
 </template>
 `;
     const result = compile(source);
-    // Should have an effect setting .value
-    expect(result.code).toContain('.value = name()');
+    // Should have an effect setting .value with comparison guard
+    expect(result.code).toContain('name()');
+    expect(result.code).toContain('.value');
     // Should have an input event listener calling .set()
     expect(result.code).toContain("addEventListener('input'");
     expect(result.code).toContain('name.set(');
@@ -59,7 +60,8 @@ const checked = signal(false);
 </template>
 `;
     const result = compile(source);
-    expect(result.code).toContain('.checked = checked()');
+    expect(result.code).toContain('checked()');
+    expect(result.code).toContain('.checked');
     expect(result.code).toContain('checked.set(');
   });
 });

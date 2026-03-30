@@ -406,7 +406,9 @@ function generateElement(
         lines.push(`${pad}  ${varName}.className = ${attr.value};`);
       } else if (attr.name === 'value') {
         // Use property assignment for value (works for select, input, textarea)
-        lines.push(`${pad}  ${varName}.value = ${attr.value};`);
+        // Compare before setting to avoid triggering change events in a loop
+        lines.push(`${pad}  const __v = ${attr.value};`);
+        lines.push(`${pad}  if (${varName}.value !== String(__v)) ${varName}.value = __v;`);
       } else {
         lines.push(`${pad}  ${varName}.setAttribute('${attr.name}', String(${attr.value}));`);
       }
@@ -435,8 +437,8 @@ function generateElement(
     const signalExpr = bindDir.value;
     imports.add('effect');
 
-    // Read: bind signal value to element property
-    lines.push(`${pad}effect(() => { ${varName}.${prop} = ${signalExpr}(); }, { render: true });`);
+    // Read: bind signal value to element property (compare to avoid event loops)
+    lines.push(`${pad}effect(() => { const __v = ${signalExpr}(); if (${varName}.${prop} !== __v) ${varName}.${prop} = __v; }, { render: true });`);
 
     // Write: listen for input events and update the signal
     const eventName = prop === 'value' || prop === 'checked' ? 'input' : 'change';
