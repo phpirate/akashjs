@@ -397,18 +397,26 @@ function generateElement(
     }
   }
 
-  // 1. Set properties and attributes first
+  // Separate value attrs from other props — value must be set after children
+  // (e.g., <select> needs <option> children before .value can take effect)
+  const valueAttrs: typeof node.attrs = [];
+  const otherPropAttrs: typeof node.attrs = [];
+
   for (const attr of propAttrs) {
+    if (attr.name === 'value') {
+      valueAttrs.push(attr);
+    } else {
+      otherPropAttrs.push(attr);
+    }
+  }
+
+  // 1. Set non-value properties and attributes
+  for (const attr of otherPropAttrs) {
     if (attr.dynamic) {
       imports.add('effect');
       lines.push(`${pad}effect(() => {`);
       if (attr.name === 'class' || attr.name === 'className') {
         lines.push(`${pad}  ${varName}.className = ${attr.value};`);
-      } else if (attr.name === 'value') {
-        // Use property assignment for value (works for select, input, textarea)
-        // Compare before setting to avoid triggering change events in a loop
-        lines.push(`${pad}  const __v = ${attr.value};`);
-        lines.push(`${pad}  if (${varName}.value !== String(__v)) ${varName}.value = __v;`);
       } else {
         lines.push(`${pad}  ${varName}.setAttribute('${attr.name}', String(${attr.value}));`);
       }
@@ -422,16 +430,7 @@ function generateElement(
     }
   }
 
-  // 2. Attach event listeners after properties are set
-  for (const attr of eventAttrs) {
-    if (attr.dynamic) {
-      lines.push(`${pad}${varName}.addEventListener('${attr.name.slice(2).toLowerCase()}', ${attr.value});`);
-    } else {
-      lines.push(`${pad}${varName}.setAttribute('${attr.name}', ${JSON.stringify(attr.value)});`);
-    }
-  }
-
-  // Process bind: directives (two-way binding sugar)
+  // 2. Process bind: directives — value effect (before children is OK for input/textarea)
   for (const bindDir of bindDirectives) {
     const prop = bindDir.arg ?? 'value';
     const signalExpr = bindDir.value;
@@ -446,12 +445,34 @@ function generateElement(
     lines.push(`${pad}${varName}.addEventListener('${eventName}', (e) => { ${signalExpr}.set(e.target.${valuePath}); });`);
   }
 
-  // Process children
+  // 3. Append children (must happen before setting value on <select>)
   if (node.children && node.children.length > 0) {
     for (let i = 0; i < node.children.length; i++) {
       const childVar = `${varName}_c${i}`;
       generateNode(node.children[i], lines, imports, indent, childVar, scopeId);
       lines.push(`${pad}${varName}.appendChild(${childVar});`);
+    }
+  }
+
+  // 4. Set value property AFTER children (so <select> options exist)
+  for (const attr of valueAttrs) {
+    if (attr.dynamic) {
+      imports.add('effect');
+      lines.push(`${pad}effect(() => {`);
+      lines.push(`${pad}  const __v = ${attr.value};`);
+      lines.push(`${pad}  if (${varName}.value !== String(__v)) ${varName}.value = __v;`);
+      lines.push(`${pad}}, { render: true });`);
+    } else {
+      lines.push(`${pad}${varName}.value = ${JSON.stringify(attr.value)};`);
+    }
+  }
+
+  // 5. Attach event listeners LAST (after value is set and children exist)
+  for (const attr of eventAttrs) {
+    if (attr.dynamic) {
+      lines.push(`${pad}${varName}.addEventListener('${attr.name.slice(2).toLowerCase()}', ${attr.value});`);
+    } else {
+      lines.push(`${pad}${varName}.setAttribute('${attr.name}', ${JSON.stringify(attr.value)});`);
     }
   }
 }

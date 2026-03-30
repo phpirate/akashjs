@@ -6,11 +6,11 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
-### 0.1.16 (compiler) / 0.1.8 (runtime)
+### 0.1.17 (compiler) / 0.1.8 (runtime)
 
 **Bug fixes:**
 
-- **Compiler:** event listeners (`onChange`, `onClick`, etc.) are now attached after value/property attributes are set. Value and bind directive assignments now compare before setting (`if (el.value !== v) el.value = v`) to prevent change events from re-triggering effect loops.
+- **Compiler:** fixed `<select>` onChange firing during render with undefined value. Element initialization order is now: attributes → children → value → event listeners. This ensures `<option>` elements exist before `.value` is set, and listeners are attached last so they don't fire during setup. Value and bind assignments also compare before setting to prevent effect loops.
 - **Runtime:** `defineStore()` actions now have `this` bound to the full store (state + getters + actions), so `this.otherAction()` works inside actions.
 
 ### 0.1.8 (runtime)
