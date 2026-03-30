@@ -143,11 +143,11 @@ function createStoreInstance<
     store[key] = comp;
   }
 
-  // Bind actions with `this` pointing to the store's state signals
+  // Bind actions with `this` pointing to the full store (state + getters + actions)
   if (definition.actions) {
     for (const [key, actionFn] of Object.entries(definition.actions)) {
       store[key] = (...args: unknown[]) =>
-        (actionFn as Function).apply(stateSignals, args);
+        (actionFn as Function).apply(store, args);
     }
   }
 

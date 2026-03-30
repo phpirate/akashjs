@@ -6,6 +6,12 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.8 (runtime)
+
+**Bug fixes:**
+
+- **Runtime:** `defineStore()` actions now have `this` bound to the full store (state + getters + actions). Previously, `this` only contained state signals, so calling `this.otherAction()` inside an action threw `TypeError: this.otherAction is not a function`.
+
 ### 0.1.14 (compiler) / 0.1.6 (router) / 0.1.7 (runtime)
 
 **Bug fixes:**
