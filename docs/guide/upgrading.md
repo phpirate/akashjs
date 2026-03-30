@@ -6,6 +6,14 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.14 (compiler) / 0.1.6 (router) / 0.1.7 (runtime)
+
+**Bug fixes:**
+
+- **Router:** `<Outlet>` now increments depth for nested layouts. Previously, all Outlets shared the same depth, causing layouts to render recursively instead of rendering child pages.
+- **Compiler:** `export interface`, `export type`, `export enum`, and `declare` statements in `<script>` blocks are now hoisted to module scope. `export const`/`function`/`class` have the `export` keyword stripped. Previously, these caused esbuild errors when the vite-plugin stripped TypeScript annotations.
+- **Runtime:** `renderConditional`, `renderList`, and `renderSwitch` now preserve provide/inject context for children created in effect callbacks, fixing `inject()` failures inside `<Show>`, `<For>`, and `<Switch>` blocks.
+
 ### 0.1.13 (compiler)
 
 **Bug fixes:**
