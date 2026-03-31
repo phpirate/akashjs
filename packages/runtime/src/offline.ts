@@ -160,7 +160,7 @@ export function createOfflineStore<T extends Record<string, unknown>>(
   const items = signal<T[]>([]);
   const pendingOps = signal<PendingOp<T>[]>([]);
   const syncing = signal(false);
-  const online = signal(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const online = signal(typeof navigator !== 'undefined' && navigator.onLine != null ? !!navigator.onLine : true);
   const pending = computed(() => pendingOps().length);
 
   let db: IDBDatabase | null = null;

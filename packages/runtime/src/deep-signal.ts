@@ -52,8 +52,20 @@ export function deepSignal<T extends object>(initialValue: T): DeepSignal<T> {
   const version = signal(0);
   const raw = JSON.parse(JSON.stringify(initialValue));
 
+  let batchedNotify = false;
   function notify(): void {
+    if (batchedNotify) return;
     version.update((v) => v + 1);
+  }
+  function batchNotify(fn: () => unknown): unknown {
+    batchedNotify = true;
+    try {
+      const result = fn();
+      return result;
+    } finally {
+      batchedNotify = false;
+      notify();
+    }
   }
 
   function createProxy<O extends object>(target: O, path: string[] = []): DeepSignal<O> {
@@ -69,6 +81,14 @@ export function deepSignal<T extends object>(initialValue: T): DeepSignal<T> {
 
         // Track read
         version();
+
+        // Batch array mutation methods so they fire only one notification
+        if (Array.isArray(obj) && typeof value === 'function') {
+          const mutators = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin']);
+          if (mutators.has(String(prop))) {
+            return (...args: unknown[]) => batchNotify(() => value.apply(obj, args));
+          }
+        }
 
         // Wrap nested objects in proxies
         if (value !== null && typeof value === 'object') {

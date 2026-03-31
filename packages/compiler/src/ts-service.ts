@@ -140,10 +140,13 @@ function createVirtualHost(
   const fileVersions = new Map<string, number>();
 
   return {
-    getScriptFileNames: () => Object.keys(files),
+    getScriptFileNames: () => [
+      ...Object.keys(files),
+      ts.getDefaultLibFilePath({ target: ts.ScriptTarget.ES2022 }),
+    ],
     getScriptVersion: (fileName) => String(fileVersions.get(fileName) ?? 0),
     getScriptSnapshot: (fileName) => {
-      const content = files[fileName];
+      const content = files[fileName] ?? ts.sys.readFile(fileName);
       if (content == null) return undefined;
       return ts.ScriptSnapshot.fromString(content);
     },
@@ -165,6 +168,60 @@ function createVirtualHost(
     directoryExists: ts.sys.directoryExists,
     getDirectories: ts.sys.getDirectories,
   };
+}
+
+// --- Position mapping ---
+
+function mapPositionToOffset(
+  virtual: VirtualTsResult,
+  source: string,
+  position: { line: number; character: number },
+): number {
+  const lines = virtual.content.split('\n');
+
+  // First try: direct line mapping (works for script block)
+  let virtualLine = -1;
+  for (const [vLine, oLine] of virtual.lineMap) {
+    if (oLine === position.line) {
+      virtualLine = vLine;
+      break;
+    }
+  }
+
+  // If no direct mapping found, check if position is inside template
+  // and find the corresponding expression line in the virtual file
+  if (virtualLine === -1) {
+    // Check if inside template block
+    const sourceLines = source.split('\n');
+    let inTemplate = false;
+    for (let i = 0; i <= position.line && i < sourceLines.length; i++) {
+      if (sourceLines[i].includes('<template')) inTemplate = true;
+      if (sourceLines[i].includes('</template>')) inTemplate = false;
+    }
+
+    if (inTemplate) {
+      // For template positions, place the cursor inside __templateExpressions
+      // where the script-scope variables are accessible
+      // Find the __templateExpressions function body
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes('__templateExpressions')) {
+          virtualLine = i + 1; // inside the function body
+          break;
+        }
+      }
+    }
+
+    if (virtualLine === -1) virtualLine = position.line;
+  }
+
+  // Calculate character offset
+  let offset = 0;
+  for (let i = 0; i < virtualLine && i < lines.length; i++) {
+    offset += lines[i].length + 1; // +1 for newline
+  }
+  offset += position.character;
+
+  return Math.min(offset, virtual.content.length - 1);
 }
 
 // --- Cached service ---
@@ -211,6 +268,10 @@ export function getTsDiagnostics(source: string, filename = 'component.akash'): 
       // Skip diagnostics from our injected declarations
       if (pos.line < virtual.scriptOffset && !virtual.lineMap.has(pos.line)) continue;
 
+      // Skip diagnostics from template expression section — these are unreliable
+      // since template JSX syntax doesn't translate cleanly to TypeScript
+      if (pos.line >= virtual.templateExprStart) continue;
+
       results.push({
         message: ts.flattenDiagnosticMessageText(d.messageText, '\n'),
         severity: d.category === ts.DiagnosticCategory.Error ? 'error'
@@ -234,17 +295,8 @@ export function getTsCompletions(
   const service = getService(filename, virtual);
   const virtualFilename = filename.replace('.akash', '.ts');
 
-  // Map position to virtual .ts
-  // Find the virtual line that maps to this original line
-  let virtualLine = position.line;
-  for (const [vLine, oLine] of virtual.lineMap) {
-    if (oLine === position.line) {
-      virtualLine = vLine;
-      break;
-    }
-  }
-
-  const offset = virtual.content.split('\n').slice(0, virtualLine).join('\n').length + 1 + position.character;
+  // Map position to virtual .ts offset
+  const offset = mapPositionToOffset(virtual, source, position);
 
   const completions = service.getCompletionsAtPosition(virtualFilename, offset, {
     includeCompletionsForModuleExports: false,
@@ -270,16 +322,8 @@ export function getTsHoverInfo(
   const service = getService(filename, virtual);
   const virtualFilename = filename.replace('.akash', '.ts');
 
-  // Map position
-  let virtualLine = position.line;
-  for (const [vLine, oLine] of virtual.lineMap) {
-    if (oLine === position.line) {
-      virtualLine = vLine;
-      break;
-    }
-  }
-
-  const offset = virtual.content.split('\n').slice(0, virtualLine).join('\n').length + 1 + position.character;
+  // Map position to virtual .ts offset
+  const offset = mapPositionToOffset(virtual, source, position);
 
   const info = service.getQuickInfoAtPosition(virtualFilename, offset);
   if (!info) return null;

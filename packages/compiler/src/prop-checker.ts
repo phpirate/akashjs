@@ -80,9 +80,34 @@ export function extractPropDefs(source: string): PropDef[] {
     scriptContent = source;
   }
 
-  // Find interface Props { ... } with brace matching (handles nested braces)
-  const startMatch = /interface\s+Props\s*\{/.exec(scriptContent);
+  // Find interface Props (possibly with extends) { ... }
+  const startMatch = /interface\s+Props\s+(?:extends\s+([\w,\s]+)\s*)?\{/.exec(scriptContent)
+    ?? /interface\s+Props\s*\{/.exec(scriptContent);
   if (!startMatch) return [];
+
+  // If Props extends other interfaces, extract their props first
+  const extendsClause = startMatch[1];
+  const inheritedDefs: PropDef[] = [];
+  if (extendsClause) {
+    const baseNames = extendsClause.split(',').map(s => s.trim()).filter(Boolean);
+    for (const baseName of baseNames) {
+      const baseMatch = new RegExp(`interface\\s+${baseName}\\s*\\{`).exec(scriptContent);
+      if (baseMatch) {
+        const baseOpenIdx = baseMatch.index + baseMatch[0].length - 1;
+        let d = 1, p = baseOpenIdx + 1;
+        while (p < scriptContent.length && d > 0) {
+          if (scriptContent[p] === '{') d++;
+          else if (scriptContent[p] === '}') d--;
+          p++;
+        }
+        const baseBody = scriptContent.slice(baseOpenIdx + 1, p - 1);
+        for (const prop of splitProperties(baseBody)) {
+          const m = /^(\w+)(\??):\s*(.+)$/.exec(prop.trim());
+          if (m) inheritedDefs.push({ name: m[1], type: m[3].replace(/;$/, '').trim(), optional: m[2] === '?' });
+        }
+      }
+    }
+  }
 
   const openIdx = startMatch.index + startMatch[0].length - 1;
   let depth = 1;
@@ -112,7 +137,10 @@ export function extractPropDefs(source: string): PropDef[] {
     }
   }
 
-  return defs;
+  // Merge inherited defs (own props override inherited)
+  const ownNames = new Set(defs.map(d => d.name));
+  const merged = [...inheritedDefs.filter(d => !ownNames.has(d.name)), ...defs];
+  return merged;
 }
 
 /**

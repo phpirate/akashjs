@@ -193,6 +193,21 @@ export function createLanguageService() {
 
       // Inside <template>
       if (isInTemplate(source, position)) {
+        // Inside {expression} — use TypeScript completions for script-scope variables
+        if (isInsideExpression(source, position)) {
+          try {
+            const tsCompletions = getTsCompletions(source, position, filename);
+            if (tsCompletions.length > 0) {
+              return tsCompletions.map(c => ({
+                label: c.label,
+                kind: 'property' as const,
+                detail: c.detail,
+                sortText: c.sortText,
+              }));
+            }
+          } catch { /* fall through */ }
+        }
+
         // After < — suggest components and HTML tags
         if (before.endsWith('<') || /^<[A-Z]/.test(before.trimStart())) {
           return [...BUILT_IN_COMPONENTS];
@@ -329,6 +344,34 @@ function isInTemplate(source: string, pos: Position): boolean {
     if (lines[i].includes('</template>')) inTemplate = false;
   }
   return inTemplate;
+}
+
+/** Check if the cursor is inside a {expression} in the template */
+function isInsideExpression(source: string, pos: Position): boolean {
+  const lines = source.split('\n');
+  // Get all text up to the cursor position
+  let text = '';
+  for (let i = 0; i <= pos.line && i < lines.length; i++) {
+    if (i === pos.line) {
+      text += lines[i].slice(0, pos.character);
+    } else {
+      text += lines[i] + '\n';
+    }
+  }
+  // Count unmatched { in the template section
+  let inTemplate = false;
+  let braceDepth = 0;
+  for (const line of text.split('\n')) {
+    if (line.includes('<template')) inTemplate = true;
+    if (line.includes('</template>')) inTemplate = false;
+    if (inTemplate) {
+      for (const ch of line) {
+        if (ch === '{') braceDepth++;
+        else if (ch === '}') braceDepth--;
+      }
+    }
+  }
+  return braceDepth > 0;
 }
 
 function isInsideTag(before: string): boolean {

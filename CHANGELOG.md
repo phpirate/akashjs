@@ -5,6 +5,18 @@ All notable changes to AkashJS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-03-31
+
+### Fixed
+- `deepSignal` array mutation methods (`push`, `splice`, `sort`, etc.) now batch notifications — single effect run per operation instead of multiple (`@akashjs/runtime`)
+- `getDiagnostics` no longer produces false TypeScript errors for template JSX syntax (`@akashjs/compiler`)
+- `createOfflineStore.online()` returns `true` in Node.js instead of `undefined` (`@akashjs/runtime`)
+- `getCompletions` works inside template `{expressions}` — returns script-scope variables (`@akashjs/compiler`)
+- `getCompletions`/`getHoverInfo` accept `(source, filename, position)` with `{ column }` alias (`@akashjs/compiler`)
+- `extractPropDefs` resolves `interface Props extends Base` — inherited props included (`@akashjs/compiler`)
+- Hover shows correct types for arrays (`number[]`), Maps, generics — TypeScript lib files loaded (`@akashjs/compiler`)
+- `validateProps` accepts both `(defs, props)` and `(source, resolver)` call patterns with type mismatch detection (`@akashjs/compiler`)
+
 ## [0.2.0] - 2026-03-31
 
 ### Added
