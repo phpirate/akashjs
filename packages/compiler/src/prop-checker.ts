@@ -20,12 +20,26 @@ function typesMatch(expected: string, received: string): boolean {
   const e = expected.trim().toLowerCase();
   const r = received.trim().toLowerCase();
   if (e === r) return true;
-  // 'any' matches everything
-  if (e === 'any' || r === 'any') return true;
+  // 'any' or 'unknown' matches everything
+  if (e === 'any' || r === 'any' || e === 'unknown' || r === 'unknown') return true;
+  // Array compatibility: 'array' matches any T[], and vice versa
+  if ((r === 'array' && e.endsWith('[]')) || (e === 'array' && r.endsWith('[]'))) return true;
+  if (r === 'array' && e.startsWith('array')) return true;
+  // String literal unions: 'string' is compatible with 'a' | 'b' | 'c' (all string literals)
+  if (r === 'string' && e.includes('|') && e.includes("'")) {
+    const allStringLiterals = e.split('|').every(p => p.trim().startsWith("'") || p.trim().startsWith('"'));
+    if (allStringLiterals) return true;
+  }
+  // Number compatible with number literal unions
+  if (r === 'number' && e.includes('|') && /^\d/.test(e.split('|')[0].trim())) return true;
   // Union types: check if received is one of the union members
   if (e.includes('|')) {
     return e.split('|').some(part => typesMatch(part.trim(), r));
   }
+  // Object/record compatibility
+  if (r === 'object' && (e.startsWith('{') || e.startsWith('record'))) return true;
+  // Function compatibility
+  if (r === 'function' && (e.includes('=>') || e.startsWith('('))) return true;
   return false;
 }
 

@@ -614,14 +614,17 @@ function generateElement(
     const signalExpr = bindDir.value;
     imports.add('effect');
 
+    // Detect contenteditable — uses textContent instead of value
+    const isContentEditable = node.attrs?.some(a => a.name === 'contentEditable' || a.name === 'contenteditable');
+    const bindProp = isContentEditable && prop === 'value' ? 'textContent' : prop;
+
     // Read: bind signal value to element property (compare to avoid event loops)
-    lines.push(`${pad}effect(() => { const __v = ${signalExpr}(); if (${varName}.${prop} !== __v) ${varName}.${prop} = __v; }, { render: true });`);
+    lines.push(`${pad}effect(() => { const __v = ${signalExpr}(); if (${varName}.${bindProp} !== __v) ${varName}.${bindProp} = __v; }, { render: true });`);
 
     // Write: listen for events and update the signal
-    // checkbox/radio use 'change' event; text/number/etc use 'input'
-    const isCheckbox = prop === 'checked';
+    const isCheckbox = bindProp === 'checked';
     const eventName = isCheckbox ? 'change' : 'input';
-    const valuePath = isCheckbox ? 'checked' : 'value';
+    const valuePath = isCheckbox ? 'checked' : isContentEditable ? 'textContent' : 'value';
     // Detect number/range inputs for type conversion
     const isNumberInput = node.attrs?.some(a => a.name === 'type' && (a.value === 'number' || a.value === 'range'));
     const setter = isNumberInput

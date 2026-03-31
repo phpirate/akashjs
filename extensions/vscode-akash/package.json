@@ -38,6 +38,12 @@
         }
       }
     ],
+    "snippets": [
+      {
+        "language": "akash",
+        "path": "./snippets/akash.json"
+      }
+    ],
     "grammars": [
       {
         "language": "akash",

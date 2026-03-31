@@ -1,0 +1,121 @@
+{
+  "AkashJS Component": {
+    "prefix": "akcomp",
+    "body": [
+      "<script lang=\"ts\">",
+      "interface Props {",
+      "  $1",
+      "}",
+      "",
+      "$2",
+      "</script>",
+      "",
+      "<template>",
+      "  <div>",
+      "    $0",
+      "  </div>",
+      "</template>",
+      "",
+      "<style scoped>",
+      "</style>"
+    ],
+    "description": "AkashJS component scaffold"
+  },
+  "Signal": {
+    "prefix": "aksignal",
+    "body": ["const ${1:name} = signal(${2:initialValue});"],
+    "description": "Create a signal"
+  },
+  "Computed": {
+    "prefix": "akcomputed",
+    "body": ["const ${1:name} = computed(() => ${2:expression});"],
+    "description": "Create a computed signal"
+  },
+  "Effect": {
+    "prefix": "akeffect",
+    "body": [
+      "effect(() => {",
+      "  $0",
+      "});"
+    ],
+    "description": "Create an effect"
+  },
+  "Store": {
+    "prefix": "akstore",
+    "body": [
+      "const use${1:Name}Store = defineStore('${2:name}', {",
+      "  state: () => ({",
+      "    ${3:key}: ${4:value},",
+      "  }),",
+      "  getters: {",
+      "    $5",
+      "  },",
+      "  actions: {",
+      "    $0",
+      "  },",
+      "});"
+    ],
+    "description": "Define a store"
+  },
+  "Show": {
+    "prefix": "akshow",
+    "body": [
+      "<Show when={${1:condition()}}>",
+      "  ${0}",
+      "</Show>"
+    ],
+    "description": "Conditional rendering"
+  },
+  "For": {
+    "prefix": "akfor",
+    "body": [
+      "<For each={${1:items()}} key={(${2:item}) => ${2:item}.id}>",
+      "  {(${2:item}) => <${3:div}>${0}</${3:div}>}",
+      "</For>"
+    ],
+    "description": "List rendering"
+  },
+  "If Block": {
+    "prefix": "akif",
+    "body": [
+      "{#if ${1:condition()}}",
+      "  $0",
+      "{/if}"
+    ],
+    "description": "Block if syntax"
+  },
+  "If/Else Block": {
+    "prefix": "akifelse",
+    "body": [
+      "{#if ${1:condition()}}",
+      "  $2",
+      "{:else}",
+      "  $0",
+      "{/if}"
+    ],
+    "description": "Block if/else syntax"
+  },
+  "Each Block": {
+    "prefix": "akeach",
+    "body": [
+      "{#each ${1:items()} as ${2:item} (${2:item}.id)}",
+      "  $0",
+      "{/each}"
+    ],
+    "description": "Block each syntax"
+  },
+  "onMount": {
+    "prefix": "akmount",
+    "body": [
+      "onMount(() => {",
+      "  $0",
+      "});"
+    ],
+    "description": "onMount lifecycle hook"
+  },
+  "Event Handler": {
+    "prefix": "akhandler",
+    "body": ["const ${1:handleClick} = (e: ${2:MouseEvent}) => {", "  $0", "};"],
+    "description": "Event handler function"
+  }
+}

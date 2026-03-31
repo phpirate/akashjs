@@ -23,6 +23,7 @@ import { registerDeployCommand } from './commands/deploy.js';
 import { registerUpdateCommand } from './commands/update.js';
 import { registerAuditCommand } from './commands/audit.js';
 import { registerCodemodCommand } from './commands/codemods.js';
+import { doctor } from './commands/doctor.js';
 
 export function createProgram(): Command {
   const program = new Command();
@@ -42,6 +43,11 @@ export function createProgram(): Command {
   registerUpdateCommand(program);
   registerAuditCommand(program);
   registerCodemodCommand(program);
+
+  program
+    .command('doctor')
+    .description('Diagnose project setup issues')
+    .action(doctor);
 
   return program;
 }

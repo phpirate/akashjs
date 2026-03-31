@@ -6,10 +6,13 @@
  * template-only changes.
  */
 
-import { compile, parse } from '@akashjs/compiler';
+import { compile, parse, createLanguageService } from '@akashjs/compiler';
 import { transform as esbuildTransform } from 'esbuild';
 import type { Plugin } from 'vite';
 import { analyzeHmrChange, generateHmrCode } from './hmr.js';
+import { generateOverlayCode, generateOverlayClearCode } from './overlay.js';
+import { generateDts } from './dts.js';
+import { writeFileSync, existsSync } from 'fs';
 
 export interface AkashPluginOptions {
   /** Include file patterns (default: .akash files) */
@@ -36,16 +39,50 @@ export default function akash(options: AkashPluginOptions = {}): Plugin {
     async transform(code, id) {
       if (!id.endsWith('.akash')) return null;
 
-      // Check if the script block uses TypeScript
-      const sfc = parse(code);
+      let result;
+      let sfc;
+
+      try {
+        // Check if the script block uses TypeScript
+        sfc = parse(code);
+        result = compile(code, {
+          filename: id,
+          dev: !isProduction,
+        });
+      } catch (err) {
+        // Compile error — show overlay in dev, throw in prod
+        if (isProduction) throw err;
+
+        const message = err instanceof Error ? err.message : String(err);
+        const overlayJs = generateOverlayCode(
+          [{ message, code: 'COMPILE_ERROR' }],
+          id,
+        );
+        return { code: overlayJs, map: null };
+      }
+
       const isTS = sfc.script?.lang === 'ts' || sfc.script?.lang === 'typescript';
 
-      const result = compile(code, {
-        filename: id,
-        dev: !isProduction,
-      });
-
+      // In dev mode, run diagnostics and show overlay for type errors
       let output = result.code;
+      if (!isProduction) {
+        try {
+          const ls = createLanguageService();
+          const diags = ls.getDiagnostics(code, id);
+          const errors = diags.filter(d => d.severity === 'error');
+          if (errors.length > 0) {
+            output += generateOverlayCode(
+              errors.map(d => ({ message: d.message, line: d.range.start.line, column: d.range.start.character, code: d.code })),
+              id,
+            );
+          } else {
+            // Clear any previous overlay
+            output += generateOverlayClearCode();
+          }
+        } catch {
+          // Language service failed — skip diagnostics silently
+        }
+      }
 
       // Strip TypeScript annotations if the script block uses lang="ts"
       if (isTS) {
@@ -75,6 +112,15 @@ export default function akash(options: AkashPluginOptions = {}): Plugin {
       // Add HMR support in dev mode
       if (!isProduction) {
         output += generateHmrCode(id);
+      }
+
+      // Auto-generate .d.ts for TypeScript cross-file type checking
+      if (!isProduction) {
+        try {
+          const dtsPath = id + '.d.ts';
+          const dtsContent = generateDts(code);
+          writeFileSync(dtsPath, dtsContent);
+        } catch { /* ignore dts generation errors */ }
       }
 
       // Cache source for HMR diffing

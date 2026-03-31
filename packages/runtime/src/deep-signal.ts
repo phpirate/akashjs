@@ -49,22 +49,38 @@ const RAW_KEY = Symbol('deepRaw');
  * ```
  */
 export function deepSignal<T extends object>(initialValue: T): DeepSignal<T> {
-  const version = signal(0);
+  const version = signal(0); // root-level signal for $signal compatibility
   const raw = JSON.parse(JSON.stringify(initialValue));
 
-  let batchedNotify = false;
-  function notify(): void {
-    if (batchedNotify) return;
-    version.update((v) => v + 1);
+  // Per-path signals for fine-grained tracking
+  const pathSignals = new Map<string, ReturnType<typeof signal<number>>>();
+
+  function getPathSignal(path: string): ReturnType<typeof signal<number>> {
+    let s = pathSignals.get(path);
+    if (!s) {
+      s = signal(0);
+      pathSignals.set(path, s);
+    }
+    return s;
   }
-  function batchNotify(fn: () => unknown): unknown {
+
+  let batchedNotify = false;
+  function notifyPath(path: string): void {
+    if (batchedNotify) return;
+    // Only notify the exact path that changed — not ancestors
+    // This prevents user.name change from triggering user.address.city effects
+    const s = pathSignals.get(path);
+    if (s) s.update(v => v + 1);
+    // Bump root version only for $signal users (separate tracking)
+    version.update(v => v + 1);
+  }
+  function batchNotify(fn: () => unknown, path: string): unknown {
     batchedNotify = true;
     try {
-      const result = fn();
-      return result;
+      return fn();
     } finally {
       batchedNotify = false;
-      notify();
+      notifyPath(path);
     }
   }
 
@@ -79,14 +95,16 @@ export function deepSignal<T extends object>(initialValue: T): DeepSignal<T> {
 
         const value = Reflect.get(obj, prop, receiver);
 
-        // Track read
-        version();
+        // Track read — use per-path signal for fine-grained reactivity
+        const currentPath = [...path, String(prop)].join('.');
+        getPathSignal(currentPath)();
 
         // Batch array mutation methods so they fire only one notification
         if (Array.isArray(obj) && typeof value === 'function') {
           const mutators = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin']);
           if (mutators.has(String(prop))) {
-            return (...args: unknown[]) => batchNotify(() => value.apply(obj, args));
+            const arrPath = path.join('.') || '__root';
+            return (...args: unknown[]) => batchNotify(() => value.apply(obj, args), arrPath);
           }
         }
 
@@ -100,13 +118,13 @@ export function deepSignal<T extends object>(initialValue: T): DeepSignal<T> {
 
       set(obj, prop, value) {
         const result = Reflect.set(obj, prop, value);
-        notify();
+        notifyPath([...path, String(prop)].join('.'));
         return result;
       },
 
       deleteProperty(obj, prop) {
         const result = Reflect.deleteProperty(obj, prop);
-        notify();
+        notifyPath([...path, String(prop)].join('.'));
         return result;
       },
     }) as DeepSignal<O>;

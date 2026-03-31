@@ -58,8 +58,8 @@ export type Store<S, G, A> = SignalifiedState<S> & {
 } & {
   /** Reset all state to initial values */
   $reset(): void;
-  /** Merge partial state into the store */
-  $patch(partial: Partial<S>): void;
+  /** Merge partial state into the store, or apply changes via callback */
+  $patch(partialOrFn: Partial<S> | ((state: SignalifiedState<S>) => void)): void;
   /** Subscribe to all state changes */
   $subscribe(callback: (state: S) => void): () => void;
   /** Get a plain snapshot of current state */
@@ -175,11 +175,15 @@ function createStoreInstance<
     }
   };
 
-  // $patch — merge partial state
-  store.$patch = (partial: Partial<S>) => {
-    for (const [key, value] of Object.entries(partial)) {
-      if (key in stateSignals) {
-        stateSignals[key].set(value);
+  // $patch — merge partial state or apply via callback
+  store.$patch = (partialOrFn: Partial<S> | ((state: any) => void)) => {
+    if (typeof partialOrFn === 'function') {
+      partialOrFn(stateSignals);
+    } else {
+      for (const [key, value] of Object.entries(partialOrFn)) {
+        if (key in stateSignals) {
+          stateSignals[key].set(value);
+        }
       }
     }
   };

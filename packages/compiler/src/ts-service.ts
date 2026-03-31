@@ -229,14 +229,38 @@ function mapPositionToOffset(
 let cachedService: ts.LanguageService | null = null;
 let cachedFiles: Record<string, string> = {};
 let cachedVirtual: VirtualTsResult | null = null;
+let cachedSource: string | null = null;
+let cachedFilename: string | null = null;
+let fileVersion = 0;
 
-function getService(filename: string, virtualTs: VirtualTsResult): ts.LanguageService {
+function getService(filename: string, virtualTs: VirtualTsResult, source: string): ts.LanguageService {
   const virtualFilename = filename.replace('.akash', '.ts');
+
+  // Reuse cached service if same file with same content
+  if (cachedService && cachedFilename === virtualFilename && cachedSource === source) {
+    return cachedService;
+  }
+
+  // If same filename but different content, update in place
+  if (cachedService && cachedFilename === virtualFilename) {
+    cachedFiles[virtualFilename] = virtualTs.content;
+    cachedSource = source;
+    fileVersion++;
+    return cachedService;
+  }
+
+  // New file — recreate service
   cachedFiles = { [virtualFilename]: virtualTs.content };
   cachedVirtual = virtualTs;
+  cachedSource = source;
+  cachedFilename = virtualFilename;
+  fileVersion++;
 
-  // Recreate service each time (simple; could cache for perf later)
-  cachedService = ts.createLanguageService(createVirtualHost(cachedFiles));
+  const host = createVirtualHost(cachedFiles);
+  const origGetVersion = host.getScriptVersion;
+  host.getScriptVersion = (f) => f === virtualFilename ? String(fileVersion) : origGetVersion(f);
+
+  cachedService = ts.createLanguageService(host);
   return cachedService;
 }
 
@@ -252,7 +276,7 @@ export interface TsDiagnostic {
 
 export function getTsDiagnostics(source: string, filename = 'component.akash'): TsDiagnostic[] {
   const virtual = akashToVirtualTs(source);
-  const service = getService(filename, virtual);
+  const service = getService(filename, virtual, source);
   const virtualFilename = filename.replace('.akash', '.ts');
 
   const syntactic = service.getSyntacticDiagnostics(virtualFilename);
@@ -292,7 +316,7 @@ export function getTsCompletions(
   filename = 'component.akash',
 ): Array<{ label: string; kind: string; detail?: string; sortText?: string }> {
   const virtual = akashToVirtualTs(source);
-  const service = getService(filename, virtual);
+  const service = getService(filename, virtual, source);
   const virtualFilename = filename.replace('.akash', '.ts');
 
   // Map position to virtual .ts offset
@@ -319,7 +343,7 @@ export function getTsHoverInfo(
   filename = 'component.akash',
 ): { content: string; documentation?: string } | null {
   const virtual = akashToVirtualTs(source);
-  const service = getService(filename, virtual);
+  const service = getService(filename, virtual, source);
   const virtualFilename = filename.replace('.akash', '.ts');
 
   // Map position to virtual .ts offset
