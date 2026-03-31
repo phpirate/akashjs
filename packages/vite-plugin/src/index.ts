@@ -63,34 +63,41 @@ export default function akash(options: AkashPluginOptions = {}): Plugin {
 
       const isTS = sfc.script?.lang === 'ts' || sfc.script?.lang === 'typescript';
 
-      // In dev mode, run diagnostics and show overlay for type errors
       let output = result.code;
-      if (!isProduction) {
-        try {
-          const ls = createLanguageService();
-          const diags = ls.getDiagnostics(code, id);
-          const errors = diags.filter(d => d.severity === 'error');
-          if (errors.length > 0) {
-            output += generateOverlayCode(
-              errors.map(d => ({ message: d.message, line: d.range.start.line, column: d.range.start.character, code: d.code })),
-              id,
-            );
-          } else {
-            // Clear any previous overlay
-            output += generateOverlayClearCode();
-          }
-        } catch {
-          // Language service failed — skip diagnostics silently
-        }
-      }
 
-      // Strip TypeScript annotations if the script block uses lang="ts"
+      // Strip TypeScript annotations FIRST (before any overlay injection)
       if (isTS) {
         const stripped = await esbuildTransform(output, {
           loader: 'ts',
           sourcemap: false,
         });
         output = stripped.code;
+      }
+
+      // In dev mode, run diagnostics and show overlay for type errors
+      // This happens AFTER esbuild so overlay HTML doesn't break TS parsing
+      if (!isProduction) {
+        try {
+          const ls = createLanguageService();
+          const diags = ls.getDiagnostics(code, id);
+          // Filter out module resolution errors (Vite handles imports, not TS)
+          const errors = diags.filter(d =>
+            d.severity === 'error' &&
+            !d.code?.startsWith('TS2307') && // Cannot find module
+            !d.code?.startsWith('TS2306') && // Not a module
+            !d.code?.startsWith('TS2792')    // Cannot find module (dynamic)
+          );
+          if (errors.length > 0) {
+            output += generateOverlayCode(
+              errors.map(d => ({ message: d.message, line: d.range.start.line, column: d.range.start.character, code: d.code })),
+              id,
+            );
+          } else {
+            output += generateOverlayClearCode();
+          }
+        } catch {
+          // Language service failed — skip diagnostics silently
+        }
       }
 
       // Inject CSS
