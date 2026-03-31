@@ -6,8 +6,10 @@
  * template-only changes.
  */
 
-import { compile, parse, createLanguageService } from '@akashjs/compiler';
+import { compile, parse, createLanguageService, validateProps } from '@akashjs/compiler';
 import { transform as esbuildTransform } from 'esbuild';
+import { readFileSync } from 'fs';
+import { resolve, dirname } from 'path';
 import type { Plugin } from 'vite';
 import { analyzeHmrChange, generateHmrCode } from './hmr.js';
 import { generateOverlayCode, generateOverlayClearCode } from './overlay.js';
@@ -104,6 +106,34 @@ export default function akash(options: AkashPluginOptions = {}): Plugin {
           }
         } catch {
           // Language service failed — skip diagnostics silently
+        }
+
+        // Prop validation — resolve child components and check prop types
+        try {
+          const dir = dirname(id);
+          const propErrors = validateProps(code, (componentName) => {
+            // Try to resolve the component import from the script block
+            const sfc2 = parse(code);
+            if (!sfc2.script) return null;
+            const importMatch = new RegExp(`import\\s+${componentName}\\s+from\\s+['"](.+?)['"]`).exec(sfc2.script.content);
+            if (!importMatch) return null;
+            const importPath = importMatch[1];
+            // Resolve relative path
+            const candidates = [
+              resolve(dir, importPath),
+              resolve(dir, importPath + '.akash'),
+              resolve(dir, importPath + '/index.akash'),
+            ];
+            for (const candidate of candidates) {
+              try { return readFileSync(candidate, 'utf-8'); } catch {}
+            }
+            return null;
+          });
+          for (const err of propErrors) {
+            this.warn(`[AkashJS] ${err.message}`, { id });
+          }
+        } catch {
+          // Prop validation failed — skip silently
         }
       }
 

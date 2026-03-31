@@ -46,6 +46,12 @@ export type { AvatarProps } from './components/avatar.js';
 export { Tooltip } from './components/tooltip.js';
 export type { TooltipProps } from './components/tooltip.js';
 
+// Overlay components
+export { Menu, MenuItem, MenuDivider } from './components/menu.js';
+export type { MenuProps, MenuItemProps, MenuDividerProps } from './components/menu.js';
+export { Combobox } from './components/combobox.js';
+export type { ComboboxProps } from './components/combobox.js';
+
 // Feedback components
 export { Dialog } from './components/dialog.js';
 export type { DialogProps } from './components/dialog.js';
