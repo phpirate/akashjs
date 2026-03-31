@@ -68,10 +68,19 @@ export const Outlet = defineComponent(() => {
         container.removeChild(container.firstChild);
       }
 
-      // Render the component within the outlet's scope so it inherits context
-      const node = runInScope(outletScope, () => Comp({
-        children: undefined,
-      }));
+      // Render the component within the outlet's captured scope AND
+      // re-provide the router context to ensure inject() works even
+      // if the async boundary breaks the scope chain.
+      const node = runInScope(outletScope, () => {
+        // Re-provide router context with incremented depth inside the restored scope
+        provideRouter({
+          route: routerCtx.route,
+          navigate: routerCtx.navigate,
+          loaderData: routerCtx.loaderData,
+          depth: childDepth,
+        });
+        return Comp({ children: undefined });
+      });
       container.appendChild(node);
       currentNode = node;
     });

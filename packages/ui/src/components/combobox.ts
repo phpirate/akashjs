@@ -51,8 +51,9 @@ export const Combobox = defineComponent<ComboboxProps>((ctx) => {
 
   const filtered = computed(() => {
     const term = searchTerm().trim();
-    if (!term) return ctx.props.options ?? [];
-    return (ctx.props.options ?? []).filter((item) => filter(item, term));
+    const opts = readProp(ctx.props.options) ?? [];
+    if (!term) return opts;
+    return opts.filter((item: unknown) => filter(item, term));
   });
 
   const hasCustomTrigger = ctx.props.triggerEl !== undefined;
@@ -76,11 +77,16 @@ export const Combobox = defineComponent<ComboboxProps>((ctx) => {
     ctx.props.onClose?.();
   }
 
+  /** Unwrap a prop that may be a __getter function or a plain value */
+  function readProp<T>(val: T | (() => T)): T {
+    return typeof val === 'function' && (val as any).__reactive ? (val as () => T)() : val as T;
+  }
+
   // Sync external open prop with internal state
   if (hasCustomTrigger) {
     effect(() => {
-      const externalOpen = ctx.props.open ?? false;
-      isOpen.set(externalOpen);
+      const externalOpen = readProp(ctx.props.open) ?? false;
+      isOpen.set(!!externalOpen);
     });
   }
 
@@ -110,7 +116,8 @@ export const Combobox = defineComponent<ComboboxProps>((ctx) => {
         outline: none;
         box-sizing: border-box;
       `;
-      if (ctx.props.value != null) input.value = display(ctx.props.value);
+      const initVal = readProp(ctx.props.value);
+      if (initVal != null) input.value = display(initVal);
       input.addEventListener('focus', () => { isOpen.set(true); input.style.borderColor = 'var(--md-sys-color-primary, #6750a4)'; });
       input.addEventListener('blur', () => { setTimeout(() => { closePanel(); input.style.borderColor = 'var(--md-sys-color-outline, #79747e)'; }, 200); });
       container.appendChild(input);
@@ -142,27 +149,15 @@ export const Combobox = defineComponent<ComboboxProps>((ctx) => {
     // --- Dropdown panel ---
     const panel = document.createElement('div');
     panel.setAttribute('role', 'listbox');
-    panel.style.cssText = hasCustomTrigger ? `
+    // Always use position:fixed + body portal to avoid overflow:hidden clipping
+    panel.style.cssText = `
       position: fixed;
       z-index: 3000;
-      width: ${ctx.props.panelWidth ?? '240px'};
+      width: ${ctx.props.panelWidth ?? (hasCustomTrigger ? '240px' : '100%')};
       background: var(--md-sys-color-surface-container, #fff);
-      border-radius: 4px;
+      border-radius: ${hasCustomTrigger ? '4px' : '0 0 4px 4px'};
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      max-height: 280px;
-      overflow: auto;
-      display: none;
-    ` : `
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      width: ${ctx.props.panelWidth ?? '100%'};
-      z-index: 3000;
-      background: var(--md-sys-color-surface-container, #fff);
-      border-radius: 0 0 4px 4px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      max-height: 240px;
+      max-height: ${hasCustomTrigger ? '280px' : '240px'};
       overflow: auto;
       display: none;
     `;
@@ -182,16 +177,16 @@ export const Combobox = defineComponent<ComboboxProps>((ctx) => {
       const items = filtered();
       const idx = highlightIndex();
 
-      // Position panel for custom trigger mode
-      if (hasCustomTrigger && open) {
-        const trigger = getTriggerEl();
-        if (trigger) {
-          const rect = trigger.getBoundingClientRect();
-          panel.style.top = `${rect.bottom + 4}px`;
+      // Position panel below anchor element (trigger or input)
+      if (open) {
+        const anchor = hasCustomTrigger ? getTriggerEl() : input;
+        if (anchor) {
+          const rect = anchor.getBoundingClientRect();
+          panel.style.top = `${rect.bottom + 2}px`;
           panel.style.left = `${rect.left}px`;
+          if (!hasCustomTrigger) panel.style.width = `${rect.width}px`;
         }
-        // Auto-focus search input when panel opens
-        setTimeout(() => input.focus(), 0);
+        if (hasCustomTrigger) setTimeout(() => input.focus(), 0);
       }
 
       panel.style.display = open ? 'block' : 'none';
@@ -211,7 +206,8 @@ export const Combobox = defineComponent<ComboboxProps>((ctx) => {
         option.setAttribute('role', 'option');
         option.textContent = display(item);
         const isHighlighted = i === idx;
-        const isSelected = ctx.props.value != null && display(item) === display(ctx.props.value);
+        const curValue = readProp(ctx.props.value);
+        const isSelected = curValue != null && display(item) === display(curValue);
         option.style.cssText = `
           padding: 10px 16px;
           cursor: pointer;
@@ -242,23 +238,36 @@ export const Combobox = defineComponent<ComboboxProps>((ctx) => {
       }
     }, { render: true });
 
-    // Outside click handler for custom trigger mode
-    if (hasCustomTrigger) {
-      // Append panel to document.body so it's not constrained by parent layout
-      if (typeof document !== 'undefined') {
-        document.body.appendChild(panel);
-      }
-      document.addEventListener('click', (e) => {
-        if (isOpen() && !panel.contains(e.target as Node) && e.target !== getTriggerEl()) {
-          closePanel();
-        }
-      });
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && isOpen()) closePanel();
-      });
-    } else {
-      container.appendChild(panel);
+    // Always append panel to document.body — avoids overflow:hidden clipping
+    if (typeof document !== 'undefined') {
+      document.body.appendChild(panel);
     }
+
+    // Outside click handler — deferred to avoid catching the same click that opened the panel
+    let outsideClickActive = false;
+    effect(() => {
+      const open = isOpen();
+      if (open) {
+        // Enable outside-click on next frame (after the opening click finishes bubbling)
+        outsideClickActive = false;
+        requestAnimationFrame(() => { outsideClickActive = true; });
+      } else {
+        outsideClickActive = false;
+      }
+    });
+    document.addEventListener('click', (e) => {
+      if (!outsideClickActive) return;
+      const trigger = getTriggerEl();
+      const isInsidePanel = panel.contains(e.target as Node);
+      const isInsideContainer = container.contains(e.target as Node);
+      const isOnTrigger = trigger ? trigger.contains(e.target as Node) : false;
+      if (!isInsidePanel && !isInsideContainer && !isOnTrigger) {
+        closePanel();
+      }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isOpen()) closePanel();
+    });
 
     return container;
   };

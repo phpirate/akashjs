@@ -5,6 +5,35 @@ All notable changes to AkashJS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2] - 2026-03-31
+
+### Fixed
+
+**Runtime**
+- `deepSignal` per-path tracking fully isolated — changing `user.name` no longer triggers effects reading `user.address.city` or `settings.theme` (each property change fires exactly once)
+- `deepSignal` root `version` signal no longer bumped during `notifyPath` (only in set/delete traps for `$signal` users)
+
+**UI Components — Reactive open/close**
+- Drawer: `open` prop is now reactive via `effect()` + `readProp()` — scrim opacity, pointer-events, and drawer transform update when `open` changes
+- Dialog: same reactive fix — scrim and dialog surface styles update reactively
+- Menu: added `readProp()` for reactive prop unwrapping + deferred outside-click
+- Combobox: `readProp()` for `open`, `options`, `value` props — works even when `__reactive` getter comes from a different runtime instance
+
+**UI Components — Click handler fixes**
+- Combobox, Menu, Drawer, Dialog: outside-click/scrim handlers now use `requestAnimationFrame` deferral to avoid closing on the same click that opened the overlay
+- Combobox, Menu: `trigger.contains(e.target)` instead of `===` check to handle clicks on child elements inside the trigger
+
+**UI Components — Portal rendering**
+- Combobox: dropdown panel always appended to `document.body` with `position: fixed` (both standalone and custom trigger modes) — prevents clipping by `overflow: hidden` ancestors
+- Menu: panel appended to `document.body` for same reason
+
+**Router**
+- Outlet: re-provides router context inside `runInScope` in the async `.then()` callback — ensures `inject(RouterContext)` works for lazy-loaded route components
+
+**Compiler**
+- Callback refs supported: `ref={(el) => { myVar = el; }}` generates `((el) => { ... })(element)` instead of `.current = element`
+- Runtime check: if ref value is a function, call it; otherwise use `.current`
+
 ## [0.2.1] - 2026-03-31
 
 ### Fixed

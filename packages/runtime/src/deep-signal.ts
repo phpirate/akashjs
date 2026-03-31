@@ -68,11 +68,8 @@ export function deepSignal<T extends object>(initialValue: T): DeepSignal<T> {
   function notifyPath(path: string): void {
     if (batchedNotify) return;
     // Only notify the exact path that changed — not ancestors
-    // This prevents user.name change from triggering user.address.city effects
     const s = pathSignals.get(path);
     if (s) s.update(v => v + 1);
-    // Bump root version only for $signal users (separate tracking)
-    version.update(v => v + 1);
   }
   function batchNotify(fn: () => unknown, path: string): unknown {
     batchedNotify = true;
@@ -119,12 +116,14 @@ export function deepSignal<T extends object>(initialValue: T): DeepSignal<T> {
       set(obj, prop, value) {
         const result = Reflect.set(obj, prop, value);
         notifyPath([...path, String(prop)].join('.'));
+        version.update(v => v + 1); // for $signal users only
         return result;
       },
 
       deleteProperty(obj, prop) {
         const result = Reflect.deleteProperty(obj, prop);
         notifyPath([...path, String(prop)].join('.'));
+        version.update(v => v + 1); // for $signal users only
         return result;
       },
     }) as DeepSignal<O>;

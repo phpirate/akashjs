@@ -20,7 +20,7 @@
  * ```
  */
 
-import { defineComponent, effect } from '@akashjs/runtime';
+import { defineComponent, effect, signal } from '@akashjs/runtime';
 import type { AkashNode } from '@akashjs/runtime';
 
 export interface MenuProps {
@@ -70,10 +70,15 @@ export const Menu = defineComponent<MenuProps>((ctx) => {
       font-size: 14px;
     `;
 
+    /** Unwrap a prop that may be a __getter function or a plain value */
+    function readProp<T>(val: T | (() => T)): T {
+      return typeof val === 'function' && (val as any).__reactive ? (val as () => T)() : val as T;
+    }
+
     // Position and toggle visibility
     effect(() => {
-      const open = ctx.props.open ?? false;
-      const anchor = ctx.props.anchorEl;
+      const open = readProp(ctx.props.open) ?? false;
+      const anchor = readProp(ctx.props.anchorEl);
       if (open && anchor) {
         const rect = anchor.getBoundingClientRect();
         const pos = ctx.props.position ?? 'bottom-start';
@@ -103,23 +108,39 @@ export const Menu = defineComponent<MenuProps>((ctx) => {
       if (content instanceof Node) panel.appendChild(content);
     }
 
-    // Close on outside click
-    const onDocClick = (e: MouseEvent) => {
-      if (!panel.contains(e.target as Node) && ctx.props.open) {
+    // Close on outside click — deferred to avoid catching the opening click
+    let outsideClickActive = false;
+    effect(() => {
+      const open = ctx.props.open ?? false;
+      if (open) {
+        outsideClickActive = false;
+        requestAnimationFrame(() => { outsideClickActive = true; });
+      } else {
+        outsideClickActive = false;
+      }
+    });
+    document.addEventListener('click', (e) => {
+      if (!outsideClickActive) return;
+      const anchor = ctx.props.anchorEl;
+      const isInsidePanel = panel.contains(e.target as Node);
+      const isOnAnchor = anchor ? anchor.contains(e.target as Node) : false;
+      if (!isInsidePanel && !isOnAnchor) {
         ctx.props.onClose?.();
       }
-    };
-    document.addEventListener('click', onDocClick);
+    });
 
     // Close on Escape
-    const onKeyDown = (e: KeyboardEvent) => {
+    document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && ctx.props.open) {
         ctx.props.onClose?.();
       }
-    };
+    });
     document.addEventListener('keydown', onKeyDown);
 
-    container.appendChild(panel);
+    // Append panel to document.body to avoid overflow:hidden clipping
+    if (typeof document !== 'undefined') {
+      document.body.appendChild(panel);
+    }
     return container;
   };
 });

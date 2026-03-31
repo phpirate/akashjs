@@ -36,6 +36,8 @@ const buttonRef = ref<HTMLElement>();
 | `width` | `string` | `'112px'` | Minimum width |
 | `children` | `() => Node` | — | Menu content (MenuItems) |
 
+The `open` prop is reactive. The menu panel is rendered into `document.body` with `position: fixed` to avoid clipping by `overflow: hidden` ancestors. The outside-click handler is deferred so clicking the trigger doesn't immediately close the menu.
+
 ## MenuItem Props
 
 | Prop | Type | Default | Description |

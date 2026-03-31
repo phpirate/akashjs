@@ -42,6 +42,8 @@ Dialog({
 showDialog.set(true);
 ```
 
+The `open` prop is fully reactive — the dialog animates in/out when the signal changes. The scrim click handler is deferred so it won't close the dialog on the same click that opened it.
+
 ### Scrim Overlay
 
 The dialog renders a scrim (semi-transparent black overlay) behind it:

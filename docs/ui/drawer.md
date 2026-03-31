@@ -2,6 +2,8 @@
 
 A Material Design 3 side navigation drawer. Supports standard (inline) and modal (overlay) variants, left or right positioning, and animated open/close transitions.
 
+The `open` prop is fully reactive — the drawer slides in/out and the modal scrim fades when the signal changes. The scrim click handler is deferred to prevent closing on the same click that opened the drawer.
+
 ## Import
 
 ```ts
