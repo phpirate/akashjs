@@ -44,6 +44,44 @@ const projects = signal([
 | `panelWidth` | `string` | `'100%'` | Dropdown panel width |
 | `emptyMessage` | `string` | `'No results'` | Message when filter returns empty |
 | `searchable` | `boolean` | `true` | Whether the input allows typing |
+| `triggerEl` | `HTMLElement \| null` | — | Anchor to external element (custom trigger mode) |
+| `open` | `boolean` | — | External open state (for custom trigger mode) |
+| `onClose` | `() => void` | — | Called when dropdown should close |
+
+## Custom Trigger Mode
+
+Attach the dropdown to any element — a breadcrumb pill, a button, a chip — instead of the built-in input:
+
+```ts
+const buttonRef = ref<HTMLElement>();
+const isOpen = signal(false);
+```
+
+```html
+<template>
+  <button ref={buttonRef} onClick={() => isOpen.update(v => !v)}>
+    {selected()?.name ?? 'Select project...'}
+  </button>
+  <Combobox
+    options={projects()}
+    value={selected()}
+    displayFn={(p) => p.name}
+    onSelect={(p) => { selected.set(p); isOpen.set(false); }}
+    triggerEl={buttonRef.current}
+    open={isOpen()}
+    onClose={() => isOpen.set(false)}
+    panelWidth="240px"
+    placeholder="Search projects..."
+  />
+</template>
+```
+
+In custom trigger mode:
+- The Combobox renders no visible input — only the floating panel
+- The panel appears anchored below the trigger element
+- A search input is included at the top of the panel
+- The panel auto-focuses the search input on open
+- Clicking outside or pressing Escape closes the panel
 
 ## Keyboard Navigation
 

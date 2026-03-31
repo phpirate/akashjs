@@ -30,6 +30,12 @@ export interface ComboboxProps<T = unknown> {
   width?: string;
   panelWidth?: string;
   emptyMessage?: string;
+  /** Anchor the dropdown to an external element instead of the built-in input */
+  triggerEl?: HTMLElement | null;
+  /** Whether the dropdown is open (for external trigger control) */
+  open?: boolean;
+  /** Called when the dropdown should close */
+  onClose?: () => void;
   searchable?: boolean;
 }
 
@@ -49,84 +55,97 @@ export const Combobox = defineComponent<ComboboxProps>((ctx) => {
     return (ctx.props.options ?? []).filter((item) => filter(item, term));
   });
 
+  const hasCustomTrigger = ctx.props.triggerEl !== undefined;
+
   function selectItem(item: unknown): void {
     ctx.props.onSelect?.(item);
     searchTerm.set(display(item));
     isOpen.set(false);
+    ctx.props.onClose?.();
+  }
+
+  function closePanel(): void {
+    isOpen.set(false);
+    ctx.props.onClose?.();
+  }
+
+  // Sync external open prop with internal state
+  if (hasCustomTrigger) {
+    effect(() => {
+      const externalOpen = ctx.props.open ?? false;
+      isOpen.set(externalOpen);
+    });
   }
 
   return () => {
     const container = document.createElement('div');
-    container.style.cssText = `position: relative; display: inline-block; width: ${ctx.props.width ?? '100%'};`;
+    container.style.cssText = hasCustomTrigger
+      ? 'position: relative; display: inline-block;'
+      : `position: relative; display: inline-block; width: ${ctx.props.width ?? '100%'};`;
 
-    // --- Input ---
+    // --- Search input (inside panel for custom trigger, standalone otherwise) ---
     const input = document.createElement('input');
     input.type = 'text';
     input.placeholder = ctx.props.placeholder ?? 'Search...';
     input.disabled = ctx.props.disabled ?? false;
-    input.style.cssText = `
-      width: 100%;
-      padding: 12px 16px;
-      border: 1px solid var(--md-sys-color-outline, #79747e);
-      border-radius: 4px;
-      font-size: 14px;
-      font-family: inherit;
-      background: var(--md-sys-color-surface, #fff);
-      color: var(--md-sys-color-on-surface, #1c1b1f);
-      outline: none;
-      box-sizing: border-box;
-    `;
 
-    // Set initial display value
-    if (ctx.props.value != null) {
-      input.value = display(ctx.props.value);
+    if (!hasCustomTrigger) {
+      // Standalone mode: input is the trigger
+      input.style.cssText = `
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--md-sys-color-outline, #79747e);
+        border-radius: 4px;
+        font-size: 14px;
+        font-family: inherit;
+        background: var(--md-sys-color-surface, #fff);
+        color: var(--md-sys-color-on-surface, #1c1b1f);
+        outline: none;
+        box-sizing: border-box;
+      `;
+      if (ctx.props.value != null) input.value = display(ctx.props.value);
+      input.addEventListener('focus', () => { isOpen.set(true); input.style.borderColor = 'var(--md-sys-color-primary, #6750a4)'; });
+      input.addEventListener('blur', () => { setTimeout(() => { closePanel(); input.style.borderColor = 'var(--md-sys-color-outline, #79747e)'; }, 200); });
+      container.appendChild(input);
+    } else {
+      // Custom trigger mode: search input goes inside the panel
+      input.style.cssText = `
+        width: 100%;
+        padding: 8px 12px;
+        border: none;
+        border-bottom: 1px solid var(--md-sys-color-outline-variant, #e0e0e0);
+        font-size: 14px;
+        font-family: inherit;
+        background: transparent;
+        color: var(--md-sys-color-on-surface, #1c1b1f);
+        outline: none;
+        box-sizing: border-box;
+      `;
     }
 
-    input.addEventListener('focus', () => {
-      isOpen.set(true);
-      input.style.borderColor = 'var(--md-sys-color-primary, #6750a4)';
-    });
-
-    input.addEventListener('blur', () => {
-      // Delay close to allow click on options
-      setTimeout(() => {
-        isOpen.set(false);
-        input.style.borderColor = 'var(--md-sys-color-outline, #79747e)';
-      }, 200);
-    });
-
-    input.addEventListener('input', () => {
-      searchTerm.set(input.value);
-      isOpen.set(true);
-      highlightIndex.set(0);
-    });
-
+    input.addEventListener('input', () => { searchTerm.set(input.value); isOpen.set(true); highlightIndex.set(0); });
     input.addEventListener('keydown', (e) => {
       const items = filtered();
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        highlightIndex.update(i => Math.min(i + 1, items.length - 1));
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        highlightIndex.update(i => Math.max(i - 1, 0));
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        const idx = highlightIndex();
-        if (idx >= 0 && idx < items.length) {
-          selectItem(items[idx]);
-        }
-      } else if (e.key === 'Escape') {
-        isOpen.set(false);
-        input.blur();
-      }
+      if (e.key === 'ArrowDown') { e.preventDefault(); highlightIndex.update(i => Math.min(i + 1, items.length - 1)); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); highlightIndex.update(i => Math.max(i - 1, 0)); }
+      else if (e.key === 'Enter') { e.preventDefault(); const idx = highlightIndex(); if (idx >= 0 && idx < items.length) selectItem(items[idx]); }
+      else if (e.key === 'Escape') closePanel();
     });
-
-    container.appendChild(input);
 
     // --- Dropdown panel ---
     const panel = document.createElement('div');
     panel.setAttribute('role', 'listbox');
-    panel.style.cssText = `
+    panel.style.cssText = hasCustomTrigger ? `
+      position: fixed;
+      z-index: 3000;
+      width: ${ctx.props.panelWidth ?? '240px'};
+      background: var(--md-sys-color-surface-container, #fff);
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      max-height: 280px;
+      overflow: auto;
+      display: none;
+    ` : `
       position: absolute;
       top: 100%;
       left: 0;
@@ -141,20 +160,41 @@ export const Combobox = defineComponent<ComboboxProps>((ctx) => {
       display: none;
     `;
 
-    // Reactively update panel content
+    // In custom trigger mode, add search input at top of panel
+    if (hasCustomTrigger) {
+      panel.appendChild(input);
+    }
+
+    // Options container (separate from search input so we can clear it without losing input)
+    const optionsContainer = document.createElement('div');
+    panel.appendChild(optionsContainer);
+
+    // Reactively update panel content + positioning
     effect(() => {
       const open = isOpen();
       const items = filtered();
       const idx = highlightIndex();
 
+      // Position panel for custom trigger mode
+      if (hasCustomTrigger && open) {
+        const trigger = ctx.props.triggerEl;
+        if (trigger) {
+          const rect = trigger.getBoundingClientRect();
+          panel.style.top = `${rect.bottom + 4}px`;
+          panel.style.left = `${rect.left}px`;
+        }
+        // Auto-focus search input when panel opens
+        setTimeout(() => input.focus(), 0);
+      }
+
       panel.style.display = open ? 'block' : 'none';
-      panel.innerHTML = '';
+      optionsContainer.innerHTML = '';
 
       if (items.length === 0) {
         const empty = document.createElement('div');
         empty.style.cssText = 'padding: 12px 16px; color: var(--md-sys-color-on-surface-variant, #888); font-size: 14px;';
         empty.textContent = ctx.props.emptyMessage ?? 'No results';
-        panel.appendChild(empty);
+        optionsContainer.appendChild(empty);
         return;
       }
 
@@ -191,9 +231,21 @@ export const Combobox = defineComponent<ComboboxProps>((ctx) => {
           highlightIndex.set(i);
         });
 
-        panel.appendChild(option);
+        optionsContainer.appendChild(option);
       }
     }, { render: true });
+
+    // Outside click handler for custom trigger mode
+    if (hasCustomTrigger) {
+      document.addEventListener('click', (e) => {
+        if (isOpen() && !panel.contains(e.target as Node) && e.target !== ctx.props.triggerEl) {
+          closePanel();
+        }
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isOpen()) closePanel();
+      });
+    }
 
     container.appendChild(panel);
     return container;
