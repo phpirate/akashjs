@@ -30,8 +30,8 @@ export interface ComboboxProps<T = unknown> {
   width?: string;
   panelWidth?: string;
   emptyMessage?: string;
-  /** Anchor the dropdown to an external element instead of the built-in input */
-  triggerEl?: HTMLElement | null;
+  /** Anchor the dropdown to an external element instead of the built-in input. Can be an element or a function returning one. */
+  triggerEl?: HTMLElement | (() => HTMLElement | null) | null;
   /** Whether the dropdown is open (for external trigger control) */
   open?: boolean;
   /** Called when the dropdown should close */
@@ -56,6 +56,13 @@ export const Combobox = defineComponent<ComboboxProps>((ctx) => {
   });
 
   const hasCustomTrigger = ctx.props.triggerEl !== undefined;
+
+  /** Resolve triggerEl — supports both direct element and function returning element */
+  function getTriggerEl(): HTMLElement | null {
+    const t = ctx.props.triggerEl;
+    if (typeof t === 'function') return t();
+    return t ?? null;
+  }
 
   function selectItem(item: unknown): void {
     ctx.props.onSelect?.(item);
@@ -177,7 +184,7 @@ export const Combobox = defineComponent<ComboboxProps>((ctx) => {
 
       // Position panel for custom trigger mode
       if (hasCustomTrigger && open) {
-        const trigger = ctx.props.triggerEl;
+        const trigger = getTriggerEl();
         if (trigger) {
           const rect = trigger.getBoundingClientRect();
           panel.style.top = `${rect.bottom + 4}px`;
@@ -238,7 +245,7 @@ export const Combobox = defineComponent<ComboboxProps>((ctx) => {
     // Outside click handler for custom trigger mode
     if (hasCustomTrigger) {
       document.addEventListener('click', (e) => {
-        if (isOpen() && !panel.contains(e.target as Node) && e.target !== ctx.props.triggerEl) {
+        if (isOpen() && !panel.contains(e.target as Node) && e.target !== getTriggerEl()) {
           closePanel();
         }
       });
