@@ -91,6 +91,7 @@ export default function akash(options: AkashPluginOptions = {}): Plugin {
             'TS2305', // Module has no exported member
             'TS2614', // Module has no default export
             'TS1259', // Can only be default-imported with esModuleInterop
+            'TS2451', // Cannot redeclare block-scoped variable
           ]);
           const errors = diags.filter(d =>
             d.severity === 'error' &&

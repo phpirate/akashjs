@@ -1,6 +1,6 @@
 {
   "name": "@akashjs/vite-plugin",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "AkashJS Vite plugin — .akash file transformation and HMR",
   "type": "module",
   "main": "dist/index.cjs",

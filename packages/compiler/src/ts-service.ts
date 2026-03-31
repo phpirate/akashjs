@@ -45,7 +45,7 @@ export function akashToVirtualTs(source: string): VirtualTsResult {
 
   const declLines = lines.length;
 
-  // Script block — insert verbatim with line mapping
+  // Script block — wrap in function scope to avoid global redeclaration errors
   if (sfc.script) {
     const scriptContent = sfc.script.content;
     const sourceLines = source.split('\n');
@@ -60,13 +60,42 @@ export function akashToVirtualTs(source: string): VirtualTsResult {
     }
     scriptOffset = scriptTagLine;
 
+    // Strip import statements (they need to stay at module scope)
     const scriptLines = scriptContent.split('\n');
-    for (let i = 0; i < scriptLines.length; i++) {
-      const virtualLine = lines.length;
-      const originalLine = scriptTagLine + i;
-      lineMap.set(virtualLine, originalLine);
-      lines.push(scriptLines[i]);
+    const importLines: string[] = [];
+    const bodyLines: string[] = [];
+    let inImport = false;
+    for (const line of scriptLines) {
+      const trimmed = line.trim();
+      if (inImport) {
+        importLines.push(line);
+        if (trimmed.includes('from ') || trimmed.endsWith(';')) inImport = false;
+        continue;
+      }
+      if (/^import\s/.test(trimmed)) {
+        importLines.push(line);
+        if (!trimmed.includes('from ') && !trimmed.endsWith(';')) inImport = true;
+      } else {
+        bodyLines.push(line);
+      }
     }
+
+    // Imports at module scope
+    for (const imp of importLines) {
+      const virtualLine = lines.length;
+      lineMap.set(virtualLine, scriptTagLine);
+      lines.push(imp);
+    }
+
+    // Script body inside function scope
+    lines.push('void function __componentScope() {');
+    for (let i = 0; i < bodyLines.length; i++) {
+      const virtualLine = lines.length;
+      const originalLine = scriptTagLine + scriptLines.indexOf(bodyLines[i]);
+      lineMap.set(virtualLine, originalLine >= 0 ? originalLine : scriptTagLine + i);
+      lines.push(bodyLines[i]);
+    }
+    lines.push('};');
   }
 
   lines.push('');
