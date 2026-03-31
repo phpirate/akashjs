@@ -244,6 +244,10 @@ export const Combobox = defineComponent<ComboboxProps>((ctx) => {
 
     // Outside click handler for custom trigger mode
     if (hasCustomTrigger) {
+      // Append panel to document.body so it's not constrained by parent layout
+      if (typeof document !== 'undefined') {
+        document.body.appendChild(panel);
+      }
       document.addEventListener('click', (e) => {
         if (isOpen() && !panel.contains(e.target as Node) && e.target !== getTriggerEl()) {
           closePanel();
@@ -252,9 +256,10 @@ export const Combobox = defineComponent<ComboboxProps>((ctx) => {
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && isOpen()) closePanel();
       });
+    } else {
+      container.appendChild(panel);
     }
 
-    container.appendChild(panel);
     return container;
   };
 });
