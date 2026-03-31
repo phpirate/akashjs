@@ -511,9 +511,16 @@ function generateElement(
     }
   }
 
-  // Wire ref to the DOM element
+  // Wire ref to the DOM element — supports both ref objects and callback refs
   if (refAttr) {
-    lines.push(`${pad}${refAttr.value}.current = ${varName};`);
+    const refValue = refAttr.value.trim();
+    if (isAlreadyFunction(refValue)) {
+      // Callback ref: (el) => { ... } or function(el) { ... }
+      lines.push(`${pad}(${refValue})(${varName});`);
+    } else {
+      // Ref object: myRef.current = element
+      lines.push(`${pad}if (typeof ${refValue} === 'function') { (${refValue})(${varName}); } else { ${refValue}.current = ${varName}; }`);
+    }
   }
 
   // Separate value attrs from other props — value must be set after children
