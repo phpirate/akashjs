@@ -80,12 +80,19 @@ export default function akash(options: AkashPluginOptions = {}): Plugin {
         try {
           const ls = createLanguageService();
           const diags = ls.getDiagnostics(code, id);
-          // Filter out module resolution errors (Vite handles imports, not TS)
+          // Filter out module/import diagnostics (Vite handles all resolution)
+          const moduleErrorCodes = new Set([
+            'TS2307', // Cannot find module
+            'TS2306', // Not a module
+            'TS2792', // Cannot find module (dynamic)
+            'TS7016', // Could not find declaration file
+            'TS2305', // Module has no exported member
+            'TS2614', // Module has no default export
+            'TS1259', // Can only be default-imported with esModuleInterop
+          ]);
           const errors = diags.filter(d =>
             d.severity === 'error' &&
-            !d.code?.startsWith('TS2307') && // Cannot find module
-            !d.code?.startsWith('TS2306') && // Not a module
-            !d.code?.startsWith('TS2792')    // Cannot find module (dynamic)
+            !(d.code && moduleErrorCodes.has(d.code))
           );
           if (errors.length > 0) {
             output += generateOverlayCode(
