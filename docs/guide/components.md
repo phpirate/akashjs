@@ -84,6 +84,54 @@ const buttonProps = { class: 'btn', disabled: true, 'aria-label': 'Submit' };
 
 For elements, spread keys are applied as attributes, DOM properties, or event listeners (keys starting with `on`). For components, spreads are merged into the props object.
 
+## Refs
+
+Get a reference to a DOM element using the `ref` attribute. Two patterns are supported:
+
+**Ref object** (via `ref()` from the runtime):
+
+```html
+<script lang="ts">
+const inputRef = ref<HTMLInputElement>();
+
+onMount(() => {
+  inputRef.current?.focus();
+});
+</script>
+
+<template>
+  <input ref={inputRef} placeholder="Auto-focused" />
+</template>
+```
+
+**Callback ref** (inline function):
+
+```html
+<script lang="ts">
+let myElement: HTMLElement | null = null;
+</script>
+
+<template>
+  <div ref={(el) => { myElement = el; }}>I'm captured</div>
+</template>
+```
+
+Callback refs are useful when you need to pass an element to a component prop:
+
+```html
+<script lang="ts">
+let triggerEl: HTMLElement | null = null;
+const isOpen = signal(false);
+</script>
+
+<template>
+  <button ref={(el) => { triggerEl = el; }} onClick={() => isOpen.update(v => !v)}>
+    Select project
+  </button>
+  <Combobox triggerEl={triggerEl} open={isOpen()} onClose={() => isOpen.set(false)} />
+</template>
+```
+
 ## Children
 
 Components receive children via `ctx.children()`:
