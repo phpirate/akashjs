@@ -30,6 +30,8 @@ export function akashToVirtualTs(source: string): VirtualTsResult {
   const lineMap = new Map<number, number>();
   let scriptOffset = 0;
 
+  // Make it a module to avoid global scope conflicts (e.g., const name = ...)
+  lines.push('export {};');
   // Runtime type declarations so TS knows about signal, computed, etc.
   lines.push('declare function signal<T>(v: T): { (): T; set(v: T): void; update(fn: (p: T) => T): void; peek(): T; };');
   lines.push('declare function computed<T>(fn: () => T): () => T;');

@@ -60,19 +60,24 @@ describe('watch', () => {
 });
 
 describe('watchOnce', () => {
-  it('auto-disposes after first call', () => {
+  it('auto-disposes after first change', () => {
     const count = signal(0);
     const spy = vi.fn();
 
     watchOnce(() => count(), spy);
-    // watchOnce uses immediate: true, so it fires right away
+    // watchOnce defers by default — does not fire on initial value
     flushSync();
-    expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy).toHaveBeenCalledWith(0, undefined);
+    expect(spy).toHaveBeenCalledTimes(0);
 
+    // First change triggers the callback
     count.set(1);
     flushSync();
-    // Should not fire again
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(1, 0);
+
+    // Second change — should not fire (already disposed)
+    count.set(2);
+    flushSync();
     expect(spy).toHaveBeenCalledTimes(1);
   });
 });

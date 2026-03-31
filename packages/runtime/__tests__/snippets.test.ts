@@ -30,11 +30,12 @@ describe('defineSnippet', () => {
 });
 
 describe('inspect', () => {
-  it('is a function that returns a dispose function', () => {
+  it('is a function that returns an inspection object with dispose', () => {
     expect(typeof inspect).toBe('function');
-    const dispose = inspect(() => 42);
-    expect(typeof dispose).toBe('function');
-    dispose();
+    const result = inspect(() => 42);
+    expect(typeof result).toBe('object');
+    expect(typeof result.dispose).toBe('function');
+    result.dispose();
   });
 });
 
