@@ -6,7 +6,7 @@
  * render function that produces DOM nodes.
  */
 
-import { effect } from './signals.js';
+import { effect, untrack } from './signals.js';
 import { pushScope, popScope, getCurrentScope } from './context.js';
 import { nodeToDOM } from './dom.js';
 import { akashError } from './errors.js';
@@ -105,16 +105,12 @@ export function defineComponent<P extends Record<string, unknown> = Record<strin
   const component = (rawProps: P & { children?: AkashNode | (() => AkashNode) }): Node => {
     // Separate children from props, unwrap getter functions for reactivity
     const { children: childrenProp, ...restProps } = rawProps ?? {};
-    const props = new Proxy(restProps as unknown as P, {
-      get(target, key, receiver) {
-        const val = Reflect.get(target, key, receiver);
-        // Unwrap compiler-generated reactive getters (marked with __reactive)
-        if (typeof val === 'function' && (val as any).__reactive) {
-          return val();
-        }
-        return val;
-      },
-    });
+    // Props are passed through as-is — no auto-unwrapping.
+    // Components use readProp() to unwrap reactive getters/signals inside
+    // effects, which preserves dependency tracking. Auto-unwrapping in the
+    // Proxy broke reactivity because it called the getter once and returned
+    // the plain value, so effects never subscribed to the underlying signal.
+    const props = restProps as unknown as P;
 
     const childrenFn: () => AkashNode =
       typeof childrenProp === 'function'
@@ -139,10 +135,17 @@ export function defineComponent<P extends Record<string, unknown> = Record<strin
     let domNode: Node;
 
     try {
-      renderFn = setup(ctx);
-      if (typeof renderFn !== 'function') { throw akashError('AK0040'); }
-      const rendered = renderFn();
-      domNode = nodeToDOM(rendered);
+      // Untrack component creation so that signals created inside the component
+      // don't register with a parent render effect. This prevents parent effects
+      // from re-running (and re-creating the entire component) when internal
+      // component state changes. The component's own effects still track their
+      // dependencies because effect() sets its own subscriber during execution.
+      domNode = untrack(() => {
+        renderFn = setup(ctx);
+        if (typeof renderFn !== 'function') { throw akashError('AK0040'); }
+        const rendered = renderFn();
+        return nodeToDOM(rendered);
+      });
     } catch (err) {
       popScope(scope);
       currentHooks = prevHooks;

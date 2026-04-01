@@ -19,6 +19,8 @@ export { Switch } from './components/switch-toggle.js';
 export type { SwitchProps } from './components/switch-toggle.js';
 export { Select } from './components/select.js';
 export type { SelectProps } from './components/select.js';
+export { EnhancedSelect } from './components/enhanced-select.js';
+export type { EnhancedSelectProps, EnhancedSelectOption, EnhancedSelectOptionGroup } from './components/enhanced-select.js';
 export { Slider } from './components/slider.js';
 export type { SliderProps } from './components/slider.js';
 
@@ -39,8 +41,8 @@ export { List, ListItem } from './components/list.js';
 export type { ListProps, ListItemProps } from './components/list.js';
 export { Badge } from './components/badge.js';
 export type { BadgeProps } from './components/badge.js';
-export { Chip } from './components/chip.js';
-export type { ChipProps } from './components/chip.js';
+export { Chip, ChipSet, ChipListbox, ChipGrid } from './components/chip.js';
+export type { ChipProps, ChipSetProps, ChipListboxProps, ChipListboxOption, ChipGridProps, ChipGridItem } from './components/chip.js';
 export { Avatar } from './components/avatar.js';
 export type { AvatarProps } from './components/avatar.js';
 export { Tooltip } from './components/tooltip.js';
@@ -61,6 +63,18 @@ export { ProgressBar, ProgressCircular } from './components/progress.js';
 export type { ProgressBarProps, ProgressCircularProps } from './components/progress.js';
 export { Skeleton } from './components/skeleton.js';
 export type { SkeletonProps } from './components/skeleton.js';
+
+// Disclosure components
+export { Accordion, ExpansionPanel } from './components/expansion-panel.js';
+export type { AccordionProps, ExpansionPanelProps } from './components/expansion-panel.js';
+
+// Data components
+export { DataTable } from './components/data-table.js';
+export type { DataTableProps, DataTableColumnDef } from './components/data-table.js';
+
+// Drag & Drop components
+export { DragDropList, Draggable, Resizable, DropZone } from './components/drag-drop.js';
+export type { DragDropListProps, DraggableProps, DragPosition, ResizableProps, DropZoneProps } from './components/drag-drop.js';
 
 // Layout components
 export { Divider } from './components/divider.js';

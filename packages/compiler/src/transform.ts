@@ -391,10 +391,23 @@ function generateNode(
         }
       }
 
-      // Default: plain reactive text expression
+      // Default: reactive expression — handles both text values and DOM nodes.
+      // Uses a comment anchor + container pattern so the effect works even before
+      // the node is appended to the DOM (effect runs immediately on creation).
       imports.add('effect');
-      lines.push(`${pad}const ${varName} = document.createTextNode('');`);
-      lines.push(`${pad}effect(() => { ${varName}.textContent = String(${expr}); }, { render: true });`);
+      lines.push(`${pad}const ${varName} = document.createComment('expr');`);
+      lines.push(`${pad}let ${varName}_cur = null;`);
+      lines.push(`${pad}effect(() => {`);
+      lines.push(`${pad}  const __val = ${expr};`);
+      lines.push(`${pad}  if (${varName}_cur && ${varName}_cur.parentNode) ${varName}_cur.parentNode.removeChild(${varName}_cur);`);
+      lines.push(`${pad}  if (__val instanceof Node) {`);
+      lines.push(`${pad}    ${varName}_cur = __val;`);
+      lines.push(`${pad}    if (${varName}.parentNode) ${varName}.parentNode.insertBefore(__val, ${varName});`);
+      lines.push(`${pad}  } else if (__val != null && __val !== false && __val !== '') {`);
+      lines.push(`${pad}    ${varName}_cur = document.createTextNode(String(__val));`);
+      lines.push(`${pad}    if (${varName}.parentNode) ${varName}.parentNode.insertBefore(${varName}_cur, ${varName});`);
+      lines.push(`${pad}  } else { ${varName}_cur = null; }`);
+      lines.push(`${pad}}, { render: true });`);
       break;
     }
   }
@@ -658,12 +671,45 @@ function generateElement(
   }
 
   // 3. Append children (must happen before setting value on <select>)
+  // For expression nodes, effects must run AFTER appendChild so the node has a parent.
+  // Collect deferred effects and emit them after all children are appended.
+  const deferredEffects: string[] = [];
   if (node.children && node.children.length > 0) {
     for (let i = 0; i < node.children.length; i++) {
       const childVar = `${varName}_c${i}`;
+      const beforeLen = lines.length;
       generateNode(node.children[i], lines, imports, indent, childVar, scopeId, childrenAreSvg);
-      lines.push(`${pad}${varName}.appendChild(${childVar});`);
+
+      // For expression nodes: extract the effect lines, defer them after appendChild
+      if (node.children[i].type === 'expression') {
+        // Find lines added by generateNode — separate creation from effect
+        const added = lines.splice(beforeLen, lines.length - beforeLen);
+        const creationLines: string[] = [];
+        const effectLines: string[] = [];
+        let inEffect = false;
+        for (const line of added) {
+          if (line.includes('effect(()')) inEffect = true;
+          if (inEffect) {
+            effectLines.push(line);
+            if (line.trim().startsWith('}, {') || line.trim() === '});') {
+              inEffect = false;
+            }
+          } else {
+            creationLines.push(line);
+          }
+        }
+        lines.push(...creationLines);
+        lines.push(`${pad}${varName}.appendChild(${childVar});`);
+        deferredEffects.push(...effectLines);
+      } else {
+        lines.push(`${pad}${varName}.appendChild(${childVar});`);
+      }
     }
+  }
+
+  // Emit deferred expression effects (must run after children are in the DOM)
+  if (deferredEffects.length > 0) {
+    lines.push(...deferredEffects);
   }
 
   // 4. Set value property AFTER children (so <select> options exist)

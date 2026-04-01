@@ -74,16 +74,192 @@ Chip({
 })
 ```
 
+### Removable Chips
+
+Any chip can show an X button with `removable: true` or `onRemove`:
+
+```ts
+Chip({
+  label: 'john@example.com',
+  removable: true,
+  onRemove: () => removeTag('john@example.com'),
+})
+```
+
+### Color Variants
+
+```ts
+Chip({ label: 'Primary', color: 'primary' })
+Chip({ label: 'Accent', color: 'accent' })
+Chip({ label: 'Custom', color: '#ff5722' })
+Chip({ label: 'Selected', color: 'primary', selected: true })
+```
+
+### Icon (String)
+
+Pass a Material Symbols icon name as a string:
+
+```ts
+Chip({ label: 'Alice', icon: 'person' })
+Chip({ label: 'Bug', icon: 'bug_report', color: 'accent' })
+```
+
+### Disabled
+
+```ts
+Chip({ label: 'Disabled', disabled: true })
+```
+
 ### Chip Props
 
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `label` | `string` | **(required)** | Chip text |
 | `variant` | `'assist' \| 'filter' \| 'input' \| 'suggestion'` | `'assist'` | Visual and behavioral variant |
-| `selected` | `boolean` | `false` | Selected state (only applies to `filter` variant) |
-| `icon` | `AkashNode` | -- | Leading icon node |
-| `onClose` | `() => void` | -- | Close handler (only renders close button for `input` variant) |
+| `selected` | `boolean` | `false` | Selected state |
+| `icon` | `string \| AkashNode` | -- | Leading icon (Material Symbols name or Node) |
+| `color` | `'primary' \| 'accent' \| string` | -- | Color variant or custom CSS color |
+| `removable` | `boolean` | `false` | Show remove (X) button |
+| `disabled` | `boolean` | `false` | Disabled state |
+| `value` | `unknown` | -- | Value for use inside ChipListbox |
 | `onClick` | `(e: MouseEvent) => void` | -- | Click handler |
+| `onRemove` | `() => void` | -- | Remove handler (X button) |
+| `class` | `string` | -- | Custom CSS class |
+
+---
+
+## ChipSet
+
+Simple flex container for displaying chips.
+
+```ts
+import { ChipSet, Chip } from '@akashjs/ui';
+
+ChipSet({
+  children: () => [
+    Chip({ label: 'Transcriber', color: 'primary' }),
+    Chip({ label: 'QA Score: 4.5', color: 'accent' }),
+    Chip({ label: 'Alice', icon: 'person' }),
+  ],
+})
+```
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `gap` | `string` | `'8px'` | Gap between chips |
+| `class` | `string` | -- | Custom CSS class |
+
+---
+
+## ChipListbox
+
+Selectable chip group — single or multi-select with keyboard navigation.
+
+### Single Select
+
+```ts
+import { ChipListbox } from '@akashjs/ui';
+
+ChipListbox({
+  options: [
+    { value: 'bug', label: 'Bug', icon: 'bug_report' },
+    { value: 'feature', label: 'Feature', icon: 'lightbulb' },
+    { value: 'task', label: 'Task', icon: 'task' },
+  ],
+  value: selectedType(),
+  onChange: (v) => selectedType.set(v),
+})
+```
+
+### Multi-Select
+
+```ts
+ChipListbox({
+  options: [
+    { value: 'mild', label: 'Mild' },
+    { value: 'moderate', label: 'Moderate' },
+    { value: 'high', label: 'High' },
+  ],
+  value: selectedEmotions(),
+  onChange: (v) => selectedEmotions.set(v),
+  multiple: true,
+  color: 'accent',
+})
+```
+
+### Keyboard
+
+| Key | Action |
+|-----|--------|
+| Arrow Left/Right/Up/Down | Navigate chips |
+| Space / Enter | Toggle selection |
+
+### ChipListbox Props
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `options` | `ChipListboxOption[]` | -- | Options |
+| `value` | `T \| T[]` | -- | Selected value(s) |
+| `onChange` | `(value) => void` | -- | Change handler |
+| `multiple` | `boolean` | `false` | Multi-select |
+| `compareWith` | `(a, b) => boolean` | `===` | Custom equality |
+| `color` | `string` | -- | Selected chip color |
+| `gap` | `string` | `'8px'` | Gap between chips |
+
+---
+
+## ChipGrid
+
+Editable chip collection with text input, backspace removal, paste support, and optional autocomplete.
+
+### Basic
+
+```ts
+import { ChipGrid } from '@akashjs/ui';
+
+ChipGrid({
+  chips: tags(),
+  onAdd: (val) => tags.update(t => [...t, { value: val, label: val }]),
+  onRemove: (chip) => tags.update(t => t.filter(x => x !== chip)),
+  placeholder: 'Add tag...',
+})
+```
+
+### With Autocomplete
+
+```ts
+ChipGrid({
+  chips: selectedUsers(),
+  onAdd: (user) => selectedUsers.update(u => [...u, user]),
+  onRemove: (user) => selectedUsers.update(u => u.filter(x => x.id !== user.id)),
+  placeholder: 'Search users...',
+  autocomplete: (term) => allUsers.filter(u => u.name.toLowerCase().includes(term.toLowerCase())),
+  displayFn: (u) => u.name,
+})
+```
+
+### Keyboard & Paste
+
+- **Enter** — add chip from input
+- **Backspace** (empty input) — remove last chip
+- **Paste** — splits by comma/newline and adds each as a chip
+- **Arrow Up/Down** — navigate autocomplete
+- **Escape** — close autocomplete
+
+### ChipGrid Props
+
+| Name | Type | Default | Description |
+|---|---|---|---|
+| `chips` | `ChipGridItem[]` | `[]` | Current chips |
+| `onAdd` | `(value: string) => void` | -- | Add callback |
+| `onRemove` | `(chip: ChipGridItem) => void` | -- | Remove callback |
+| `placeholder` | `string` | `''` | Input placeholder |
+| `disabled` | `boolean` | `false` | Disabled state |
+| `color` | `string` | -- | Chip color |
+| `autocomplete` | `(term: string) => ChipGridItem[]` | -- | Autocomplete function |
+| `autocompleteDebounce` | `number` | `200` | Debounce (ms) |
+| `displayFn` | `(value) => string` | -- | Label formatter for object values |
+| `pasteSeparator` | `RegExp` | `/[,\n]/` | Paste split pattern |
 
 ---
 

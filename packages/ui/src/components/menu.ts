@@ -72,7 +72,7 @@ export const Menu = defineComponent<MenuProps>((ctx) => {
 
     /** Unwrap a prop that may be a __getter function or a plain value */
     function readProp<T>(val: T | (() => T)): T {
-      return typeof val === 'function' && (val as any).__reactive ? (val as () => T)() : val as T;
+      return typeof val === 'function' ? (val as () => T)() : val as T;
     }
 
     // Position and toggle visibility
@@ -103,9 +103,15 @@ export const Menu = defineComponent<MenuProps>((ctx) => {
     }, { render: true });
 
     // Render children
-    if (ctx.props.children) {
-      const content = ctx.props.children();
-      if (content instanceof Node) panel.appendChild(content);
+    const content = ctx.children();
+    if (content != null) {
+      if (Array.isArray(content)) {
+        for (const child of content) {
+          if (child instanceof Node) panel.appendChild(child);
+        }
+      } else if (content instanceof Node) {
+        panel.appendChild(content);
+      }
     }
 
     // Close on outside click — deferred to avoid catching the opening click
@@ -135,8 +141,6 @@ export const Menu = defineComponent<MenuProps>((ctx) => {
         ctx.props.onClose?.();
       }
     });
-    document.addEventListener('keydown', onKeyDown);
-
     // Append panel to document.body to avoid overflow:hidden clipping
     if (typeof document !== 'undefined') {
       document.body.appendChild(panel);

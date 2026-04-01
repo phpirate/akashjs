@@ -17,6 +17,7 @@ const pendingUser = new Set<ScheduledEffect>();
 let flushing = false;
 let batchDepth = 0;
 let flushScheduled = false;
+let reflushNeeded = false;
 
 const MAX_EFFECT_RUNS = 3;
 const MAX_FLUSH_ITERATIONS = 100;
@@ -83,6 +84,15 @@ function flush(): void {
   }
 
   flushing = false;
+
+  // If effects were scheduled during the tail end of this flush (after the
+  // while loop's condition was last checked), re-flush them now.
+  if (reflushNeeded) {
+    reflushNeeded = false;
+    if (pendingRender.size > 0 || pendingUser.size > 0) {
+      flush();
+    }
+  }
 }
 
 export function scheduleEffect(fx: ScheduledEffect): void {
@@ -94,6 +104,11 @@ export function scheduleEffect(fx: ScheduledEffect): void {
 
   if (batchDepth === 0 && !flushing) {
     flush();
+  } else if (flushing) {
+    // Effects were added during a flush. The while loop may still pick them
+    // up, but if it has already checked the queues and found them empty,
+    // we need a re-flush after the current one completes.
+    reflushNeeded = true;
   }
 }
 

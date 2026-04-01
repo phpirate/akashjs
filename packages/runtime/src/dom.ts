@@ -99,11 +99,28 @@ export function bindVisible(el: HTMLElement, fn: () => boolean): () => void {
 
 // --- Conditional rendering ---
 
-/** Anchor node type for marking insertion points */
-type Anchor = Comment;
+/** Anchor node — comment for normal DOM, hidden element for table contexts */
+type Anchor = Comment | HTMLElement;
+
+/** Table elements where comment nodes get relocated by the browser */
+const TABLE_TAGS = new Set(['TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TR']);
 
 function createAnchor(label = ''): Anchor {
   return document.createComment(label);
+}
+
+/**
+ * Create a table-safe anchor. Browsers relocate comment nodes inside
+ * table elements, breaking anchor-based insertion. Use a hidden element instead.
+ */
+function createTableSafeAnchor(parent: Node): Anchor {
+  if (parent instanceof HTMLElement && TABLE_TAGS.has(parent.tagName)) {
+    const tag = parent.tagName === 'TR' ? 'td' : 'tr';
+    const el = document.createElement(tag);
+    el.style.display = 'none';
+    return el;
+  }
+  return document.createComment('');
 }
 
 interface ConditionalBlock {
@@ -141,9 +158,13 @@ export function renderConditional(
       }
 
       // Insert new nodes — use anchor.parentNode since the anchor may have
-      // moved from the initial DocumentFragment into the real DOM
+      // moved from the initial DocumentFragment into the real DOM.
+      // In table contexts, the browser may relocate comment anchors.
       const branch = value ? trueBranch : falseBranch;
-      const liveParent = anchor.parentNode;
+      let liveParent = anchor.parentNode;
+      if (!liveParent && current?.nodes[0]?.parentNode) {
+        liveParent = current.nodes[0].parentNode;
+      }
       if (branch && liveParent) {
         const fragment = scope ? runInScope(scope, branch) : branch();
         const nodes = fragment instanceof DocumentFragment
@@ -212,8 +233,20 @@ export function renderList<T>(
 
         if (existing) {
           oldMap.delete(key);
-          existing.value = data;
-          newItems.push(existing);
+          // If the reused item's nodes were detached (e.g., parent removed them),
+          // treat as new to avoid stale DOM references
+          const firstNode = existing.nodes[0];
+          if (firstNode && !firstNode.parentNode) {
+            // Nodes were detached — create fresh
+            const fragment = scope ? runInScope(scope, () => renderItem(data, i)) : renderItem(data, i);
+            const nodes = fragment instanceof DocumentFragment
+              ? Array.from(fragment.childNodes)
+              : [fragment];
+            newItems.push({ key, value: data, nodes, dispose: null });
+          } else {
+            existing.value = data;
+            newItems.push(existing);
+          }
         } else {
           const fragment = scope ? runInScope(scope, () => renderItem(data, i)) : renderItem(data, i);
           const nodes = fragment instanceof DocumentFragment
@@ -231,13 +264,29 @@ export function renderList<T>(
         item.dispose?.();
       }
 
-      // Reconcile DOM order — use anchor.parentNode since anchor may have
-      // moved from the initial DocumentFragment into the real DOM
+      // Reconcile DOM order — insertBefore moves existing nodes, inserts new ones
       const liveParent = anchor.parentNode;
       if (liveParent) {
+        // Normal path — anchor is in the DOM, insert before it
         for (const item of newItems) {
           for (const node of item.nodes) {
             liveParent.insertBefore(node, anchor);
+          }
+        }
+      } else {
+        // Table fallback — browser relocated the comment anchor.
+        // Find the real parent from any node still in the DOM.
+        let realParent: Node | null = null;
+        for (const item of currentItems) {
+          if (item.nodes[0]?.parentNode) { realParent = item.nodes[0].parentNode; break; }
+        }
+        if (realParent) {
+          // Remove old nodes first (oldMap items already removed above)
+          // Then append all new items
+          for (const item of newItems) {
+            for (const node of item.nodes) {
+              realParent.appendChild(node);
+            }
           }
         }
       }

@@ -127,7 +127,12 @@ export function computed<T>(
 
 const computingSet = new Set<ComputedNode<unknown>>();
 
-function recompute<T>(node: ComputedNode<T>): void {
+/**
+ * @param skipEffectNotify - When true, don't schedule effects in notifySubscribers.
+ *   Used when recompute is called from runEffect's dirty check — the effect is
+ *   already being processed, re-scheduling it would trigger the circular run limit.
+ */
+function recompute<T>(node: ComputedNode<T>, skipEffectNotify = false): void {
   // Detect circular computed dependencies — only if THIS node is already being computed
   if (computingSet.has(node as ComputedNode<unknown>)) {
     throw new Error('[AkashJS] Circular dependency detected between computed values.');
@@ -152,14 +157,29 @@ function recompute<T>(node: ComputedNode<T>): void {
   const _t0 = isProfiling() ? performance.now() : 0;
   try {
     const newValue = node.fn();
-    const changed =
-      node.value === undefined || !node.equals(node.value, newValue);
+    const isFirst = node.value === undefined;
+    const changed = isFirst || !node.equals(node.value, newValue);
     node.value = newValue;
     node.state = ComputedState.Clean;
 
-    // Only propagate if value actually changed.
-    if (changed) {
-      notifySubscribers(node);
+    // Only propagate if value actually changed (skip first computation —
+    // the effect that triggered the read is already running).
+    if (changed && !isFirst) {
+      if (skipEffectNotify) {
+        // Only mark downstream computeds as dirty — don't schedule effects.
+        // Effects are already handled by the runEffect that triggered this recompute.
+        for (const sub of [...node.subscribers]) {
+          if (sub._tag === 'computed') {
+            sub.state = ComputedState.Dirty;
+            // Recursively propagate to further computeds
+            for (const sub2 of [...sub.subscribers]) {
+              if (sub2._tag === 'computed') sub2.state = ComputedState.Dirty;
+            }
+          }
+        }
+      } else {
+        notifySubscribers(node);
+      }
     }
   } finally {
     if (_t0) recordPerfEntry('computed', 'computed', performance.now() - _t0);
@@ -214,17 +234,26 @@ function runEffect(node: EffectNode): void {
   if (node.disposed) return;
 
   // Before re-running, check if any dirty computed source actually changed.
-  // If all computed sources resolved to the same value, skip the re-run.
+  // Compare against per-effect cached values (not the shared source.value which
+  // may have been updated by another effect's recompute already).
   if (node.sources.size > 0) {
     let anyChanged = false;
     for (const source of node.sources) {
       if ('_tag' in source && source._tag === 'computed') {
         if (source.state === ComputedState.Dirty) {
-          const oldValue = source.value;
-          recompute(source);
-          if (!source.equals(oldValue as never, source.value as never)) {
+          recompute(source, true);
+        }
+        // Compare against this effect's last-seen value (not the shared source.value
+        // which another effect's recompute may have already updated)
+        const cachedValues = (node as any)._lastSeen as Map<unknown, unknown> | undefined;
+        if (cachedValues?.has(source)) {
+          const lastSeen = cachedValues.get(source);
+          if (!source.equals(lastSeen as never, source.value as never)) {
             anyChanged = true;
           }
+        } else {
+          // No cached value — first dirty check after creation. Always run.
+          anyChanged = true;
         }
       } else {
         // Plain signal source — if we got scheduled, something changed
@@ -265,6 +294,16 @@ function runEffect(node: EffectNode): void {
   } finally {
     if (_t0) recordPerfEntry('effect', 'effect', performance.now() - _t0);
     currentSubscriber = prevSubscriber;
+
+    // Cache computed values so the next dirty check compares against THIS effect's
+    // last-seen values, not the shared source.value (which another effect may update)
+    const lastSeen = new Map();
+    for (const source of node.sources) {
+      if ('_tag' in source && source._tag === 'computed') {
+        lastSeen.set(source, source.value);
+      }
+    }
+    if (lastSeen.size > 0) (node as any)._lastSeen = lastSeen;
   }
 }
 

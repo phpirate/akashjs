@@ -5,6 +5,52 @@ All notable changes to AkashJS will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-04-01
+
+### Added
+
+**UI Components**
+- `DataTable` — full-featured data table with sorting (single + multi via Shift+click), global and per-column filtering, pagination, row selection with Shift-range, column resizing and reordering, inline cell editing, row expand/detail, row grouping, tree/hierarchical rows, row drag reorder, row context menu, footer summary row, keyboard navigation, responsive card stacking, virtual scroll, CSV and Excel (XLSX) export
+- `EnhancedSelect` — custom dropdown overlay with search (debounced), multi-select, option groups, custom option/value rendering, keyboard navigation, `compareWith` for object equality, clearable, floating label with correct MD3 behavior
+- `Accordion` + `ExpansionPanel` — collapsible panels with smooth height animation (double rAF), single-open and multi-open modes, title + description, custom header, flat variant, controlled expanded state, disabled/hideToggle, keyboard support
+- `ChipSet` — simple flex container for display chips
+- `ChipListbox` — selectable chip group (single or multi) with keyboard navigation and `compareWith`
+- `ChipGrid` — editable chip collection with text input, Enter to add, Backspace to remove, paste support (comma/newline split), autocomplete dropdown with debounce
+- `DragDropList` — sortable list reordering with optional drag handle, axis lock, drop placeholder
+- `Draggable` — free-form element positioning with handle selector, axis lock, boundary constraint (viewport/parent/element), pointer capture, rAF-throttled updates, `will-change: transform` GPU hint, cached bounds
+- `Resizable` — panel resize via edge drag handles (left/right/top/bottom/both), min/max constraints, enlarged hit area
+- `DropZone` — file upload drop zone with drag-over styling, file type filtering, click-to-browse fallback
+
+**Chip (enhanced)**
+- `icon` prop accepts Material Symbols name (string) in addition to Node
+- `color` prop: `'primary'`, `'accent'`, or custom CSS color
+- `removable` prop shows X button on any chip variant (not just input)
+- `disabled` prop
+- `value` prop for use inside `ChipListbox`
+
+### Fixed
+
+**Runtime — Reactive scope isolation**
+- `defineComponent` now wraps setup + render in `untrack()` — signals created inside a component no longer leak to parent render effects, preventing full component re-creation on internal state changes (BUG-140)
+- Removed the Props Proxy auto-unwrap of `__reactive` getters — props are passed through as-is, preserving reactive tracking when `readProp()` is called inside effects (BUG-141)
+- Scheduler `flush()` re-entry: added `reflushNeeded` flag so effects scheduled during the tail end of a flush are guaranteed to run (BUG-142)
+
+**UI Components**
+- Menu: removed undefined `onKeyDown` reference that crashed on render (BUG-128)
+- Menu: children handled as array (not just single Node) (BUG-129)
+- Menu: uses `ctx.children()` instead of `ctx.props.children()` (BUG-130)
+- `readProp()` in all overlay components (Dialog, Drawer, Menu, Combobox, DataTable) now calls any function, not just `__reactive`-marked ones — signals passed as props are unwrapped correctly (BUG-131)
+- EnhancedSelect: floating label no longer overlaps placeholder — label acts as placeholder when unfocused+empty (BUG-132)
+- EnhancedSelect: grouped option items indented 32px under group headers
+- ExpansionPanel: prop sync effect only runs when `expanded` is a reactive function, not a static boolean (BUG-134)
+- ExpansionPanel: initial value uses `readProp()` for correct signal unwrapping
+- Accordion/ExpansionPanel: `resolveChildren()` helper falls back to `ctx.props.children` for plain function-call invocation (BUG-136)
+- Draggable: `pointer-events: none` during drag prevents flicker (BUG-143), rAF-throttled position updates, `will-change: transform` GPU hint, `setPointerCapture` for reliable tracking
+- Draggable: boundary bounds cached on drag start, cleared on end — no `getBoundingClientRect()` reflows during drag
+- Draggable: correct boundary math accounts for element's initial offset within parent
+- Draggable: `display: inline-block; width: fit-content` so wrapper matches content size (BUG-146)
+- Resizable: resize operates on outer wrapper directly instead of inner content div (BUG-148), handle default size increased to 8px with enlarged hit area
+
 ## [0.2.2] - 2026-03-31
 
 ### Fixed

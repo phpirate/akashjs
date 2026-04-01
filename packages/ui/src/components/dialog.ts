@@ -15,7 +15,7 @@ export interface DialogProps {
 
 /** Unwrap a prop that may be a __getter function or a plain value */
 function readProp<T>(val: T | (() => T)): T {
-  return typeof val === 'function' && (val as any).__reactive ? (val as () => T)() : val as T;
+  return typeof val === 'function' ? (val as () => T)() : val as T;
 }
 
 export const Dialog = defineComponent<DialogProps>((ctx) => {

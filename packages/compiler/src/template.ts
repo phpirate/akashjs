@@ -73,6 +73,12 @@ export function parseTemplate(content: string): TemplateNode[] {
 
       const expr = parseExpression(content, pos);
       if (expr) {
+        // Skip JSX comments: {/* ... */}
+        const trimmedExpr = (expr.node.content ?? '').trim();
+        if (trimmedExpr.startsWith('/*') && trimmedExpr.endsWith('*/')) {
+          pos = expr.end;
+          continue;
+        }
         nodes.push(expr.node);
         pos = expr.end;
         continue;

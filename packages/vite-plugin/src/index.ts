@@ -183,24 +183,26 @@ export default function akash(options: AkashPluginOptions = {}): Plugin {
       const oldSource = sourceCache.get(file);
 
       if (oldSource) {
-        // Read new source to analyze what changed
         read().then((newSource) => {
           const analysis = analyzeHmrChange(oldSource, newSource);
 
           if (analysis.styleOnly) {
-            // Style-only change — Vite will handle the CSS update
-            // via the style HMR code we injected
+            // Style-only change — invalidate module to re-run style injection
             server.ws.send({
               type: 'custom',
               event: 'akash:style-update',
               data: { file },
             });
+          } else {
+            // Script or template changed — full page reload
+            server.ws.send({ type: 'full-reload' });
           }
         });
+      } else {
+        // No cached source — full reload to be safe
+        server.ws.send({ type: 'full-reload' });
       }
 
-      // Always return modules to invalidate — the HMR code in the
-      // client handles the actual update strategy
       return modules;
     },
   };
