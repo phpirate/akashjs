@@ -4,6 +4,9 @@ hero:
   name: AkashJS
   text: Angular structure, Svelte simplicity
   tagline: A TypeScript-first UI framework with signals reactivity, direct DOM rendering, and zero boilerplate. 950+ tests. 12 packages. Everything you need.
+  image:
+    src: /logo-hero.png
+    alt: AkashJS Logo
   actions:
     - theme: brand
       text: Get Started
