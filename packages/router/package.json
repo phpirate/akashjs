@@ -1,6 +1,6 @@
 {
   "name": "@akashjs/router",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "AkashJS router — file-based routing, guards, loaders",
   "type": "module",
   "main": "dist/index.cjs",
