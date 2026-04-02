@@ -71,6 +71,30 @@
   color: var(--vp-c-text-2);
 }
 
+/* Hero image — bigger with soft white background */
+.VPHero .VPImage.image-src {
+  max-width: 320px !important;
+  max-height: 320px !important;
+  width: 320px !important;
+  height: auto !important;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 60%, transparent 80%);
+  padding: 24px;
+  box-sizing: content-box;
+}
+
+.dark .VPHero .VPImage.image-src {
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.06) 60%, transparent 80%);
+}
+
+@media (max-width: 768px) {
+  .VPHero .VPImage.image-src {
+    max-width: 200px !important;
+    width: 200px !important;
+    padding: 16px;
+  }
+}
+
 /* Hero gradient background glow */
 .VPHero::before {
   content: '';
