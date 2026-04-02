@@ -78,14 +78,14 @@
   width: 320px !important;
   height: auto !important;
   border-radius: 50%;
-  background: #d0d0d8;
-  padding: 32px;
+  background: linear-gradient(135deg, #d0d0d8 0%, #b8b0c8 40%, #a8b8d0 70%, #c0d0d8 100%);
+  padding: 25px;
   box-sizing: content-box;
   margin-left: 40px;
 }
 
 .dark .VPHero .VPImage.image-src {
-  background: #d0d0d8;
+  background: linear-gradient(135deg, #d0d0d8 0%, #b8b0c8 40%, #a8b8d0 70%, #c0d0d8 100%);
 }
 
 @media (max-width: 768px) {
