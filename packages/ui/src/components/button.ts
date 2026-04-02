@@ -11,10 +11,14 @@ import { addRipple, injectRippleStyles } from './ripple.js';
 export interface ButtonProps {
   variant?: 'filled' | 'outlined' | 'text' | 'tonal';
   size?: 'small' | 'medium' | 'large';
-  disabled?: boolean;
+  disabled?: boolean | (() => boolean);
   icon?: AkashNode;
   onClick?: (e: MouseEvent) => void;
   class?: string;
+}
+
+function readProp<T>(val: T | (() => T)): T {
+  return typeof val === 'function' ? (val as () => T)() : val as T;
 }
 
 export const Button = defineComponent<ButtonProps>((ctx) => {
@@ -23,19 +27,17 @@ export const Button = defineComponent<ButtonProps>((ctx) => {
   const {
     variant = 'filled',
     size = 'medium',
-    disabled = false,
+    disabled: disabledProp = false,
     icon,
     onClick,
     class: className,
   } = ctx.props;
 
   return () => {
+    const disabled = readProp(disabledProp);
     const button = document.createElement('button');
     button.type = 'button';
-
-    if (disabled) {
-      button.disabled = true;
-    }
+    button.disabled = disabled;
 
     if (onClick) {
       button.addEventListener('click', onClick);
@@ -109,22 +111,32 @@ export const Button = defineComponent<ButtonProps>((ctx) => {
     button.style.cssText = baseStyles + variantStyles;
 
     // --- Hover / focus states ---
-    if (!disabled) {
-      button.addEventListener('mouseenter', () => {
-        if (variant === 'filled') {
-          button.style.boxShadow = '0 1px 3px 1px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.3)';
-        }
-      });
-      button.addEventListener('mouseleave', () => {
-        button.style.boxShadow = '';
-      });
-      button.addEventListener('focus', () => {
+    button.addEventListener('mouseenter', () => {
+      if (!button.disabled && variant === 'filled') {
+        button.style.boxShadow = '0 1px 3px 1px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.3)';
+      }
+    });
+    button.addEventListener('mouseleave', () => {
+      button.style.boxShadow = '';
+    });
+    button.addEventListener('focus', () => {
+      if (!button.disabled) {
         button.style.outline = `2px solid var(--md-sys-color-primary, #6750a4)`;
         button.style.outlineOffset = '2px';
-      });
-      button.addEventListener('blur', () => {
-        button.style.outline = 'none';
-        button.style.outlineOffset = '';
+      }
+    });
+    button.addEventListener('blur', () => {
+      button.style.outline = 'none';
+      button.style.outlineOffset = '';
+    });
+
+    // --- Reactive disabled ---
+    if (typeof disabledProp === 'function') {
+      effect(() => {
+        const d = (disabledProp as () => boolean)();
+        button.disabled = d;
+        button.style.cursor = d ? 'default' : 'pointer';
+        button.style.opacity = d ? '0.38' : '';
       });
     }
 

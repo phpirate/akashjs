@@ -1,11 +1,16 @@
 # @akashjs/router API
 
-## createRouter(routes)
+## createRouter(routes, options?)
 
-Create a router instance.
+Create a router instance with automatic scroll restoration.
 
 ```ts
-function createRouter(routes: RouteConfig[]): Router;
+function createRouter(routes: RouteConfig[], options?: RouterOptions): Router;
+
+interface RouterOptions {
+  /** Enable automatic scroll restoration (default: true) */
+  scrollRestoration?: boolean;
+}
 
 interface Router {
   navigate: NavigateFn;
@@ -13,6 +18,13 @@ interface Router {
   dispose: () => void;
 }
 ```
+
+Scroll restoration is enabled by default:
+- **Forward navigation** scrolls to top (or to `#hash` element)
+- **Back/Forward** restores the saved scroll position
+- **Query-only changes** preserve scroll position
+- Opt out globally with `{ scrollRestoration: false }`
+- Opt out per navigation with `navigate('/path', { scroll: false })`
 
 ## Hooks
 
@@ -45,6 +57,43 @@ Get the navigate function.
 
 ```ts
 function useNavigate(): NavigateFn;
+```
+
+### useSearchParams()
+
+Reactive read/write access to URL query parameters.
+
+```ts
+function useSearchParams(): [
+  () => Record<string, string>,
+  (params: Record<string, string | null | undefined>, options?: SetSearchParamsOptions) => void,
+];
+
+interface SetSearchParamsOptions {
+  /** Replace all params instead of merging (default: false) */
+  replace?: boolean;
+  /** Push a new history entry instead of replacing (default: false) */
+  push?: boolean;
+}
+```
+
+```ts
+const [searchParams, setSearchParams] = useSearchParams();
+
+// Read (reactive)
+const page = searchParams().page;
+
+// Write — merges with existing params, uses replaceState by default
+setSearchParams({ page: '2' });
+
+// Remove a param
+setSearchParams({ page: null });
+
+// Replace ALL params
+setSearchParams({ q: 'hello' }, { replace: true });
+
+// Push to history (new back button entry)
+setSearchParams({ page: '3' }, { push: true });
 ```
 
 ### useLoaderData()
@@ -95,6 +144,58 @@ function guardWith(
   check: (ctx: GuardContext) => Promise<boolean> | boolean,
   redirectTo: string,
 ): RouteGuard;
+```
+
+## Navigation Events
+
+### onBeforeNavigate(callback)
+
+Register a callback that fires before navigation starts (before guards/loaders). Observational only — cannot block navigation. Auto-cleans up on component unmount.
+
+```ts
+function onBeforeNavigate(cb: NavigationEventCallback): () => void;
+```
+
+### onAfterNavigate(callback)
+
+Register a callback that fires after navigation completes and DOM updates. Auto-cleans up on component unmount.
+
+```ts
+function onAfterNavigate(cb: NavigationEventCallback): () => void;
+```
+
+### NavigationEvent
+
+```ts
+interface NavigationEvent {
+  from: NavigationLocation;
+  to: NavigationLocation;
+  type: 'push' | 'replace' | 'pop';
+}
+
+interface NavigationLocation {
+  path: string;
+  params: Record<string, string>;
+  query: Record<string, string>;
+  hash: string;
+}
+```
+
+```ts
+import { onBeforeNavigate, onAfterNavigate } from '@akashjs/router';
+
+// Cancel in-flight requests when leaving a page
+onBeforeNavigate(() => {
+  abortController.abort();
+});
+
+// Analytics + scroll to top on page changes
+onAfterNavigate((event) => {
+  analytics.trackPageView(event.to.path);
+  if (event.from.path !== event.to.path) {
+    window.scrollTo(0, 0);
+  }
+});
 ```
 
 ## Types

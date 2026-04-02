@@ -391,6 +391,36 @@ function generateNode(
         }
       }
 
+      // Detect component function calls: PascalCase({...})
+      // These must NOT be wrapped in an effect — the component is created once
+      // and reactive props are passed as __getter() wrappers so the component
+      // can subscribe internally. Re-running the call would destroy & recreate
+      // the entire component DOM on every signal change (losing focus, state, etc).
+      const componentCallMatch = /^([A-Z][a-zA-Z0-9_$]*)\s*\(\s*\{([\s\S]*)\}\s*\)$/.exec(expr);
+      if (componentCallMatch) {
+        const compName = componentCallMatch[1];
+        const propsBody = componentCallMatch[2];
+
+        // Parse the props object literal and wrap reactive values as getters
+        const wrappedProps = propsBody.replace(
+          /(\w+)\s*:\s*([^,}]+)/g,
+          (_match, key: string, value: string) => {
+            const val = value.trim();
+            if (key.startsWith('on') || isAlreadyFunction(val)) {
+              return `${key}: ${val}`;
+            }
+            if (needsReactiveWrapper(val)) {
+              imports.add('__getter');
+              return `${key}: __getter(() => ${val})`;
+            }
+            return `${key}: ${val}`;
+          },
+        );
+
+        lines.push(`${pad}const ${varName} = ${compName}({ ${wrappedProps} });`);
+        break;
+      }
+
       // Default: reactive expression — handles both text values and DOM nodes.
       // Uses a comment anchor + container pattern so the effect works even before
       // the node is appended to the DOM (effect runs immediately on creation).

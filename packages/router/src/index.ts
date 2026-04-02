@@ -2,7 +2,8 @@
 
 // Core router
 export { createRouter, compilePath, matchPath, resolvePath, resolveRoutes } from './router.js';
-export { useRoute, useParams, useNavigate, useLoaderData } from './router.js';
+export { useRoute, useParams, useNavigate, useLoaderData, useSearchParams, onBeforeNavigate, onAfterNavigate } from './router.js';
+export type { SetSearchParamsOptions } from './router.js';
 
 // Components
 export { Link } from './link.js';
@@ -41,4 +42,8 @@ export type {
   RouteLoader,
   LoaderContext,
   RouteInfo,
+  NavigationEvent,
+  NavigationEventCallback,
+  NavigationLocation,
+  RouterOptions,
 } from './types.js';

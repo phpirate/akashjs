@@ -160,7 +160,7 @@ export const Select = defineComponent<SelectProps>((ctx) => {
 
     // --- Change handler ---
     selectEl.addEventListener('change', () => {
-      if (value) value.set(selectEl.value);
+      if (value && typeof value.set === 'function') value.set(selectEl.value);
       if (onChange) onChange(selectEl.value);
     });
 
@@ -170,6 +170,18 @@ export const Select = defineComponent<SelectProps>((ctx) => {
         const v = value();
         if (selectEl.value !== v) {
           selectEl.value = v;
+        }
+        // Update label float for computed() values that change externally
+        if (label && document.activeElement !== selectEl) {
+          const hasSel = v.length > 0;
+          const labelEl = fieldContainer.querySelector('label');
+          if (labelEl) {
+            labelEl.style.fontSize = hasSel ? '12px' : '16px';
+            labelEl.style.top = hasSel ? '-8px' : '50%';
+            labelEl.style.transform = hasSel ? 'none' : 'translateY(-50%)';
+            labelEl.style.backgroundColor = hasSel ? 'var(--md-sys-color-surface, #fffbfe)' : 'transparent';
+            labelEl.style.padding = hasSel ? '0 4px' : '0';
+          }
         }
       });
     }

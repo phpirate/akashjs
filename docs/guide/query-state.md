@@ -101,3 +101,27 @@ removeQueryState('q');    // stop syncing a specific key
 2. On `.set()`, updates the URL via `replaceState` (or `pushState`)
 3. On `popstate` (back/forward), all registered signals update in a batch
 4. Default values are removed from URL to keep it clean
+
+## Router Integration: useSearchParams()
+
+If you're using `@akashjs/router`, you can also use `useSearchParams()` for raw read/write access to URL query parameters:
+
+```ts
+import { useSearchParams } from '@akashjs/router';
+
+const [searchParams, setSearchParams] = useSearchParams();
+
+// Read (reactive — updates on URL change)
+const status = searchParams().status;
+
+// Write — merges with existing params
+setSearchParams({ status: 'active' });
+
+// Remove a param
+setSearchParams({ status: null });
+
+// Replace all params
+setSearchParams({ q: 'hello' }, { replace: true });
+```
+
+`useSearchParams` is lower-level than `useQueryState` — it works with raw `Record<string, string>` and doesn't auto-serialize types. Use `useQueryState` when you want typed signals with automatic URL sync; use `useSearchParams` when you need full control over the query string.

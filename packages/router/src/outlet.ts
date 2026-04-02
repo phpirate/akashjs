@@ -17,14 +17,15 @@ export const Outlet = defineComponent(() => {
   const routerCtx = useRouterInternal();
   const currentDepth = routerCtx.depth();
 
-  // Provide incremented depth for any nested Outlets within our children
+  // Provide incremented depth for any nested Outlets within our children.
+  // Single context object shared by both the sync and async provideRouter
+  // calls — prevents drift when new fields are added to RouterInternal.
   const childDepth = signal(currentDepth + 1);
-  provideRouter({
-    route: routerCtx.route,
-    navigate: routerCtx.navigate,
-    loaderData: routerCtx.loaderData,
+  const childCtx = {
+    ...routerCtx,
     depth: childDepth,
-  });
+  };
+  provideRouter(childCtx);
 
   // Capture scope so lazy-loaded children can inherit provide/inject context
   const outletScope = getCurrentScope()!;
@@ -72,13 +73,8 @@ export const Outlet = defineComponent(() => {
       // re-provide the router context to ensure inject() works even
       // if the async boundary breaks the scope chain.
       const node = runInScope(outletScope, () => {
-        // Re-provide router context with incremented depth inside the restored scope
-        provideRouter({
-          route: routerCtx.route,
-          navigate: routerCtx.navigate,
-          loaderData: routerCtx.loaderData,
-          depth: childDepth,
-        });
+        // Re-provide the same context inside the restored scope
+        provideRouter(childCtx);
         return Comp({ children: undefined });
       });
       container.appendChild(node);

@@ -18,6 +18,8 @@ export interface TextFieldProps {
   helperText?: string;
   variant?: 'filled' | 'outlined';
   onInput?: (value: string) => void;
+  /** Alias for onInput — consistent with other components */
+  onChange?: (value: string) => void;
   onBlur?: (e: FocusEvent) => void;
 }
 
@@ -32,8 +34,10 @@ export const TextField = defineComponent<TextFieldProps>((ctx) => {
     helperText,
     variant = 'filled',
     onInput,
+    onChange,
     onBlur,
   } = ctx.props;
+  const onValueChange = onInput ?? onChange;
 
   return () => {
     const wrapper = document.createElement('div');
@@ -101,7 +105,10 @@ export const TextField = defineComponent<TextFieldProps>((ctx) => {
     // --- Input element ---
     const input = document.createElement('input');
     input.type = type;
-    if (placeholder) input.placeholder = placeholder;
+    // When label is present, only show placeholder when label is floated
+    // to prevent overlap between resting label and placeholder text
+    if (placeholder && !label) input.placeholder = placeholder;
+    if (placeholder && label && isFloating) input.placeholder = placeholder;
     if (disabled) input.disabled = true;
     if (value) input.value = value();
 
@@ -124,7 +131,10 @@ export const TextField = defineComponent<TextFieldProps>((ctx) => {
     // --- Focus & value handling ---
     input.addEventListener('focus', () => {
       isFloating = true;
-      if (label) applyLabelStyles(true);
+      if (label) {
+        applyLabelStyles(true);
+        if (placeholder) input.placeholder = placeholder;
+      }
 
       if (isFilled) {
         fieldContainer.style.borderBottomWidth = '2px';
@@ -146,7 +156,10 @@ export const TextField = defineComponent<TextFieldProps>((ctx) => {
     input.addEventListener('blur', (e) => {
       const hasContent = input.value.length > 0;
       isFloating = hasContent;
-      if (label) applyLabelStyles(hasContent);
+      if (label) {
+        applyLabelStyles(hasContent);
+        input.placeholder = hasContent && placeholder ? placeholder : '';
+      }
 
       if (isFilled) {
         fieldContainer.style.borderBottomWidth = error ? '2px' : '1px';
@@ -170,20 +183,26 @@ export const TextField = defineComponent<TextFieldProps>((ctx) => {
     });
 
     input.addEventListener('input', () => {
-      if (value) value.set(input.value);
-      if (onInput) onInput(input.value);
+      if (value && typeof value.set === 'function') value.set(input.value);
+      if (onValueChange) onValueChange(input.value);
     });
 
     // --- Reactive value sync ---
     if (value) {
       effect(() => {
         const v = value();
+        // Skip when the input has focus — the user's keystroke already
+        // updated the DOM value, the label is already floated, and
+        // running this effect mid-cycle (e.g. type → onChange → URL
+        // update → computed re-evaluates) can steal focus.
+        if (document.activeElement === input) return;
         if (input.value !== v) {
           input.value = v;
-          const hasContent = v.length > 0;
-          if (label && document.activeElement !== input) {
-            applyLabelStyles(hasContent);
-          }
+        }
+        const hasContent = v.length > 0;
+        if (label) {
+          applyLabelStyles(hasContent);
+          input.placeholder = hasContent && placeholder ? placeholder : '';
         }
       });
     }

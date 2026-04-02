@@ -23,6 +23,8 @@ export { EnhancedSelect } from './components/enhanced-select.js';
 export type { EnhancedSelectProps, EnhancedSelectOption, EnhancedSelectOptionGroup } from './components/enhanced-select.js';
 export { Slider } from './components/slider.js';
 export type { SliderProps } from './components/slider.js';
+export { DatePicker, DateRangePicker, DateTimePicker } from './components/date-picker.js';
+export type { DatePickerProps, DateRangePickerProps, DateRangePreset, DateTimePickerProps } from './components/date-picker.js';
 
 // Navigation components
 export { AppBar } from './components/app-bar.js';
@@ -71,6 +73,14 @@ export type { AccordionProps, ExpansionPanelProps } from './components/expansion
 // Data components
 export { DataTable } from './components/data-table.js';
 export type { DataTableProps, DataTableColumnDef } from './components/data-table.js';
+
+// Rich Text
+export { RichTextEditor, ContentEditable, htmlToMarkdown, markdownToHtml } from './components/rich-text.js';
+export type { RichTextEditorProps, ContentEditableProps, ToolbarItem } from './components/rich-text.js';
+
+// Virtual Scroll
+export { VirtualScroll, useIntersectionObserver } from './components/virtual-scroll.js';
+export type { VirtualScrollProps, VirtualScrollRef, IntersectionObserverOptions, IntersectionObserverResult } from './components/virtual-scroll.js';
 
 // Drag & Drop components
 export { DragDropList, Draggable, Resizable, DropZone } from './components/drag-drop.js';

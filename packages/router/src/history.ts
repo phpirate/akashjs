@@ -39,10 +39,17 @@ export interface HistoryManager {
   dispose(): void;
 }
 
+let scrollKeyCounter = Date.now();
+
 export function createHistory(): HistoryManager {
   const location = signal<HistoryLocation>(currentLocation(), {
     equals: (a, b) => a.pathname === b.pathname && a.search === b.search && a.hash === b.hash,
   });
+
+  // Ensure the initial entry has a scroll key
+  if (!window.history.state?.__scrollKey) {
+    window.history.replaceState({ ...window.history.state, __scrollKey: String(scrollKeyCounter) }, '');
+  }
 
   const onPopState = () => {
     location.set(currentLocation());
@@ -54,12 +61,16 @@ export function createHistory(): HistoryManager {
     location,
 
     push(url: string) {
-      window.history.pushState(null, '', url);
+      // Each new history entry gets a unique scroll key
+      const key = String(++scrollKeyCounter);
+      window.history.pushState({ __scrollKey: key }, '', url);
       location.set(currentLocation());
     },
 
     replace(url: string) {
-      window.history.replaceState(null, '', url);
+      // Preserve existing scroll key on replace
+      const existing = window.history.state;
+      window.history.replaceState({ ...existing }, '', url);
       location.set(currentLocation());
     },
 

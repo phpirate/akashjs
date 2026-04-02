@@ -86,6 +86,13 @@ export interface NavigateOptions {
   query?: Record<string, string>;
   /** Hash (without #) */
   hash?: string;
+  /** Set to false to skip scroll behavior for this navigation */
+  scroll?: boolean;
+}
+
+export interface RouterOptions {
+  /** Enable automatic scroll restoration (default: true) */
+  scrollRestoration?: boolean;
 }
 
 // --- Router instance ---
@@ -118,3 +125,20 @@ export interface RouteInfo {
   /** Current hash */
   hash: () => string;
 }
+
+// --- Navigation events ---
+
+export interface NavigationLocation {
+  path: string;
+  params: Record<string, string>;
+  query: Record<string, string>;
+  hash: string;
+}
+
+export interface NavigationEvent {
+  from: NavigationLocation;
+  to: NavigationLocation;
+  type: 'push' | 'replace' | 'pop';
+}
+
+export type NavigationEventCallback = (event: NavigationEvent) => void;
