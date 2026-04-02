@@ -73,14 +73,15 @@
 
 /* Hero image — large with solid circle background */
 .VPHero .VPImage.image-src {
-  max-width: 380px !important;
-  max-height: 380px !important;
-  width: 380px !important;
+  max-width: 320px !important;
+  max-height: 320px !important;
+  width: 320px !important;
   height: auto !important;
   border-radius: 50%;
   background: #d0d0d8;
-  padding: 40px;
+  padding: 32px;
   box-sizing: content-box;
+  margin-left: 40px;
 }
 
 .dark .VPHero .VPImage.image-src {
