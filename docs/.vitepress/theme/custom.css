@@ -78,14 +78,24 @@
   width: 320px !important;
   height: auto !important;
   border-radius: 50%;
-  background: linear-gradient(135deg, #d0d0d8 0%, #b8b0c8 40%, #a8b8d0 70%, #c0d0d8 100%);
+  background: linear-gradient(145deg, #e8e8f0 0%, #f5f5fa 15%, #d8d4e8 35%, #c8d8f0 55%, #e0e8f0 75%, #f0eff8 100%);
   padding: 25px;
   box-sizing: content-box;
   margin-left: 40px;
+  box-shadow:
+    0 0 40px rgba(103, 80, 164, 0.15),
+    0 0 80px rgba(59, 130, 246, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
 }
 
 .dark .VPHero .VPImage.image-src {
-  background: linear-gradient(135deg, #d0d0d8 0%, #b8b0c8 40%, #a8b8d0 70%, #c0d0d8 100%);
+  background: linear-gradient(145deg, #e8e8f0 0%, #f5f5fa 15%, #d8d4e8 35%, #c8d8f0 55%, #e0e8f0 75%, #f0eff8 100%);
+  box-shadow:
+    0 0 60px rgba(103, 80, 164, 0.25),
+    0 0 120px rgba(59, 130, 246, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.05);
 }
 
 @media (max-width: 768px) {
