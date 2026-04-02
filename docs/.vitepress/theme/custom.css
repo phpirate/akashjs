@@ -323,14 +323,18 @@
 }
 
 /* --- Buttons --- */
+.VPButton.brand,
+.VPButton.alt {
+  border-radius: 12px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  padding: 8px 20px !important;
+  transition: all 0.2s !important;
+}
+
 .VPButton.brand {
   background: var(--akash-gradient) !important;
   border: none !important;
-  border-radius: 12px !important;
-  padding: 10px 24px !important;
-  font-weight: 600 !important;
-  font-size: 15px !important;
-  transition: all 0.2s !important;
   box-shadow: 0 4px 14px rgba(103, 80, 164, 0.3);
 }
 
@@ -340,10 +344,7 @@
 }
 
 .VPButton.alt {
-  border-radius: 12px !important;
-  font-weight: 600 !important;
   border: 2px solid var(--vp-c-divider) !important;
-  transition: all 0.2s !important;
 }
 
 .VPButton.alt:hover {
