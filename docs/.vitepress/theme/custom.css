@@ -71,27 +71,37 @@
   color: var(--vp-c-text-2);
 }
 
-/* Hero image — bigger with soft white background */
+/* Hero image — large with gradient glow matching brand colors */
 .VPHero .VPImage.image-src {
-  max-width: 320px !important;
-  max-height: 320px !important;
-  width: 320px !important;
+  max-width: 380px !important;
+  max-height: 380px !important;
+  width: 380px !important;
   height: auto !important;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 60%, transparent 80%);
-  padding: 24px;
+  background: radial-gradient(circle,
+    rgba(103, 80, 164, 0.18) 0%,
+    rgba(59, 130, 246, 0.12) 40%,
+    rgba(16, 185, 129, 0.08) 65%,
+    transparent 85%
+  );
+  padding: 40px;
   box-sizing: content-box;
 }
 
 .dark .VPHero .VPImage.image-src {
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.06) 60%, transparent 80%);
+  background: radial-gradient(circle,
+    rgba(103, 80, 164, 0.25) 0%,
+    rgba(59, 130, 246, 0.15) 40%,
+    rgba(16, 185, 129, 0.10) 65%,
+    transparent 85%
+  );
 }
 
 @media (max-width: 768px) {
   .VPHero .VPImage.image-src {
-    max-width: 200px !important;
-    width: 200px !important;
-    padding: 16px;
+    max-width: 240px !important;
+    width: 240px !important;
+    padding: 24px;
   }
 }
 
