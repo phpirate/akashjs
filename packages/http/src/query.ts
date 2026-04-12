@@ -193,7 +193,7 @@ export function createQueryClient(options: QueryClientOptions = {}): QueryClient
 
 export function useCachedQuery<T>(
   client: QueryClient,
-  key: CacheKey | (() => CacheKey),
+  key: CacheKey | null | (() => CacheKey | null),
   fetcher: () => Promise<T>,
   options: QueryOptions<T> = {},
 ): QueryResult<T> {
@@ -206,18 +206,18 @@ export function useCachedQuery<T>(
   let requestId = 0;
   const syncDisposers: Array<() => void> = [];
 
-  function resolveKey(): CacheKey {
+  function resolveKey(): CacheKey | null {
     return typeof key === 'function' ? key() : key;
   }
 
-  function doFetch(cacheKey: CacheKey): void {
+  function doFetch(cacheKey: CacheKey, forceRefetch = false): void {
     if (disposed) return;
 
     const serialized = serializeKey(cacheKey);
     let entry = client._cache.get(serialized) as CacheEntry<T> | undefined;
 
-    // Check if cache entry exists and is fresh
-    if (entry && entry.fetchedAt > 0 && Date.now() - entry.fetchedAt < staleTime) {
+    // Check if cache entry exists and is fresh (skip if forced)
+    if (!forceRefetch && entry && entry.fetchedAt > 0 && Date.now() - entry.fetchedAt < staleTime) {
       // Fresh — use cached data
       data.set(entry.data() as T | undefined);
       loading.set(false);
@@ -243,7 +243,8 @@ export function useCachedQuery<T>(
     entry.subscribers++;
     entry.refetchFn = () => {
       entry!.fetchedAt = 0;
-      untrack(() => doFetch(resolveKey()));
+      const k = resolveKey();
+      if (k !== null) untrack(() => doFetch(k));
     };
 
     // Sync: subscribe to cache entry's data signal so setQueryData propagates
@@ -276,7 +277,16 @@ export function useCachedQuery<T>(
     loading.set(true);
     error.set(undefined);
 
-    const promise = fetcher();
+    let promise: Promise<T>;
+    try {
+      promise = fetcher();
+    } catch (err) {
+      // Sync throw in fetcher
+      const e = err instanceof Error ? err : new Error(String(err));
+      error.set(e);
+      loading.set(false);
+      return;
+    }
     (entry as any).promise = promise;
 
     promise
@@ -305,13 +315,16 @@ export function useCachedQuery<T>(
     if (!enabled) return;
 
     const currentKey = resolveKey();
+    // Null key = disabled query (dependencies not ready)
+    if (currentKey === null) return;
+
     untrack(() => doFetch(currentKey));
   });
 
   // Refetch on window focus
   let removeFocusListener: (() => void) | null = null;
   if (options.refetchOnFocus && typeof window !== 'undefined') {
-    const onFocus = () => { if (!disposed) doFetch(resolveKey()); };
+    const onFocus = () => { const k = resolveKey(); if (!disposed && k !== null) doFetch(k); };
     window.addEventListener('focus', onFocus);
     removeFocusListener = () => window.removeEventListener('focus', onFocus);
   }
@@ -320,7 +333,10 @@ export function useCachedQuery<T>(
   result.loading = () => loading();
   result.error = () => error();
   result.fetched = () => fetched();
-  result.refetch = () => doFetch(resolveKey());
+  result.refetch = () => {
+    const k = resolveKey();
+    if (k !== null) doFetch(k, true);
+  };
   result.dispose = () => {
     disposed = true;
     disposeEffect();

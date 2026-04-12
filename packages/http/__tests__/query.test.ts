@@ -128,6 +128,37 @@ describe('useCachedQuery', () => {
     expect(q()).toEqual([4, 5, 6]);
   });
 
+  it('catches sync fetcher throws in error state', async () => {
+    const q = useCachedQuery(qc, ['sync-err'], () => { throw new Error('boom'); });
+    // Give the effect time to run
+    await vi.waitFor(() => expect(q.loading()).toBe(false));
+    expect(q.error()?.message).toBe('boom');
+    expect(q()).toBeUndefined();
+  });
+
+  it('null key disables the query', async () => {
+    const fetcher = vi.fn().mockResolvedValue('data');
+    const q = useCachedQuery(qc, null, fetcher);
+    // Wait a tick to ensure effect ran
+    await new Promise(r => setTimeout(r, 10));
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(q()).toBeUndefined();
+    expect(q.loading()).toBe(false);
+  });
+
+  it('refetch() bypasses staleTime', async () => {
+    const qc2 = createQueryClient({ defaultStaleTime: 60_000 });
+    let count = 0;
+    const fetcher = vi.fn().mockImplementation(() => Promise.resolve(++count));
+    const q = useCachedQuery(qc2, ['stale-test'], fetcher);
+    await vi.waitFor(() => expect(q()).toBe(1));
+
+    // Data is fresh (within 60s staleTime), but refetch should force it
+    q.refetch();
+    await vi.waitFor(() => expect(q()).toBe(2));
+    expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
   it('dispose stops the query', async () => {
     const fetcher = vi.fn().mockResolvedValue('data');
     const q = useCachedQuery(qc, ['disposable'], fetcher);
