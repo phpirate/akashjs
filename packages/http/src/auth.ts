@@ -305,6 +305,15 @@ export function createAuth<U = unknown>(config: AuthConfig<U> = {}): Auth<U> {
     }
   }
 
+  // Shared refresh promise to dedup concurrent 401 refresh attempts
+  let activeRefresh: Promise<boolean> | null = null;
+
+  async function dedupedRefresh(): Promise<boolean> {
+    if (activeRefresh) return activeRefresh;
+    activeRefresh = refreshTokenFn().finally(() => { activeRefresh = null; });
+    return activeRefresh;
+  }
+
   function logout(): void {
     // Abort any in-flight login to prevent it from overwriting the logout
     if (loginAbort) { loginAbort.abort(); loginAbort = null; }
@@ -327,7 +336,7 @@ export function createAuth<U = unknown>(config: AuthConfig<U> = {}): Auth<U> {
     const response = await next(request);
     if (response.status === 401) {
       if (config.refreshUrl) {
-        const refreshed = await refreshTokenFn();
+        const refreshed = await dedupedRefresh();
         if (refreshed) {
           if (!isCookieMode) {
             request.headers.set('Authorization', `Bearer ${token()}`);
@@ -348,6 +357,20 @@ export function createAuth<U = unknown>(config: AuthConfig<U> = {}): Auth<U> {
         return ctx.redirect(redirectTo);
       }
     };
+  }
+
+  // Cross-tab sync: listen for storage events to keep token in sync
+  if (!isCookieMode && tokenStorage !== 'memory' && typeof window !== 'undefined') {
+    window.addEventListener('storage', (e) => {
+      if (e.key === tokenKey) {
+        token.set(e.newValue);
+        if (!e.newValue) {
+          user.set(null); // token removed in another tab = logged out
+        } else if (config.userUrl) {
+          fetchUser(); // token changed = re-fetch user
+        }
+      }
+    });
   }
 
   // Auto-restore session on creation
