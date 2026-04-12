@@ -174,6 +174,26 @@ describe('clearStores', () => {
     localStorage.removeItem('akash-store:pick-test');
   });
 
+  it('persist captures all sequential updates in same tick', async () => {
+    clearStores();
+    const useStore5 = defineStore('seq-test', {
+      state: () => ({ a: 0, b: 0 }),
+      persist: true,
+    });
+    const store = useStore5();
+    store.a.set(10);
+    store.b.set(20);
+
+    // Wait for microtask to flush
+    await new Promise(r => queueMicrotask(r));
+    const saved = JSON.parse(localStorage.getItem('akash-store:seq-test') ?? '{}');
+    expect(saved.a).toBe(10);
+    expect(saved.b).toBe(20); // was 0 before fix
+
+    clearStores();
+    localStorage.removeItem('akash-store:seq-test');
+  });
+
   it('persist: { key } uses custom storage key', () => {
     clearStores();
     localStorage.setItem('my-custom-key', JSON.stringify({ theme: 'dark' }));

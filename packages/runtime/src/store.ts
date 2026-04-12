@@ -273,18 +273,27 @@ function createStoreInstance<
       } catch { /* corrupt storage — ignore */ }
 
       // Write: subscribe to state changes and persist (debounced via microtask)
+      // The effect tracks signals to detect changes; the microtask reads
+      // fresh values so sequential updates in the same tick are all captured.
       let persistScheduled = false;
+      let isInitialPersist = true;
       effect(() => {
-        // Track only the persisted keys
-        const snapshot: Record<string, unknown> = {};
+        // Track the persisted signals (read them so the effect re-runs on change)
         for (const key of persistKeys as string[]) {
-          if (key in stateSignals) snapshot[key] = stateSignals[key]();
+          if (key in stateSignals) stateSignals[key]();
         }
-        // Debounce via microtask to batch rapid changes
+        // Skip the initial run (hydration just happened, don't write stale defaults)
+        if (isInitialPersist) { isInitialPersist = false; return; }
+        // Schedule a microtask to capture the LATEST values after all sync updates
         if (!persistScheduled) {
           persistScheduled = true;
           queueMicrotask(() => {
             persistScheduled = false;
+            // Read fresh values NOW, not when the effect ran
+            const snapshot: Record<string, unknown> = {};
+            for (const key of persistKeys as string[]) {
+              if (key in stateSignals) snapshot[key] = stateSignals[key].peek();
+            }
             try { storage.setItem(cfg.key, serialize(snapshot)); } catch { /* quota exceeded */ }
           });
         }
