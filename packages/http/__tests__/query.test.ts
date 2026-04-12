@@ -117,6 +117,17 @@ describe('useCachedQuery', () => {
     await vi.waitFor(() => expect(q()).toBe(2));
   });
 
+  it('setQueryData propagates to reactive signal', async () => {
+    const fetcher = vi.fn().mockResolvedValue([1, 2, 3]);
+    const q = useCachedQuery(qc, ['items'], fetcher);
+    await vi.waitFor(() => expect(q.fetched()).toBe(true));
+    expect(q()).toEqual([1, 2, 3]);
+
+    // Manually update cache — should propagate to the query signal
+    qc.setQueryData(['items'], [4, 5, 6]);
+    expect(q()).toEqual([4, 5, 6]);
+  });
+
   it('dispose stops the query', async () => {
     const fetcher = vi.fn().mockResolvedValue('data');
     const q = useCachedQuery(qc, ['disposable'], fetcher);

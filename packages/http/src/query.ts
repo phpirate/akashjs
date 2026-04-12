@@ -204,6 +204,7 @@ export function useCachedQuery<T>(
   const fetched = signal(false);
   let disposed = false;
   let requestId = 0;
+  const syncDisposers: Array<() => void> = [];
 
   function resolveKey(): CacheKey {
     return typeof key === 'function' ? key() : key;
@@ -245,9 +246,16 @@ export function useCachedQuery<T>(
       untrack(() => doFetch(resolveKey()));
     };
 
+    // Sync: subscribe to cache entry's data signal so setQueryData propagates
+    const entryData = entry.data as Signal<T | undefined>;
+    syncDisposers.push(effect(() => {
+      const val = entryData();
+      if (val !== undefined) data.set(val);
+    }));
+
     // Stale-while-revalidate: return cached data immediately
-    if (entry.data() !== undefined) {
-      const prev = entry.data() as T | undefined;
+    if (entryData() !== undefined) {
+      const prev = entryData() as T | undefined;
       if (options.placeholderData) {
         data.set(options.placeholderData(prev));
       } else {
@@ -258,8 +266,8 @@ export function useCachedQuery<T>(
     // Dedup: if same query is already in flight, reuse the promise
     if (entry.promise) {
       loading.set(true);
-      entry.promise
-        .then((result) => { if (!disposed) { data.set(result as T); loading.set(false); fetched.set(true); } })
+      (entry.promise as Promise<T>)
+        .then((result) => { if (!disposed) { data.set(result); loading.set(false); fetched.set(true); } })
         .catch((err) => { if (!disposed) { error.set(err instanceof Error ? err : new Error(String(err))); loading.set(false); } });
       return;
     }
@@ -274,7 +282,6 @@ export function useCachedQuery<T>(
     promise
       .then((result) => {
         if (disposed || myRequestId !== requestId) return;
-        data.set(result);
         (entry!.data as Signal<any>).set(result);
         entry!.fetchedAt = Date.now();
         entry!.promise = null;
@@ -317,6 +324,7 @@ export function useCachedQuery<T>(
   result.dispose = () => {
     disposed = true;
     disposeEffect();
+    for (const d of syncDisposers) d();
     if (removeFocusListener) removeFocusListener();
   };
 
