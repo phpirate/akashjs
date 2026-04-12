@@ -84,6 +84,36 @@ describe('scanRoutes', () => {
     const routes = scanRoutes(ROUTES_DIR);
     expect(routes[0].errorPath).toContain('error.akash');
   });
+
+  it('handles route groups (no URL segment)', () => {
+    createDir('(app)');
+    createFile('(app)/page.akash', '');
+    createDir('(app)/settings');
+    createFile('(app)/settings/page.akash', '');
+    const routes = scanRoutes(ROUTES_DIR);
+    // (app) should not add a URL segment
+    const root = routes.find(r => r.path === '/');
+    expect(root).toBeDefined();
+    const settings = root?.children.find(r => r.path === '/settings') ??
+                     routes.find(r => r.path === '/settings');
+    expect(settings).toBeDefined();
+  });
+
+  it('handles catch-all [...rest]', () => {
+    createDir('[...rest]');
+    createFile('[...rest]/page.akash', '');
+    const routes = scanRoutes(ROUTES_DIR);
+    expect(routes[0].path).toBe('/[...rest]');
+    expect(routes[0].params).toContain('rest');
+  });
+
+  it('handles optional catch-all [[...rest]]', () => {
+    createDir('[[...rest]]');
+    createFile('[[...rest]]/page.akash', '');
+    const routes = scanRoutes(ROUTES_DIR);
+    expect(routes[0].path).toBe('/[[...rest]]');
+    expect(routes[0].params).toContain('rest');
+  });
 });
 
 describe('generateRouteManifest', () => {
@@ -107,6 +137,20 @@ describe('generateRouteManifest', () => {
     expect(code).toContain('path: "/"');
     expect(code).toContain('path: "/about"');
     expect(code).toContain('component: () => import(');
+  });
+
+  it('generates nested children in manifest', () => {
+    createFile('page.akash', '');
+    createDir('blog');
+    createFile('blog/page.akash', '');
+    createDir('blog/[slug]');
+    createFile('blog/[slug]/page.akash', '');
+
+    const routes = scanRoutes(ROUTES_DIR);
+    const code = generateRouteManifest(routes, ROUTES_DIR);
+
+    expect(code).toContain('children:');
+    expect(code).toContain('path: "/blog"');
   });
 
   it('includes loader and guard imports', () => {
