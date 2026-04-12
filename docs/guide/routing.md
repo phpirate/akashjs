@@ -130,6 +130,36 @@ const data = useLoaderData<{ title: string; content: string }>();
 </template>
 ```
 
+## Nested Routes (Programmatic)
+
+When defining routes programmatically, children can use relative paths:
+
+```ts
+const routes = [
+  { path: '/blog', component: () => import('./Blog.akash'), children: [
+    { path: ':slug', component: () => import('./BlogPost.akash') },
+  ]},
+  { path: '/users', component: () => import('./Users.akash'), children: [
+    { path: 'admin', component: () => import('./Admin.akash') },
+    { path: ':id', component: () => import('./UserProfile.akash') },
+  ]},
+];
+```
+
+- `/blog/hello` matches `/blog` > `:slug` with `{ slug: 'hello' }`
+- `/users/admin` matches `/users` > `admin` (static wins over `:id`)
+- `/users/42` matches `/users` > `:id` with `{ id: '42' }`
+
+### Route Specificity
+
+Routes are matched by specificity, not declaration order:
+
+1. **Static** segments (`admin`, `settings`) — highest priority
+2. **Dynamic** params (`:id`, `:slug`) — medium priority
+3. **Catch-all** (`[...rest]`) — lowest priority
+
+This means you can declare routes in any order and static routes will always match first.
+
 ## Nested Layouts
 
 `layout.akash` files wrap child routes using `<Outlet />`:

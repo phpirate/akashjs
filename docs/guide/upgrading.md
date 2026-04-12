@@ -6,6 +6,29 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### 0.1.57 (compiler) / 0.2.1 (runtime) / 0.1.10 (router) / 0.1.6 (forms) / 0.1.6 (http) / 0.1.7 (i18n) / 0.2.2 (ui) / 0.1.14 (vite-plugin)
+
+**New features:**
+
+- **Compiler:** JSX fragment syntax (`<>...</>`) compiles to `DocumentFragment`. Fragments work standalone, inside `<Show>` children, `&&` conditionals, ternaries, and arrow functions.
+- **Router:** specificity-based route matching — static routes always win over `:param`, which wins over `[...rest]`, regardless of declaration order.
+- **Runtime:** `useCounter()` now accepts `{ min, max }` options with clamping on `inc()`, `dec()`, `set()`, and `reset()`.
+- **All packages:** TypeScript declaration files (`.d.ts`) now ship with every library package. Full IDE autocompletion and type checking.
+
+**Bug fixes:**
+
+- **Compiler:** user and compiler imports from `@akashjs/runtime` are now merged into a single import line, eliminating duplicate bindings.
+- **Compiler:** nesting-aware prop parser for `{Component({...})}` call expressions — nested parens, braces, and strings no longer break `__getter()` wrapping.
+- **Compiler:** object literal props wrapped in `__getter()` now use `(() => ({...}))` instead of `(() => {...})` to avoid block/label ambiguity.
+- **Router:** `resolveRoutes()` now correctly matches nested child routes with relative paths (e.g., `/blog` > `:slug` matches `/blog/hello`).
+- **Router:** `resolveRoutes()` no longer falsely matches unrelated paths against child param routes (e.g., `/xyz` no longer matches `/blog` > `:slug`).
+- **Router:** `resolvePath()` now throws when required params are missing instead of producing broken URLs with empty segments.
+- **Runtime:** `ref(initialValue)` now assigns the initial value to `.current` instead of always returning `undefined`.
+- **Runtime:** `pipe()` now chains multiple transform functions (`pipe(5, fn1, fn2)` → `fn2(fn1(5))`).
+- **Runtime:** `defineStore()` actions now have `this` typed to include state signals, getters, and other actions — fixes 150+ TS2339 errors.
+- **HTTP:** `APIClient` changed from `interface` to mapped `type` for correct TypeScript semantics.
+- **i18n:** `Messages` type changed from circular type alias to interface to fix DTS generation.
+
 ### 0.1.23 (compiler)
 
 **Bug fixes:**

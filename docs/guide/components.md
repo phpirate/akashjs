@@ -50,6 +50,23 @@ div { display: flex; gap: 1rem; }
 
 The compiler transforms this into a `defineComponent()` call with direct DOM operations.
 
+## Fragments
+
+Use `<>...</>` to return multiple elements without a wrapper:
+
+```html
+<template>
+  <Show when={loggedIn()}>
+    {() => <>
+      <h1>Welcome back</h1>
+      <p>Your dashboard is ready.</p>
+    </>}
+  </Show>
+</template>
+```
+
+Fragments compile to `DocumentFragment` — no extra DOM nodes.
+
 ## Props
 
 Props are typed via TypeScript interfaces:
