@@ -33,6 +33,10 @@ export type { EndpointDef, APIDef, APIClientOptions, QueryResult } from './api.j
 export { retry, createQueue, dedup } from './retry.js';
 export type { RetryOptions, Queue, QueueOptions } from './retry.js';
 
+// Query cache
+export { createQueryClient, useCachedQuery, useMutation } from './query.js';
+export type { QueryClient, QueryClientOptions, QueryOptions, QueryResult as CachedQueryResult, MutationOptions, MutationResult } from './query.js';
+
 // Types
 export type {
   HttpMethod,

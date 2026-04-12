@@ -17,6 +17,8 @@ export interface HttpClientConfig {
   interceptors?: HttpInterceptor[];
   /** Custom fetch implementation (defaults to globalThis.fetch) */
   fetch?: typeof globalThis.fetch;
+  /** Default credentials mode for all requests ('include', 'same-origin', 'omit') */
+  credentials?: RequestCredentials;
 }
 
 // --- Request config ---

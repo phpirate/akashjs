@@ -69,7 +69,7 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
       method,
       headers,
       signal: requestConfig?.signal,
-      credentials: requestConfig?.credentials,
+      credentials: requestConfig?.credentials ?? config.credentials,
     };
 
     if (body !== undefined && body !== null) {
