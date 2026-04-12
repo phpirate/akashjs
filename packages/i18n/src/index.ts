@@ -75,6 +75,7 @@ function flattenMessages(messages: Messages, prefix = ''): FlatMessages {
 // --- Interpolation ---
 
 function escapeHtml(str: string): string {
+  if (typeof str !== 'string') return String(str);
   return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -128,16 +129,17 @@ export function createI18n(config: I18nConfig): I18n {
   }
 
   // Get flat messages for current locale
+  const emptyMessages: FlatMessages = Object.create(null);
+
   const currentMessages = computed(() => {
     const msgs = loadedMessages();
-    return msgs[locale()] ?? {};
+    return msgs[locale()] ?? emptyMessages;
   });
 
   const fallbackMessages = computed(() => {
     const fallbackLoc = config.fallbackLocale ?? config.defaultLocale;
-    // Don't fall back to self — that's just currentMessages
-    if (fallbackLoc === locale()) return {};
-    return loadedMessages()[fallbackLoc] ?? {};
+    if (fallbackLoc === locale()) return emptyMessages;
+    return loadedMessages()[fallbackLoc] ?? emptyMessages;
   });
 
   function t(key: string, params?: Record<string, string | number>): string {
@@ -160,7 +162,7 @@ export function createI18n(config: I18nConfig): I18n {
     const template = currentMessages()[key]
       ?? fallbackMessages()[key];
 
-    if (template !== undefined) {
+    if (template !== undefined && typeof template === 'string') {
       // Handle pipe-separated plural forms: "singular | plural" or "zero | one | many"
       if (pluralCount !== undefined && template.includes(' | ')) {
         const forms = template.split(' | ');
