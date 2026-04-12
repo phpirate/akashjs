@@ -249,6 +249,6 @@ export { akashError, formatError, getErrorDef, getAllErrorCodes } from './errors
 export type { ErrorDef } from './errors.js';
 
 export { installDevtools } from './devtools.js';
-export type { DevToolsAPI } from './devtools.js';
+export type { DevToolsAPI, DevToolsOptions } from './devtools.js';
 
 export { enhanceError, installErrorHints } from './error-hints.js';

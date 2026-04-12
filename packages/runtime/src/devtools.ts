@@ -85,19 +85,26 @@ function inspectStore(id: string): StoreSnapshot | null {
   for (const [key, value] of Object.entries(store)) {
     if (key.startsWith('$')) continue;
     if (typeof value === 'function' && 'set' in value && 'update' in value) {
-      // Signal
-      state[key] = (value as any)();
-    } else if (typeof value === 'function' && !('set' in value) && !key.startsWith('$')) {
-      // Could be getter (computed) or action
-      try {
-        const result = (value as any)();
-        // If it returns a primitive/object, it's likely a getter
-        if (typeof result !== 'undefined') {
-          getters[key] = result;
-        } else {
+      // Signal (has .set and .update)
+      state[key] = snapshot[key as keyof typeof snapshot];
+    } else if (typeof value === 'function') {
+      // Distinguish getters (computed, 0 args) from actions (bound fns, may have args)
+      // Computed getters are created with computed(() => expr) — the returned fn has length 0
+      // Action wrappers also have length 0, but we can try calling with no args:
+      // getters return a value, actions typically return undefined or a Promise
+      if ((value as Function).length === 0 && !key.startsWith('on')) {
+        try {
+          const result = (value as any)();
+          // If it's a Promise, it's likely an async action
+          if (result && typeof result === 'object' && typeof result.then === 'function') {
+            actions.push(key);
+          } else {
+            getters[key] = result;
+          }
+        } catch {
           actions.push(key);
         }
-      } catch {
+      } else {
         actions.push(key);
       }
     }
@@ -175,7 +182,8 @@ function createDevToolsAPI(): DevToolsAPI {
     },
 
     version() {
-      return { runtime: '0.1.26' };
+      // Read from package.json version injected at build time, fallback to placeholder
+      return { runtime: '__RUNTIME_VERSION__' };
     },
 
     log(storeId?: string) {
@@ -255,7 +263,12 @@ function createDevToolsAPI(): DevToolsAPI {
  * if (import.meta.env.DEV) installDevtools();
  * ```
  */
-export function installDevtools(): void {
+export interface DevToolsOptions {
+  /** Enable the visual overlay panel (toggle with Ctrl+Shift+D) */
+  overlay?: boolean;
+}
+
+export function installDevtools(options?: DevToolsOptions): void {
   const api = createDevToolsAPI();
 
   if (typeof globalThis !== 'undefined') {
@@ -272,5 +285,10 @@ export function installDevtools(): void {
     console.log('  .stopRecording("id")   — view recorded history');
     console.log('  .signals()             — list tracked signals');
     console.log('  .effects()             — list tracked effects');
+  }
+
+  // Mount visual overlay if requested
+  if (options?.overlay) {
+    import('./devtools-overlay.js').then(m => m.mountDevtoolsOverlay());
   }
 }

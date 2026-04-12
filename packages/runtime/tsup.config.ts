@@ -1,4 +1,7 @@
 import { defineConfig } from 'tsup';
+import { readFileSync } from 'fs';
+
+const pkg = JSON.parse(readFileSync('package.json', 'utf-8'));
 
 export default defineConfig({
   entry: {
@@ -21,4 +24,7 @@ export default defineConfig({
   splitting: true,
   minify: true,
   target: 'es2022',
+  define: {
+    '__RUNTIME_VERSION__': JSON.stringify(pkg.version),
+  },
 });
