@@ -137,6 +137,9 @@ describe('generateRouteManifest', () => {
     expect(code).toContain('path: "/"');
     expect(code).toContain('path: "/about"');
     expect(code).toContain('component: () => import(');
+    // Should use absolute paths, not relative
+    expect(code).not.toContain('import("./');
+    expect(code).toContain('/page.akash');
   });
 
   it('generates nested children in manifest', () => {
