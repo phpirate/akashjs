@@ -68,17 +68,14 @@ export type Store<S, G, A> = SignalifiedState<S> & {
   $id: string;
 };
 
-/** Actions with `this` typed to include state signals, getters, and other actions */
-type StoreActions<S, G, A> = {
-  [K in keyof A]: A[K] extends (...args: infer P) => infer R
-    ? (this: SignalifiedState<S> & { [GK in keyof G]: ReadonlySignal<G[GK]> } & A, ...args: P) => R
-    : never;
-};
-
 export interface StoreDefinition<S, G, A> {
   state: StateFactory<S>;
   getters?: Getters<S, G>;
-  actions?: StoreActions<S, G, A>;
+  actions?: A & ThisType<
+    SignalifiedState<S> &
+    { [K in keyof G]: ReadonlySignal<G[K]> } &
+    A
+  >;
   plugins?: StorePlugin[];
 }
 
