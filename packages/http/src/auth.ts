@@ -143,6 +143,7 @@ export function createAuth<U = unknown>(config: AuthConfig<U> = {}): Auth<U> {
   const loading = signal(false);
   const authConfigSignal = signal<unknown>(null);
   const isLoggedIn = computed(() => isCookieMode ? user() !== null : token() !== null);
+  let loginAbort: AbortController | null = null;
 
   // Helper: build fetch options for cookie mode
   function fetchOpts(init?: RequestInit): RequestInit {
@@ -171,6 +172,11 @@ export function createAuth<U = unknown>(config: AuthConfig<U> = {}): Auth<U> {
 
   async function login(credentials: unknown): Promise<void> {
     if (!config.loginUrl) throw new Error('[AkashJS Auth] loginUrl not configured');
+    // Abort any previous in-flight login
+    if (loginAbort) loginAbort.abort();
+    loginAbort = new AbortController();
+    const { signal: abortSignal } = loginAbort;
+
     loading.set(true);
     try {
       const payload = loginPayload ? loginPayload(credentials) : credentials;
@@ -178,9 +184,12 @@ export function createAuth<U = unknown>(config: AuthConfig<U> = {}): Auth<U> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
+        signal: abortSignal,
       }));
+      if (abortSignal.aborted) return; // logout was called during login
       if (!response.ok) throw new Error(`Login failed: ${response.status}`);
       const data = await response.json();
+      if (abortSignal.aborted) return;
       if (!isCookieMode) {
         setTokenFn(getToken(data), getRefreshToken(data) ?? undefined);
       }
@@ -188,11 +197,16 @@ export function createAuth<U = unknown>(config: AuthConfig<U> = {}): Auth<U> {
         await fetchUser();
       } else {
         const u = getUser(data);
-        if (u) user.set(u);
+        if (u && !abortSignal.aborted) user.set(u);
       }
-      config.onLogin?.(user() as U);
+      if (!abortSignal.aborted) config.onLogin?.(user() as U);
+    } catch (err) {
+      // Swallow abort errors — logout intentionally cancelled the login
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      throw err;
     } finally {
       loading.set(false);
+      loginAbort = null;
     }
   }
 
@@ -213,20 +227,22 @@ export function createAuth<U = unknown>(config: AuthConfig<U> = {}): Auth<U> {
 
   async function forgotPassword(email: string): Promise<void> {
     if (!config.forgotPasswordUrl) throw new Error('[AkashJS Auth] forgotPasswordUrl not configured');
-    await customFetch(config.forgotPasswordUrl, fetchOpts({
+    const response = await customFetch(config.forgotPasswordUrl, fetchOpts({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
     }));
+    if (!response.ok) throw new Error(`Forgot password failed: ${response.status}`);
   }
 
   async function resetPassword(resetToken: string, newPassword: string): Promise<void> {
     if (!config.resetPasswordUrl) throw new Error('[AkashJS Auth] resetPasswordUrl not configured');
-    await customFetch(config.resetPasswordUrl, fetchOpts({
+    const response = await customFetch(config.resetPasswordUrl, fetchOpts({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token: resetToken, password: newPassword }),
     }));
+    if (!response.ok) throw new Error(`Reset password failed: ${response.status}`);
   }
 
   async function fetchUser(): Promise<void> {
@@ -290,6 +306,8 @@ export function createAuth<U = unknown>(config: AuthConfig<U> = {}): Auth<U> {
   }
 
   function logout(): void {
+    // Abort any in-flight login to prevent it from overwriting the logout
+    if (loginAbort) { loginAbort.abort(); loginAbort = null; }
     // Server-side logout if configured
     if (config.logoutUrl) {
       customFetch(config.logoutUrl, fetchOpts({ method: 'POST' })).catch(() => {});
