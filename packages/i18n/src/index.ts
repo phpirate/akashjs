@@ -37,6 +37,8 @@ export interface I18nConfig {
   fallbackLocale?: string;
   /** Pluralization rules */
   pluralRules?: Record<string, (count: number) => string>;
+  /** Sanitize message templates (escape HTML). Default: true */
+  sanitize?: boolean;
 }
 
 export interface I18n {
@@ -55,7 +57,7 @@ export interface I18n {
 // --- Flatten nested messages ---
 
 function flattenMessages(messages: Messages, prefix = ''): FlatMessages {
-  const result: FlatMessages = {};
+  const result: FlatMessages = Object.create(null);
   for (const [key, value] of Object.entries(messages)) {
     const fullKey = prefix ? `${prefix}.${key}` : key;
     if (typeof value === 'string') {
@@ -81,10 +83,13 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;');
 }
 
-function interpolate(template: string, params: Record<string, string | number>): string {
-  return template.replace(/\{(\w+)\}/g, (_, key) => {
-    return key in params ? escapeHtml(String(params[key])) : `{${key}}`;
+function interpolate(template: string, params: Record<string, string | number>, sanitize = true): string {
+  // Replace placeholders first, then sanitize the entire result.
+  // This escapes both the template text AND the interpolated values.
+  const result = template.replace(/\{(\w+)\}/g, (_, key) => {
+    return key in params ? String(params[key]) : `{${key}}`;
   });
+  return sanitize ? escapeHtml(result) : result;
 }
 
 // --- Pluralization ---
@@ -111,6 +116,7 @@ const DEFAULT_PLURAL_RULES: Record<string, (count: number) => string> = {
 export function createI18n(config: I18nConfig): I18n {
   const locale = signal(config.defaultLocale);
   const loadedMessages = signal<Record<string, FlatMessages>>({});
+  const shouldSanitize = config.sanitize !== false; // default true
 
   // Initialize with static messages
   if (config.messages) {
@@ -146,7 +152,7 @@ export function createI18n(config: I18nConfig): I18n {
       const pluralTemplate = currentMessages()[pluralKey]
         ?? fallbackMessages()[pluralKey];
       if (pluralTemplate) {
-        return interpolate(pluralTemplate, params!);
+        return interpolate(pluralTemplate, params!, shouldSanitize);
       }
     }
 
@@ -161,17 +167,15 @@ export function createI18n(config: I18nConfig): I18n {
         const count = Number(pluralCount);
         let form: string;
         if (forms.length === 3) {
-          // zero | one | many
           form = count === 0 ? forms[0] : count === 1 ? forms[1] : forms[2];
         } else if (forms.length === 2) {
-          // singular | plural
           form = count === 1 ? forms[0] : forms[1];
         } else {
-          form = forms[forms.length - 1]; // fallback to last form
+          form = forms[forms.length - 1];
         }
-        return params ? interpolate(form, params) : form;
+        return params ? interpolate(form, params, shouldSanitize) : (shouldSanitize ? escapeHtml(form) : form);
       }
-      return params ? interpolate(template, params) : template;
+      return params ? interpolate(template, params, shouldSanitize) : (shouldSanitize ? escapeHtml(template) : template);
     }
 
     // Key not found directly — check if fallback has pluralization sub-keys
@@ -180,13 +184,12 @@ export function createI18n(config: I18nConfig): I18n {
       if (n !== undefined) {
         const count = Number(n);
         const rules = config.pluralRules ?? DEFAULT_PLURAL_RULES;
-        // Use fallback locale's rule when current locale has no translation
         const fallbackLoc = config.fallbackLocale ?? config.defaultLocale;
         const rule = rules[fallbackLoc] ?? rules.en;
         const pluralKey = `${key}.${rule(count)}`;
         const fallbackTemplate = fallbackMessages()[pluralKey];
         if (fallbackTemplate) {
-          return interpolate(fallbackTemplate, params);
+          return interpolate(fallbackTemplate, params, shouldSanitize);
         }
       }
     }

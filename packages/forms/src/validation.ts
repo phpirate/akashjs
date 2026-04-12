@@ -71,12 +71,17 @@ export function createValidation<T>(
       const runId = ++currentRunId;
       validatingSignal.set(true);
 
-      Promise.all(asyncValidators.map((v) => v(val as T))).then((results) => {
-        // Only apply if this is still the latest run
+      Promise.all(asyncValidators.map((v) => {
+        try { return v(val as T); } catch (e) { return Promise.reject(e); }
+      })).then((results) => {
         if (runId !== currentRunId) return;
-
         const errors = results.filter((r): r is string => r !== null);
         asyncErrorsSignal.set(errors);
+        validatingSignal.set(false);
+      }).catch((err) => {
+        if (runId !== currentRunId) return;
+        const message = err instanceof Error ? err.message : 'Validation failed';
+        asyncErrorsSignal.set([message]);
         validatingSignal.set(false);
       });
     };
