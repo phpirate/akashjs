@@ -1,6 +1,6 @@
 {
   "name": "@akashjs/i18n",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "AkashJS i18n — signal-based internationalization",
   "type": "module",
   "main": "dist/index.cjs",
@@ -20,7 +20,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@akashjs/runtime": "^0.1.0"
+    "@akashjs/runtime": "workspace:*"
   },
   "files": [
     "dist",

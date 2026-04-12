@@ -126,7 +126,7 @@ export function createWebSocketTransport(options: WebSocketTransportOptions): Sy
 
   return {
     send(op: SyncOp) {
-      ws?.send(JSON.stringify({ type: 'op', room: options.room, ...op }));
+      ws?.send(JSON.stringify({ ...op, type: 'op', room: options.room }));
     },
     onReceive(handler) {
       opHandlers.push(handler);

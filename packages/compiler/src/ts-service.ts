@@ -362,7 +362,7 @@ export function getTsCompletions(
 
   return completions.entries.slice(0, 50).map(e => ({
     label: e.name,
-    kind: ts.ScriptElementKind[e.kind] ?? e.kind,
+    kind: (ts.ScriptElementKind as Record<string, string>)[e.kind] ?? e.kind,
     detail: e.labelDetails?.detail,
     sortText: e.sortText,
   }));

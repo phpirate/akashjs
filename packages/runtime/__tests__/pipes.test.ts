@@ -21,6 +21,11 @@ describe('pipes', () => {
     expect(pipe('hello', uppercase)).toBe('HELLO');
   });
 
+  it('pipe chains multiple transforms', () => {
+    expect(pipe(5, (x: number) => x * 2, (x: number) => x + 1)).toBe(11);
+    expect(pipe('  hello  ', trim, uppercase)).toBe('HELLO');
+  });
+
   it('uppercase works correctly', () => {
     expect(pipe('hello', uppercase)).toBe('HELLO');
   });

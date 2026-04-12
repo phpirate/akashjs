@@ -264,8 +264,8 @@ export function getCSPHeaderName(config: CSPConfig = {}): string {
 // =========================================================================
 
 export interface SecurityHeadersConfig {
-  /** Content Security Policy */
-  csp?: CSPConfig;
+  /** Content Security Policy (false to disable) */
+  csp?: CSPConfig | false;
   /** X-Frame-Options (default: 'DENY') */
   frameOptions?: 'DENY' | 'SAMEORIGIN' | false;
   /** X-Content-Type-Options (default: 'nosniff') */

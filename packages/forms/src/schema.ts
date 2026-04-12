@@ -103,7 +103,7 @@ export function createFormFromSchema<T extends Record<string, unknown>>(
     config[key] = {
       initial: override?.initial ?? info.initial,
       validators: [
-        zodFieldValidator(schema, key),
+        zodFieldValidator(schema as any, key),
         ...(override?.validators ?? []),
       ],
       asyncValidators: override?.asyncValidators,

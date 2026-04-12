@@ -22,7 +22,7 @@ import type { ReadonlySignal } from '@akashjs/runtime';
 
 // --- Types ---
 
-export type Messages = Record<string, string | Messages>;
+export interface Messages { [key: string]: string | Messages; }
 export type FlatMessages = Record<string, string>;
 export type LocaleMessages = Record<string, Messages>;
 

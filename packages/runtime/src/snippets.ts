@@ -65,7 +65,7 @@ export interface InspectOptions {
  * ```
  */
 export function inspect(
-  ...args: [...Array<() => unknown>, InspectOptions?] | Array<() => unknown>
+  ...args: Array<(() => unknown) | InspectOptions>
 ): () => void {
   let options: InspectOptions = {};
   const sources: Array<() => unknown> = [];
@@ -320,7 +320,7 @@ export function enableSnapshots(config: SnapshotConfig = {}): () => void {
   });
 
   // Restore on initial load if coming from back/forward
-  if (performance.getEntriesByType('navigation')[0]?.type === 'back_forward') {
+  if ((performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type === 'back_forward') {
     requestAnimationFrame(restore);
   }
 

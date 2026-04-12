@@ -1530,7 +1530,7 @@ function buildZip(files: { name: string; data: Uint8Array }[]): Blob {
   eocdView.setUint32(16, cdOffset, true);
   parts.push(eocd);
 
-  return new Blob(parts, { type: 'application/zip' });
+  return new Blob(parts as BlobPart[], { type: 'application/zip' });
 }
 
 // CRC-32 table

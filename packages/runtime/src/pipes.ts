@@ -28,8 +28,17 @@ export type PipeFn<TIn = any, TOut = any> = (value: TIn, ...args: any[]) => TOut
  * pipe(1234, currency, 'USD'); // '$1,234.00'
  * ```
  */
-export function pipe<TIn, TOut>(value: TIn, transform: PipeFn<TIn, TOut>, ...args: any[]): TOut {
-  return transform(value, ...args);
+export function pipe(value: any, transform: Function, ...rest: any[]): any {
+  // If all remaining args are functions, chain them: pipe(5, fn1, fn2, fn3)
+  if (rest.length > 0 && rest.every(a => typeof a === 'function')) {
+    let result = transform(value);
+    for (const fn of rest) {
+      result = fn(result);
+    }
+    return result;
+  }
+  // Otherwise, pass extra args to the transform: pipe('hello', truncate, 5)
+  return transform(value, ...rest);
 }
 
 /**

@@ -10,7 +10,7 @@
 
 /** Represents a parsed template node */
 export interface TemplateNode {
-  type: 'element' | 'text' | 'expression' | 'component';
+  type: 'element' | 'text' | 'expression' | 'component' | 'fragment';
   tag?: string;
   attrs?: Array<{ name: string; value: string; dynamic: boolean }>;
   children?: TemplateNode[];
@@ -51,8 +51,26 @@ export function parseTemplate(content: string): TemplateNode[] {
         continue;
       }
 
-      // Closing tag — handled by parent parseElement call
+      // Closing tag or fragment close — handled by parent call
       if (content[pos + 1] === '/') break;
+
+      // Fragment syntax: <>...</>
+      if (content[pos + 1] === '>') {
+        pos += 2; // skip <>
+        const children = parseTemplate(content.slice(pos));
+        // Find closing </> — account for nested fragments
+        const closeIdx = findFragmentClose(content, pos);
+        let parsedChildren: TemplateNode[];
+        if (closeIdx === -1) {
+          parsedChildren = children;
+          pos = content.length;
+        } else {
+          parsedChildren = parseTemplate(content.slice(pos, closeIdx));
+          pos = closeIdx + 3; // skip </>
+        }
+        nodes.push({ type: 'fragment', children: parsedChildren });
+        continue;
+      }
 
       const element = parseElement(content, pos);
       if (element) {
@@ -675,6 +693,31 @@ function findTagEnd(content: string, tagStart: number): number {
       return pos;
     }
 
+    pos++;
+  }
+
+  return -1;
+}
+
+/** Find the closing </> for a fragment, handling nested fragments */
+function findFragmentClose(content: string, start: number): number {
+  let depth = 1;
+  let pos = start;
+
+  while (pos < content.length) {
+    // Nested fragment open: <>
+    if (content[pos] === '<' && content[pos + 1] === '>') {
+      depth++;
+      pos += 2;
+      continue;
+    }
+    // Fragment close: </>
+    if (content[pos] === '<' && content[pos + 1] === '/' && content[pos + 2] === '>') {
+      depth--;
+      if (depth === 0) return pos;
+      pos += 3;
+      continue;
+    }
     pos++;
   }
 

@@ -80,10 +80,10 @@ export function onError(fn: (error: Error) => void): void {
 }
 
 /**
- * Create a ref for accessing a DOM element.
+ * Create a ref for accessing a DOM element or storing a mutable value.
  */
-export function ref<T = HTMLElement>(): Ref<T> {
-  return { current: undefined };
+export function ref<T = HTMLElement>(initialValue?: T): Ref<T> {
+  return { current: initialValue as T | undefined };
 }
 
 // --- defineComponent ---
@@ -99,7 +99,7 @@ export function ref<T = HTMLElement>(): Ref<T> {
  * });
  * ```
  */
-export function defineComponent<P extends Record<string, unknown> = Record<string, unknown>>(
+export function defineComponent<P extends Record<string, any> = Record<string, any>>(
   setup: (ctx: ComponentContext<P>) => () => AkashNode,
 ): Component<P> {
   const component = (rawProps: P & { children?: AkashNode | (() => AkashNode) }): Node => {

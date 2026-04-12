@@ -69,6 +69,7 @@ export async function runMiddleware(
  */
 export function composeMiddleware(...middlewares: Middleware[]): Middleware {
   return async (ctx) => {
-    return runMiddleware(middlewares, ctx);
+    const result = await runMiddleware(middlewares, ctx);
+    return result ?? undefined;
   };
 }

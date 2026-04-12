@@ -394,4 +394,95 @@ const config = { theme: 'dark' };
     expect(result.code).toContain('options: config');
     expect(result.code).not.toContain('options: () =>');
   });
+
+  it('deduplicates user and compiler imports from @akashjs/runtime', () => {
+    const source = `
+<script lang="ts">
+import { signal, computed, effect } from '@akashjs/runtime';
+const count = signal(0);
+</script>
+<template>
+  <div>{count()}</div>
+</template>`;
+    const result = compile(source, { filename: 'dedup.akash' });
+    const runtimeImports = result.code.match(/import .* from '@akashjs\/runtime'/g);
+    expect(runtimeImports).toHaveLength(1);
+    // All symbols merged into one line
+    expect(runtimeImports![0]).toContain('signal');
+    expect(runtimeImports![0]).toContain('effect');
+    expect(runtimeImports![0]).toContain('defineComponent');
+  });
+
+  it('compiles JSX fragments (<>...</>) to DocumentFragment', () => {
+    const source = `
+<template>
+  <Show when={true}>
+    {() => <>
+      <div>A</div>
+      <div>B</div>
+    </>}
+  </Show>
+</template>`;
+    const result = compile(source, { filename: 'frag.akash' });
+    expect(result.code).toContain('createDocumentFragment');
+    expect(result.code).not.toContain('<>');
+    expect(result.code).not.toContain('</>');
+  });
+
+  it('compiles standalone fragment as root', () => {
+    const source = `
+<template>
+  <>
+    <p>One</p>
+    <p>Two</p>
+  </>
+</template>`;
+    const result = compile(source, { filename: 'frag2.akash' });
+    expect(result.code).toContain('createDocumentFragment');
+    expect(result.code).toContain("createTextNode(\"One\")");
+    expect(result.code).toContain("createTextNode(\"Two\")");
+  });
+
+  it('handles nested parens/commas in component call expressions', () => {
+    const source = `
+<script lang="ts">
+const items = signal([]);
+</script>
+<template>
+  <div>
+    {MySelect({
+      options: items().map(s => ({ value: s, label: s.name })),
+      compareWith: (a, b) => a?.id === b?.id,
+    })}
+  </div>
+</template>`;
+    const result = compile(source, { filename: 'nested.akash' });
+    // Full nested expression preserved inside __getter
+    expect(result.code).toContain('items().map(s => ({ value: s, label: s.name }))');
+    // Arrow function not wrapped in __getter
+    expect(result.code).toContain('compareWith: (a, b) => a?.id === b?.id');
+    expect(result.code).not.toContain('compareWith: __getter');
+  });
+
+  it('wraps object literal props in parens inside __getter', () => {
+    const source = `
+<script lang="ts">
+const items = signal([]);
+function total() { return 0; }
+</script>
+<template>
+  <div>
+    {DataTable({
+      footerSummary: {
+        name: () => items().length,
+        salary: () => total(),
+      },
+    })}
+  </div>
+</template>`;
+    const result = compile(source, { filename: 'objlit.akash' });
+    // Must use (() => ({...})) not (() => {...})
+    expect(result.code).toContain('__getter(() => ({');
+    expect(result.code).not.toMatch(/__getter\(\(\) => \{[^(]/);
+  });
 });

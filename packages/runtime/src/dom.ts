@@ -53,7 +53,7 @@ export function setProperty(el: HTMLElement, key: string, value: unknown): void 
     const event = key.slice(2).toLowerCase();
     el.addEventListener(event, value as EventListener);
   } else if (key in el) {
-    (el as Record<string, unknown>)[key] = value;
+    (el as unknown as Record<string, unknown>)[key] = value;
   } else if (value === false || value == null) {
     el.removeAttribute(key);
   } else {
@@ -161,9 +161,9 @@ export function renderConditional(
       // moved from the initial DocumentFragment into the real DOM.
       // In table contexts, the browser may relocate comment anchors.
       const branch = value ? trueBranch : falseBranch;
-      let liveParent = anchor.parentNode;
-      if (!liveParent && current?.nodes[0]?.parentNode) {
-        liveParent = current.nodes[0].parentNode;
+      let liveParent: Node | null = anchor.parentNode;
+      if (!liveParent && (current as ConditionalBlock | null)?.nodes[0]?.parentNode) {
+        liveParent = (current as ConditionalBlock | null)!.nodes[0].parentNode;
       }
       if (branch && liveParent) {
         const fragment = scope ? runInScope(scope, branch) : branch();

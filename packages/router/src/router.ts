@@ -23,6 +23,7 @@ import type {
   NavigationEventCallback,
   NavigationLocation,
   RouterOptions,
+  NavigationStateInfo,
 } from './types.js';
 
 // --- Path matching ---
@@ -118,17 +119,29 @@ export function resolvePath(pattern: string, params: Record<string, string>): st
 
   // Replace [...param] catch-all
   result = result.replace(/\[\.\.\.(\w+)\]/g, (_, name) => {
-    return params[name] ?? '';
+    const value = params[name];
+    if (value == null || value === '') {
+      throw new Error(`[AkashJS] Missing required catch-all param: ${name} in pattern "${pattern}"`);
+    }
+    return value;
   });
 
   // Replace [param] brackets
   result = result.replace(/\[(\w+)\]/g, (_, name) => {
-    return encodeURIComponent(params[name] ?? '');
+    const value = params[name];
+    if (value == null || value === '') {
+      throw new Error(`[AkashJS] Missing required param: ${name} in pattern "${pattern}"`);
+    }
+    return encodeURIComponent(value);
   });
 
   // Replace :param
   result = result.replace(/:(\w+)/g, (_, name) => {
-    return encodeURIComponent(params[name] ?? '');
+    const value = params[name];
+    if (value == null || value === '') {
+      throw new Error(`[AkashJS] Missing required param: ${name} in pattern "${pattern}"`);
+    }
+    return encodeURIComponent(value);
   });
 
   return result;
@@ -137,27 +150,90 @@ export function resolvePath(pattern: string, params: Record<string, string>): st
 // --- Route resolution ---
 
 /**
+ * Route specificity score: static > dynamic > catch-all.
+ * Lower score = higher priority.
+ */
+function routeSpecificity(path: string): number {
+  const segments = path.split('/').filter(Boolean);
+  if (segments.length === 0) return 0; // root path
+
+  let score = 0;
+  for (const seg of segments) {
+    if (seg.startsWith('[...') || seg.startsWith('*')) {
+      score += 200; // catch-all — lowest priority
+    } else if (seg.startsWith(':') || (seg.startsWith('[') && seg.endsWith(']'))) {
+      score += 100; // dynamic param
+    } else {
+      score += 0; // static — highest priority
+    }
+  }
+  return score;
+}
+
+/** Sort routes by specificity (static first, then params, then catch-all) */
+function sortBySpecificity(routes: RouteConfig[]): RouteConfig[] {
+  return [...routes].sort((a, b) => routeSpecificity(a.path) - routeSpecificity(b.path));
+}
+
+/**
  * Find the best matching route for a pathname.
  * Returns the chain of matches (for nested layouts).
  */
+/**
+ * Match a path pattern as a prefix (without requiring full match).
+ * Returns the matched portion's length and extracted params, or null.
+ */
+function matchPathPrefix(
+  pathname: string,
+  path: string,
+): { params: Record<string, string>; matchedLength: number } | null {
+  const { regex, paramNames } = compilePath(path);
+  // Convert exact regex to prefix: remove trailing '$'
+  const prefixSource = regex.source.replace(/\$$/, '');
+  const prefixRegex = new RegExp(prefixSource);
+  const match = pathname.match(prefixRegex);
+
+  if (!match) return null;
+
+  const params: Record<string, string> = {};
+  for (let i = 0; i < paramNames.length; i++) {
+    params[paramNames[i]] = decodeURIComponent(match[i + 1]);
+  }
+
+  return { params, matchedLength: match[0].length };
+}
+
 export function resolveRoutes(
   routes: RouteConfig[],
   pathname: string,
 ): RouteMatch[] | null {
-  for (const route of routes) {
+  const sorted = sortBySpecificity(routes);
+  for (const route of sorted) {
+    // Exact match (leaf route or route without children)
     const result = matchPath(pathname, route.path);
     if (result) {
       return [{ route, params: result.params, path: route.path }];
     }
 
-    // Try children with prefix matching
+    // Try children — pathname must start with the parent's path prefix
     if (route.children) {
-      const childMatches = resolveRoutes(route.children, pathname);
-      if (childMatches) {
-        return [
-          { route, params: {}, path: route.path },
-          ...childMatches,
-        ];
+      const prefixResult = matchPathPrefix(pathname, route.path);
+      if (prefixResult) {
+        // Remaining path after the parent prefix
+        const remaining = pathname.slice(prefixResult.matchedLength) || '/';
+
+        // Children can use either relative paths (e.g., ':slug') or
+        // absolute paths (e.g., '/users/:id/posts/:postId').
+        // Try relative first (remaining), then absolute (full pathname).
+        const childMatches =
+          resolveRoutes(route.children, remaining) ??
+          resolveRoutes(route.children, pathname);
+        if (childMatches) {
+          return [
+            { route, params: prefixResult.params, path: route.path },
+            ...childMatches,
+          ];
+        }
       }
     }
   }
@@ -227,6 +303,9 @@ interface RouterInternal {
   /** Navigation event listener registration */
   addBeforeNavigate: (cb: NavigationEventCallback) => () => void;
   addAfterNavigate: (cb: NavigationEventCallback) => () => void;
+  /** Navigation state for pending indicator */
+  navState: () => 'idle' | 'loading';
+  navTo: () => NavigationLocation | null;
 }
 
 /** @internal — provide router context in the component tree */
@@ -378,6 +457,20 @@ export function onAfterNavigate(cb: NavigationEventCallback): () => void {
   return unsub;
 }
 
+// --- Navigation state hook ---
+
+/**
+ * Get the current navigation state (idle/loading) and target location.
+ * Use this to build loading indicators, disable UI during navigation, etc.
+ */
+export function useNavigationState(): NavigationStateInfo {
+  const ctx = useRouterInternal();
+  return {
+    state: () => ctx.navState(),
+    to: () => ctx.navTo(),
+  };
+}
+
 // --- createRouter ---
 
 /** Check if two route match chains resolve to the same route components */
@@ -446,6 +539,8 @@ export function createRouter(routes: RouteConfig[], options?: RouterOptions): Ro
   const hashSignal = signal<string>('');
   const loaderData = signal<Map<string, unknown>>(new Map());
   const isNavigating = signal(false);
+  const navStateSignal = signal<'idle' | 'loading'>('idle');
+  const navToSignal = signal<NavigationLocation | null>(null);
   let lastNavUrl = '';
 
   async function performNavigation(pathname: string, search: string, hash: string): Promise<void> {
@@ -472,6 +567,8 @@ export function createRouter(routes: RouteConfig[], options?: RouterOptions): Ro
       querySignal.set({});
       hashSignal.set('');
       loaderData.set(new Map());
+      navStateSignal.set('idle');
+      navToSignal.set(null);
       return;
     }
 
@@ -489,9 +586,15 @@ export function createRouter(routes: RouteConfig[], options?: RouterOptions): Ro
       fireListeners(beforeListeners, event);
     }
 
+    // Set loading state — covers guards + loaders + component chunk load.
+    // Query-only and hash-only changes skip this (no component loading).
+    navStateSignal.set('loading');
+    navToSignal.set(toLocation);
+
     // If only query/hash changed but the matched route chain and params
     // are identical, update just the query/hash signals without triggering
     // a full Outlet re-render (guards, loaders, component swap).
+    // Query-only and hash-only changes do NOT trigger loading state.
     if (
       current &&
       current.path === pathname &&
@@ -506,6 +609,10 @@ export function createRouter(routes: RouteConfig[], options?: RouterOptions): Ro
       current.query = newQuery;
       current.hash = newHash;
 
+      // Query/hash-only — reset loading state immediately (no component load)
+      navStateSignal.set('idle');
+      navToSignal.set(null);
+
       // Fire after-navigate (skip initial)
       if (!isInitialNavigation) {
         const event: NavigationEvent = { from: fromLocation, to: toLocation, type: lastNavType };
@@ -518,7 +625,8 @@ export function createRouter(routes: RouteConfig[], options?: RouterOptions): Ro
     // Run guards
     const guardResult = await runGuards(matches);
     if (guardResult) {
-      // Redirect — navigate to the new path instead
+      // Redirect — update `to` to reflect redirect target, then navigate
+      navToSignal.set({ path: guardResult.path, params: {}, query: {}, hash: '' });
       await navigate(guardResult.path);
       return;
     }
@@ -539,6 +647,10 @@ export function createRouter(routes: RouteConfig[], options?: RouterOptions): Ro
       hash: newHash,
       path: pathname,
     });
+
+    // Navigation complete — reset to idle
+    navStateSignal.set('idle');
+    navToSignal.set(null);
 
     // Fire after-navigate (skip initial)
     if (!isInitialNavigation) {
@@ -618,7 +730,7 @@ export function createRouter(routes: RouteConfig[], options?: RouterOptions): Ro
 
   // Provide router context so Outlet and use* hooks can inject it
   const depth = signal(0);
-  provideRouter({ route: () => resolvedRoute(), navigate, loaderData: () => loaderData(), query: () => querySignal(), hash: () => hashSignal(), depth, addBeforeNavigate, addAfterNavigate });
+  provideRouter({ route: () => resolvedRoute(), navigate, loaderData: () => loaderData(), query: () => querySignal(), hash: () => hashSignal(), depth, addBeforeNavigate, addAfterNavigate, navState: () => navStateSignal(), navTo: () => navToSignal() });
 
   // --- Scroll restoration ---
   const scrollEnabled = options?.scrollRestoration !== false;

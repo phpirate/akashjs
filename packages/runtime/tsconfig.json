@@ -5,7 +5,8 @@
     "rootDir": "src",
     "outDir": "dist",
     "jsx": "react-jsx",
-    "jsxImportSource": "@akashjs/runtime"
+    "jsxImportSource": "@akashjs/runtime",
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"]
 }

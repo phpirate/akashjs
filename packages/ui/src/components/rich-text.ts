@@ -186,7 +186,7 @@ export const RichTextEditor = defineComponent<RichTextEditorProps>((ctx) => {
     const internalValue = signal(readProp(props.value) ?? '');
     if (typeof props.value === 'function') {
       effect(() => {
-        const ext = (props.value as () => string)();
+        const ext = (props.value as unknown as () => string)();
         internalValue.set(ext ?? '');
       });
     }
@@ -406,7 +406,7 @@ export const ContentEditable = defineComponent<ContentEditableProps>((ctx) => {
     const internalValue = signal(readProp(props.value) ?? '');
     if (typeof props.value === 'function') {
       effect(() => {
-        const ext = (props.value as () => string)();
+        const ext = (props.value as unknown as () => string)();
         internalValue.set(ext ?? '');
       });
     }
@@ -472,7 +472,7 @@ export const ContentEditable = defineComponent<ContentEditableProps>((ctx) => {
     // React to editable changes
     if (typeof props.editable === 'function') {
       effect(() => {
-        const e = (props.editable as () => boolean)();
+        const e = (props.editable as unknown as () => boolean)();
         el.contentEditable = String(e ?? true);
         el.style.opacity = e ? '' : '0.7';
         el.style.cursor = e ? '' : 'default';

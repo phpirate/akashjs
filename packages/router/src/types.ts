@@ -142,3 +142,12 @@ export interface NavigationEvent {
 }
 
 export type NavigationEventCallback = (event: NavigationEvent) => void;
+
+// --- Navigation state (pending indicator) ---
+
+export interface NavigationStateInfo {
+  /** Current navigation state */
+  state: () => 'idle' | 'loading';
+  /** Target location during loading, null when idle */
+  to: () => NavigationLocation | null;
+}

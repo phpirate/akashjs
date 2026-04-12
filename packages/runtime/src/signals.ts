@@ -16,7 +16,7 @@ let notifyDepth = 0;
 
 // --- Tracking scope ---
 
-type Subscriber = EffectNode | ComputedNode<unknown>;
+type Subscriber = EffectNode | ComputedNode<any>;
 
 let currentSubscriber: Subscriber | null = null;
 
@@ -88,7 +88,7 @@ interface ComputedNode<T> {
   value: T | undefined;
   state: ComputedState;
   subscribers: Set<Subscriber>;
-  sources: Set<SignalNode<unknown> | ComputedNode<unknown>>;
+  sources: Set<SignalNode<any> | ComputedNode<any>>;
   equals: (a: T, b: T) => boolean;
 }
 
@@ -158,7 +158,7 @@ function recompute<T>(node: ComputedNode<T>, skipEffectNotify = false): void {
   try {
     const newValue = node.fn();
     const isFirst = node.value === undefined;
-    const changed = isFirst || !node.equals(node.value, newValue);
+    const changed = isFirst || !node.equals(node.value as T, newValue);
     node.value = newValue;
     node.state = ComputedState.Clean;
 
@@ -195,7 +195,7 @@ interface EffectNode extends ScheduledEffect {
   _tag: 'effect';
   fn: () => void | (() => void);
   cleanup: (() => void) | null;
-  sources: Set<SignalNode<unknown> | ComputedNode<unknown>>;
+  sources: Set<SignalNode<any> | ComputedNode<any>>;
   disposed: boolean;
   isRender: boolean;
 }
@@ -358,8 +358,8 @@ export function on<T extends readonly (() => unknown)[]>(
   options?: { defer?: boolean },
 ): () => void | (() => void);
 export function on(
-  deps: (() => unknown) | (() => unknown)[],
-  fn: (values: unknown, prev: unknown) => void | (() => void),
+  deps: (() => any) | (() => any)[],
+  fn: (values: any, prev: any) => void | (() => void),
   options?: { defer?: boolean },
 ): () => void | (() => void) {
   const isArray = Array.isArray(deps);
@@ -393,7 +393,7 @@ export function on(
 // --- Internal helpers ---
 
 function trackSubscriber(
-  node: SignalNode<unknown> | ComputedNode<unknown>,
+  node: SignalNode<any> | ComputedNode<any>,
 ): void {
   if (currentSubscriber) {
     node.subscribers.add(currentSubscriber);
@@ -405,7 +405,7 @@ function trackSubscriber(
 }
 
 function notifySubscribers(
-  node: SignalNode<unknown> | ComputedNode<unknown>,
+  node: SignalNode<any> | ComputedNode<any>,
 ): void {
   // Snapshot subscribers before iterating. Effects that run synchronously
   // during flush() will delete and re-add themselves to the Set, and JS

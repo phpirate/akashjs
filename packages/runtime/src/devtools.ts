@@ -40,7 +40,6 @@ export function __trackSignal(name: string, read: () => unknown, getSubscriberCo
   trackedSignals.set(name || `signal_${signalCounter++}`, {
     name,
     read,
-    subscriberCount: 0,
     get subscriberCount() { return getSubscriberCount(); },
   } as TrackedSignal);
 }

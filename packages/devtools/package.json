@@ -1,6 +1,6 @@
 {
   "name": "@akashjs/devtools",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AkashJS DevTools — browser extension for signal inspection and component tree",
   "type": "module",
   "main": "dist/index.cjs",
@@ -20,7 +20,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@akashjs/runtime": "^0.1.0"
+    "@akashjs/runtime": "workspace:*"
   },
   "files": [
     "dist",

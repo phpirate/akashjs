@@ -148,14 +148,17 @@ export function useThrottle<T>(source: () => T, interval: number): ReadonlySigna
  * const { count, inc, dec, set, reset } = useCounter(0);
  * ```
  */
-export function useCounter(initial = 0) {
-  const count = signal(initial);
+export function useCounter(initial = 0, options?: { min?: number; max?: number }) {
+  const min = options?.min ?? -Infinity;
+  const max = options?.max ?? Infinity;
+  const clamp = (v: number) => Math.min(max, Math.max(min, v));
+  const count = signal(clamp(initial));
   return {
     count: (() => count()) as ReadonlySignal<number>,
-    inc(delta = 1) { count.update((c) => c + delta); },
-    dec(delta = 1) { count.update((c) => c - delta); },
-    set(value: number) { count.set(value); },
-    reset() { count.set(initial); },
+    inc(delta = 1) { count.update((c) => clamp(c + delta)); },
+    dec(delta = 1) { count.update((c) => clamp(c - delta)); },
+    set(value: number) { count.set(clamp(value)); },
+    reset() { count.set(clamp(initial)); },
   };
 }
 

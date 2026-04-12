@@ -84,7 +84,7 @@ export function zodAsyncFieldValidator<T>(
   }
 
   return async (value: T): Promise<string | null> => {
-    const parse = fieldSchema.safeParseAsync ?? fieldSchema.safeParse;
+    const parse = (fieldSchema.safeParseAsync ?? fieldSchema.safeParse) as (data: unknown) => Promise<{ success: boolean; error?: { issues: Array<{ message: string }> } }>;
     const result = await parse.call(fieldSchema, value);
     if (result.success) return null;
     return result.error?.issues[0]?.message ?? 'Validation failed';

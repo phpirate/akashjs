@@ -2,7 +2,7 @@
 
 // Core router
 export { createRouter, compilePath, matchPath, resolvePath, resolveRoutes } from './router.js';
-export { useRoute, useParams, useNavigate, useLoaderData, useSearchParams, onBeforeNavigate, onAfterNavigate } from './router.js';
+export { useRoute, useParams, useNavigate, useLoaderData, useSearchParams, useNavigationState, onBeforeNavigate, onAfterNavigate } from './router.js';
 export type { SetSearchParamsOptions } from './router.js';
 
 // Components
@@ -23,6 +23,10 @@ export type { HistoryManager, HistoryLocation } from './history.js';
 // Middleware
 export { defineMiddleware, runMiddleware, composeMiddleware } from './middleware.js';
 export type { Middleware, MiddlewareContext } from './middleware.js';
+
+// Navigation progress indicator
+export { NavigationProgress } from './navigation-progress.js';
+export type { NavigationProgressProps } from './navigation-progress.js';
 
 // Route transitions + canDeactivate
 export { canDeactivate, getRouteTransitionClasses, generateRouteTransitionCSS } from './route-transition.js';
@@ -46,4 +50,5 @@ export type {
   NavigationEventCallback,
   NavigationLocation,
   RouterOptions,
+  NavigationStateInfo,
 } from './types.js';

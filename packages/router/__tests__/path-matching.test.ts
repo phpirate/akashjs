@@ -175,4 +175,82 @@ describe('resolveRoutes', () => {
   it('returns null for unmatched paths', () => {
     expect(resolveRoutes(routes, '/nonexistent')).toBe(null);
   });
+
+  // BUG #4 — nested child routes with relative paths
+  it('resolves nested child routes with relative paths', () => {
+    const nestedRoutes: RouteConfig[] = [
+      { path: '/', component: () => Promise.resolve({ default: {} as any }) },
+      {
+        path: '/blog',
+        component: () => Promise.resolve({ default: {} as any }),
+        children: [
+          { path: ':slug', component: () => Promise.resolve({ default: {} as any }) },
+        ],
+      },
+    ];
+    const matches = resolveRoutes(nestedRoutes, '/blog/hello');
+    expect(matches).not.toBe(null);
+    expect(matches).toHaveLength(2);
+    expect(matches![0].path).toBe('/blog');
+    expect(matches![1].params).toEqual({ slug: 'hello' });
+  });
+
+  // BUG #5 — unrelated paths must NOT match child routes
+  it('does not falsely match unrelated paths to child routes', () => {
+    const nestedRoutes: RouteConfig[] = [
+      { path: '/', component: () => Promise.resolve({ default: {} as any }) },
+      { path: '/about', component: () => Promise.resolve({ default: {} as any }) },
+      {
+        path: '/blog',
+        component: () => Promise.resolve({ default: {} as any }),
+        children: [
+          { path: ':slug', component: () => Promise.resolve({ default: {} as any }) },
+        ],
+      },
+    ];
+    expect(resolveRoutes(nestedRoutes, '/xyz')).toBe(null);
+    expect(resolveRoutes(nestedRoutes, '/about/something')).toBe(null);
+  });
+
+  // BUG #7 — static routes should win over dynamic regardless of order
+  it('prioritizes static over dynamic child routes', () => {
+    const routes: RouteConfig[] = [
+      {
+        path: '/users',
+        component: () => Promise.resolve({ default: {} as any }),
+        children: [
+          { path: ':id', component: () => Promise.resolve({ default: {} as any }) },
+          { path: 'admin', component: () => Promise.resolve({ default: {} as any }) },
+        ],
+      },
+    ];
+    const matches = resolveRoutes(routes, '/users/admin');
+    expect(matches).toHaveLength(2);
+    expect(matches![1].path).toBe('admin');
+    expect(matches![1].params).toEqual({});
+  });
+
+  it('prioritizes dynamic over catch-all child routes', () => {
+    const routes: RouteConfig[] = [
+      {
+        path: '/docs',
+        component: () => Promise.resolve({ default: {} as any }),
+        children: [
+          { path: '[...rest]', component: () => Promise.resolve({ default: {} as any }) },
+          { path: ':section', component: () => Promise.resolve({ default: {} as any }) },
+        ],
+      },
+    ];
+    const matches = resolveRoutes(routes, '/docs/api');
+    expect(matches).toHaveLength(2);
+    expect(matches![1].path).toBe(':section');
+    expect(matches![1].params).toEqual({ section: 'api' });
+  });
+
+  // BUG #6 — resolvePath throws for missing params
+  it('throws when required params are missing', () => {
+    expect(() => resolvePath('/blog/:slug', {})).toThrow('Missing required param: slug');
+    expect(() => resolvePath('/user/:id/post/:postId', {})).toThrow('Missing required param: id');
+    expect(() => resolvePath('/blog/:slug', { slug: '' })).toThrow('Missing required param: slug');
+  });
 });

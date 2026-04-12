@@ -131,7 +131,7 @@ export default function akash(options: AkashPluginOptions = {}): Plugin {
             return null;
           });
           for (const err of propErrors) {
-            this.warn(`[AkashJS] ${err.message}`, { id });
+            this.warn({ message: `[AkashJS] ${err.message}`, id });
           }
         } catch {
           // Prop validation failed — skip silently
@@ -183,7 +183,7 @@ export default function akash(options: AkashPluginOptions = {}): Plugin {
       const oldSource = sourceCache.get(file);
 
       if (oldSource) {
-        read().then((newSource) => {
+        Promise.resolve(read()).then((newSource: string) => {
           const analysis = analyzeHmrChange(oldSource, newSource);
 
           if (analysis.styleOnly) {

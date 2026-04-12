@@ -18,14 +18,14 @@
     "ui"
   ],
   "dependencies": {
-    "@akashjs/runtime": "^0.2.0",
-    "@akashjs/compiler": "^0.1.0",
-    "@akashjs/vite-plugin": "^0.1.0",
-    "@akashjs/router": "^0.1.0",
-    "@akashjs/forms": "^0.1.0",
-    "@akashjs/http": "^0.1.0",
-    "@akashjs/i18n": "^0.1.0",
-    "@akashjs/ui": "^0.2.0"
+    "@akashjs/runtime": "workspace:*",
+    "@akashjs/compiler": "workspace:*",
+    "@akashjs/vite-plugin": "workspace:*",
+    "@akashjs/router": "workspace:*",
+    "@akashjs/forms": "workspace:*",
+    "@akashjs/http": "workspace:*",
+    "@akashjs/i18n": "workspace:*",
+    "@akashjs/ui": "workspace:*"
   },
   "engines": {
     "node": ">=18.0.0"

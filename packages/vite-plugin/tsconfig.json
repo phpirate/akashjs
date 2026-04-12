@@ -4,7 +4,8 @@
     "composite": true,
     "rootDir": "src",
     "outDir": "dist",
-    "verbatimModuleSyntax": false
+    "verbatimModuleSyntax": false,
+    "types": ["node"]
   },
   "include": ["src"],
   "references": [{ "path": "../compiler" }]

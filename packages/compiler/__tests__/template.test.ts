@@ -87,4 +87,30 @@ describe('parseTemplate', () => {
     expect(nodes[0].children![1].type).toBe('expression');
     expect(nodes[0].children![1].content).toBe('count()');
   });
+
+  it('parses fragment syntax (<>...</>)', () => {
+    const nodes = parseTemplate('<><div>A</div><span>B</span></>');
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].type).toBe('fragment');
+    expect(nodes[0].children).toHaveLength(2);
+    expect(nodes[0].children![0].tag).toBe('div');
+    expect(nodes[0].children![1].tag).toBe('span');
+  });
+
+  it('parses nested fragments', () => {
+    const nodes = parseTemplate('<><><div>inner</div></><span>outer</span></>');
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].type).toBe('fragment');
+    expect(nodes[0].children).toHaveLength(2);
+    expect(nodes[0].children![0].type).toBe('fragment');
+    expect(nodes[0].children![0].children![0].tag).toBe('div');
+    expect(nodes[0].children![1].tag).toBe('span');
+  });
+
+  it('parses empty fragment', () => {
+    const nodes = parseTemplate('<></>');
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].type).toBe('fragment');
+    expect(nodes[0].children).toHaveLength(0);
+  });
 });

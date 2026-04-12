@@ -316,7 +316,7 @@ export const DatePicker = defineComponent<DatePickerProps>((ctx) => {
     // Sync from external prop (when reactive)
     if (typeof props.value === 'function') {
       effect(() => {
-        const ext = (props.value as () => Date | null)();
+        const ext = (props.value as unknown as () => Date | null)();
         internalValue.set(ext ?? null);
       });
     }
@@ -534,10 +534,10 @@ export const DateRangePicker = defineComponent<DateRangePickerProps>((ctx) => {
 
     // Sync from external props when reactive
     if (typeof props.from === 'function') {
-      effect(() => { fromValue.set((props.from as () => Date | null)() ?? null); });
+      effect(() => { fromValue.set((props.from as unknown as () => Date | null)() ?? null); });
     }
     if (typeof props.to === 'function') {
-      effect(() => { toValue.set((props.to as () => Date | null)() ?? null); });
+      effect(() => { toValue.set((props.to as unknown as () => Date | null)() ?? null); });
     }
 
     const wrapper = document.createElement('div');
@@ -678,7 +678,7 @@ export const DateTimePicker = defineComponent<DateTimePickerProps>((ctx) => {
     // Sync from external prop (when reactive)
     if (typeof props.value === 'function') {
       effect(() => {
-        const ext = (props.value as () => Date | null)();
+        const ext = (props.value as unknown as () => Date | null)();
         internalValue.set(ext ?? null);
       });
     }

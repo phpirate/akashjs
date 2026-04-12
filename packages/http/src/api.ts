@@ -54,11 +54,11 @@ export interface EndpointDef<TInput = unknown, TOutput = unknown> {
 
 export type APIDef = Record<string, EndpointDef<any, any>>;
 
-export interface APIClient<T extends APIDef> {
+export type APIClient<T extends APIDef> = {
   [K in keyof T]: T[K] extends EndpointDef<infer I, infer O>
     ? (input: I) => Promise<O>
     : never;
-}
+};
 
 export interface APIClientOptions {
   /** Base URL for API requests */

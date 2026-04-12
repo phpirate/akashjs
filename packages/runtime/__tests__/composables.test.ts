@@ -52,6 +52,30 @@ describe('useCounter', () => {
     reset();
     expect(count()).toBe(5);
   });
+
+  it('clamps at max on inc', () => {
+    const { count, inc } = useCounter(9, { min: 0, max: 10 });
+    inc();
+    expect(count()).toBe(10);
+    inc();
+    expect(count()).toBe(10);
+  });
+
+  it('clamps at min on dec', () => {
+    const { count, dec } = useCounter(1, { min: 0, max: 10 });
+    dec();
+    expect(count()).toBe(0);
+    dec();
+    expect(count()).toBe(0);
+  });
+
+  it('clamps on set', () => {
+    const { count, set } = useCounter(0, { min: -5, max: 10 });
+    set(100);
+    expect(count()).toBe(10);
+    set(-100);
+    expect(count()).toBe(-5);
+  });
 });
 
 describe('useToggle', () => {

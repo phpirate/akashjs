@@ -137,7 +137,7 @@ export function createMachine<
     let action: ((ctx: MachineContext<TContext>) => void) | undefined;
 
     if (typeof transition === 'string') {
-      target = transition;
+      target = transition as TState;
     } else {
       const t = transition as TransitionConfig<TState, TEvent, TContext>;
       target = t.target;

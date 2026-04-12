@@ -44,23 +44,41 @@ export function transform(sfc: ParsedSFC, options: CompileOptions = {}): Compile
     }
   }
 
-  // Build output
-  let code = '';
-
-  // Runtime imports
-  if (runtimeImports.size > 0) {
-    code += `import { ${[...runtimeImports].join(', ')} } from '@akashjs/runtime';\n`;
-  }
-
   // User script (with Props interface extracted)
   const { cleanScript, propsInterface } = extractPropsInterface(script);
 
   // Separate user imports from the rest of the script
   const { userImports, bodyScript } = extractUserImports(cleanScript);
 
-  // Hoist user imports to top level
-  if (userImports.length > 0) {
-    code += userImports.join('\n') + '\n';
+  // Deduplicate: merge user's @akashjs/runtime imports with compiler-injected ones
+  const mergedUserImports: string[] = [];
+  for (const imp of userImports) {
+    const runtimeMatch = /^import\s+\{([^}]+)\}\s+from\s+['"]@akashjs\/runtime['"];?\s*$/.exec(imp);
+    if (runtimeMatch) {
+      // Extract symbols from the user's import and add them to runtimeImports
+      const symbols = runtimeMatch[1].split(',').map(s => s.trim()).filter(Boolean);
+      for (const sym of symbols) {
+        // Handle `type Foo` imports — keep them but don't add to runtime set
+        if (sym.startsWith('type ')) continue;
+        runtimeImports.add(sym);
+      }
+      // Drop this user import line — it will be merged into the compiler's import
+    } else {
+      mergedUserImports.push(imp);
+    }
+  }
+
+  // Build output
+  let code = '';
+
+  // Runtime imports (now includes user's runtime symbols, deduplicated)
+  if (runtimeImports.size > 0) {
+    code += `import { ${[...runtimeImports].join(', ')} } from '@akashjs/runtime';\n`;
+  }
+
+  // Hoist user imports to top level (excluding already-merged runtime imports)
+  if (mergedUserImports.length > 0) {
+    code += mergedUserImports.join('\n') + '\n';
   }
 
   // Generate the component
@@ -99,6 +117,67 @@ export function transform(sfc: ParsedSFC, options: CompileOptions = {}): Compile
   }
 
   return { code, css };
+}
+
+/**
+ * Parse object literal prop entries with nesting-aware splitting.
+ * Correctly handles nested parens, braces, brackets, and strings.
+ */
+function parseObjectProps(body: string): Array<{ key: string; value: string }> {
+  const entries: Array<{ key: string; value: string }> = [];
+  let pos = 0;
+
+  while (pos < body.length) {
+    // Skip whitespace and commas
+    while (pos < body.length && /[\s,]/.test(body[pos])) pos++;
+    if (pos >= body.length) break;
+
+    // Parse key: word characters
+    const keyMatch = /^(\w+)\s*:\s*/.exec(body.slice(pos));
+    if (!keyMatch) break;
+
+    const key = keyMatch[1];
+    pos += keyMatch[0].length;
+
+    // Parse value: advance until we hit a top-level comma or end of body
+    const valueStart = pos;
+    let depth = 0;
+    while (pos < body.length) {
+      const ch = body[pos];
+      if (ch === '"' || ch === "'" || ch === '`') {
+        // Skip string
+        const quote = ch;
+        pos++;
+        while (pos < body.length) {
+          if (body[pos] === '\\') { pos += 2; continue; }
+          if (body[pos] === quote) { pos++; break; }
+          pos++;
+        }
+        continue;
+      }
+      if (ch === '(' || ch === '{' || ch === '[') { depth++; pos++; continue; }
+      if (ch === ')' || ch === '}' || ch === ']') { depth--; pos++; continue; }
+      if (ch === ',' && depth === 0) break;
+      pos++;
+    }
+
+    const value = body.slice(valueStart, pos).trim();
+    // Remove trailing comma if captured
+    entries.push({ key, value: value.replace(/,\s*$/, '') });
+  }
+
+  return entries;
+}
+
+/** Wrap a value in __getter(), adding parens around object literals to avoid block ambiguity */
+function wrapGetter(val: string, imports: Set<string>): string {
+  imports.add('__getter');
+  const trimmed = val.trim();
+  // Object literal starting with { would be parsed as block statement
+  if (trimmed.startsWith('{')) {
+    return `__getter(() => (${trimmed}))`;
+  }
+  return `__getter(() => ${trimmed})`;
 }
 
 /** Check if a value is already a function expression (arrow or function keyword) */
@@ -326,11 +405,29 @@ function generateNode(
       lines.push(`${pad}const ${varName} = document.createTextNode(${JSON.stringify(node.content ?? '')});`);
       break;
 
+    case 'fragment': {
+      // <>...</> — compile to DocumentFragment with children
+      const fragChildren = node.children ?? [];
+      if (fragChildren.length === 0) {
+        lines.push(`${pad}const ${varName} = document.createDocumentFragment();`);
+      } else if (fragChildren.length === 1) {
+        generateNode(fragChildren[0], lines, imports, indent, varName, scopeId, isSvg);
+      } else {
+        lines.push(`${pad}const ${varName} = document.createDocumentFragment();`);
+        for (let i = 0; i < fragChildren.length; i++) {
+          const cVar = `${varName}_f${i}`;
+          generateNode(fragChildren[i], lines, imports, indent, cVar, scopeId, isSvg);
+          lines.push(`${pad}${varName}.appendChild(${cVar});`);
+        }
+      }
+      break;
+    }
+
     case 'expression': {
       const expr = node.content ?? '';
 
-      // Detect && with JSX: cond && <Tag>...</Tag>
-      const andMatch = /^(.+?)\s*&&\s*(<[a-zA-Z].*)$/s.exec(expr);
+      // Detect && with JSX: cond && <Tag>...</Tag> or cond && <>...</>
+      const andMatch = /^(.+?)\s*&&\s*(<(?:[a-zA-Z]|>).*)$/s.exec(expr);
       if (andMatch) {
         const condExpr = andMatch[1].trim();
         const jsxStr = andMatch[2].trim();
@@ -359,8 +456,8 @@ function generateNode(
         }
       }
 
-      // Detect ternary with JSX: cond ? <TagA> : <TagB>
-      const ternaryMatch = /^(.+?)\s*\?\s*(<[a-zA-Z].*?)\s*:\s*(<[a-zA-Z].*)$/s.exec(expr);
+      // Detect ternary with JSX: cond ? <TagA> : <TagB> (or fragments)
+      const ternaryMatch = /^(.+?)\s*\?\s*(<(?:[a-zA-Z]|>).*?)\s*:\s*(<(?:[a-zA-Z]|>).*)$/s.exec(expr);
       if (ternaryMatch) {
         const condExpr = ternaryMatch[1].trim();
         const trueJsx = ternaryMatch[2].trim();
@@ -401,23 +498,21 @@ function generateNode(
         const compName = componentCallMatch[1];
         const propsBody = componentCallMatch[2];
 
-        // Parse the props object literal and wrap reactive values as getters
-        const wrappedProps = propsBody.replace(
-          /(\w+)\s*:\s*([^,}]+)/g,
-          (_match, key: string, value: string) => {
-            const val = value.trim();
-            if (key.startsWith('on') || isAlreadyFunction(val)) {
-              return `${key}: ${val}`;
-            }
-            if (needsReactiveWrapper(val)) {
-              imports.add('__getter');
-              return `${key}: __getter(() => ${val})`;
-            }
-            return `${key}: ${val}`;
-          },
-        );
+        // Parse props with nesting-aware splitter instead of naive regex
+        const propEntries = parseObjectProps(propsBody);
+        const wrappedParts: string[] = [];
+        for (const { key, value } of propEntries) {
+          const val = value.trim();
+          if (key.startsWith('on') || isAlreadyFunction(val)) {
+            wrappedParts.push(`${key}: ${val}`);
+          } else if (needsReactiveWrapper(val)) {
+            wrappedParts.push(`${key}: ${wrapGetter(val, imports)}`);
+          } else {
+            wrappedParts.push(`${key}: ${val}`);
+          }
+        }
 
-        lines.push(`${pad}const ${varName} = ${compName}({ ${wrappedProps} });`);
+        lines.push(`${pad}const ${varName} = ${compName}({ ${wrappedParts.join(', ')} });`);
         break;
       }
 
@@ -831,8 +926,7 @@ function generateComponentCall(
           propParts.push(`${attr.name}: ${attr.value}`);
         } else if (needsReactiveWrapper(attr.value)) {
           // Contains signal reads — wrap in marked getter for reactivity
-          imports.add('__getter');
-          propParts.push(`${attr.name}: __getter(() => ${attr.value})`);
+          propParts.push(`${attr.name}: ${wrapGetter(attr.value, imports)}`);
         } else {
           // Static value (literal, identifier, etc.) — pass through
           propParts.push(`${attr.name}: ${attr.value}`);
@@ -940,9 +1034,9 @@ function tryCompileArrowJSX(
 ): string | null {
   const trimmed = expr.trim();
 
-  // Match arrow function: optional params => JSX body
-  // Patterns: () => <Tag>, (x) => <Tag>, x => <Tag>, (x, i) => <Tag>
-  const arrowMatch = /^(\(?[^)]*\)?)\s*=>\s*(<[a-zA-Z].*)$/s.exec(trimmed);
+  // Match arrow function: optional params => JSX body (including fragments <>)
+  // Patterns: () => <Tag>, (x) => <Tag>, x => <Tag>, (x, i) => <Tag>, () => <>...</>
+  const arrowMatch = /^(\(?[^)]*\)?)\s*=>\s*(<(?:[a-zA-Z]|>).*)$/s.exec(trimmed);
   if (!arrowMatch) return null;
 
   const params = arrowMatch[1];
@@ -988,8 +1082,8 @@ function tryCompileJSXProp(
   const arrowResult = tryCompileArrowJSX(trimmed, imports, indent + 2, scopeId);
   if (arrowResult) return arrowResult;
 
-  // Check if the value looks like JSX: starts with < followed by a tag name
-  if (!/^<[a-zA-Z]/.test(trimmed)) return null;
+  // Check if the value looks like JSX: starts with < followed by a tag name or >
+  if (!/^<(?:[a-zA-Z]|>)/.test(trimmed)) return null;
 
   // Parse the JSX as template content
   const nodes = parseTemplate(trimmed);
@@ -1044,6 +1138,15 @@ function generateServerNode(
 
     case 'element':
       generateServerElement(node, lines, imports, indent, scopeId);
+      break;
+
+    case 'fragment':
+      // <>...</> — just render children sequentially
+      if (node.children) {
+        for (const child of node.children) {
+          generateServerNode(child, lines, imports, indent, scopeId);
+        }
+      }
       break;
 
     case 'component':

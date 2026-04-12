@@ -14,7 +14,7 @@ export default defineConfig({
     pwa: 'src/pwa.ts',
   },
   format: ['esm', 'cjs'],
-  dts: false,
+  dts: { compilerOptions: { composite: false } },
   sourcemap: true,
   clean: true,
   treeshake: true,

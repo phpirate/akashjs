@@ -129,6 +129,12 @@ describe('ref', () => {
     elRef.current = el;
     expect(elRef.current).toBe(el);
   });
+
+  it('accepts an initial value', () => {
+    expect(ref(null).current).toBe(null);
+    expect(ref(0).current).toBe(0);
+    expect(ref('hello').current).toBe('hello');
+  });
 });
 
 describe('provide/inject in components', () => {
