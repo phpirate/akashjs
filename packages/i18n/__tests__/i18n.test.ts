@@ -172,6 +172,19 @@ describe('pluralization', () => {
     expect(i18n.t('items', { count: 0 })).toBe('0 items');
   });
 
+  it('falls back to defaultLocale when key missing in current locale', () => {
+    const i18n = createI18n({
+      defaultLocale: 'en',
+      messages: {
+        en: { hello: 'Hello', only_en: 'English only' },
+        fr: { hello: 'Bonjour' },
+      },
+    });
+    i18n.setLocale('fr');
+    expect(i18n.t('hello')).toBe('Bonjour');
+    expect(i18n.t('only_en')).toBe('English only');
+  });
+
   it('handles pipe-separated plural forms (3 forms)', () => {
     const i18n = createI18n({
       defaultLocale: 'en',

@@ -247,6 +247,22 @@ describe('resolveRoutes', () => {
     expect(matches![1].params).toEqual({ section: 'api' });
   });
 
+  // BUG #18 — optional catch-all [[...rest]]
+  it('optional catch-all matches empty path', () => {
+    const { regex, paramNames } = compilePath('/[[...rest]]');
+    expect(paramNames).toEqual(['rest']);
+    expect(regex.test('/')).toBe(true);
+    expect(regex.test('/a')).toBe(true);
+    expect(regex.test('/a/b/c')).toBe(true);
+  });
+
+  it('optional catch-all returns empty string for empty match', () => {
+    const result = matchPath('/', '/[[...rest]]');
+    expect(result).toEqual({ params: { rest: '' } });
+    const result2 = matchPath('/a/b', '/[[...rest]]');
+    expect(result2).toEqual({ params: { rest: 'a/b' } });
+  });
+
   // BUG #6 — resolvePath throws for missing params
   it('throws when required params are missing', () => {
     expect(() => resolvePath('/blog/:slug', {})).toThrow('Missing required param: slug');

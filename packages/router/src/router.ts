@@ -55,7 +55,15 @@ export function compilePath(path: string): { regex: RegExp; paramNames: string[]
   let pattern = '';
 
   for (const segment of segments) {
-    // Catch-all: [...param]
+    // Optional catch-all: [[...param]] — matches zero or more segments (including /)
+    if (segment.startsWith('[[...') && segment.endsWith(']]')) {
+      const name = segment.slice(5, -2);
+      paramNames.push(name);
+      pattern += '(?:/(.+))?/?';
+      continue;
+    }
+
+    // Catch-all: [...param] — matches one or more segments
     if (segment.startsWith('[...') && segment.endsWith(']')) {
       const name = segment.slice(4, -1);
       paramNames.push(name);
@@ -105,7 +113,8 @@ export function matchPath(
 
   const params: Record<string, string> = {};
   for (let i = 0; i < paramNames.length; i++) {
-    params[paramNames[i]] = decodeURIComponent(match[i + 1]);
+    const captured = match[i + 1];
+    params[paramNames[i]] = captured ? decodeURIComponent(captured) : '';
   }
 
   return { params };

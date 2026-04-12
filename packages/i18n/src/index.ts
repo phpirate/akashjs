@@ -128,8 +128,10 @@ export function createI18n(config: I18nConfig): I18n {
   });
 
   const fallbackMessages = computed(() => {
-    if (!config.fallbackLocale) return {};
-    return loadedMessages()[config.fallbackLocale] ?? {};
+    const fallbackLoc = config.fallbackLocale ?? config.defaultLocale;
+    // Don't fall back to self — that's just currentMessages
+    if (fallbackLoc === locale()) return {};
+    return loadedMessages()[fallbackLoc] ?? {};
   });
 
   function t(key: string, params?: Record<string, string | number>): string {
