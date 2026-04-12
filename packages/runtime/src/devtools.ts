@@ -13,6 +13,8 @@
  */
 
 import { __getStoreInstances } from './store.js';
+
+declare const __RUNTIME_VERSION__: string;
 import type { Store } from './store.js';
 
 // --- Signal/Effect tracking ---
@@ -78,35 +80,21 @@ function inspectStore(id: string): StoreSnapshot | null {
   if (!store) return null;
 
   const snapshot = store.$snapshot();
-  const state: Record<string, unknown> = {};
+  const meta = (store as any).$__meta as { stateKeys: string[]; getterKeys: string[]; actionKeys: string[] } | undefined;
   const getters: Record<string, unknown> = {};
   const actions: string[] = [];
 
-  for (const [key, value] of Object.entries(store)) {
-    if (key.startsWith('$')) continue;
-    if (typeof value === 'function' && 'set' in value && 'update' in value) {
-      // Signal (has .set and .update)
-      state[key] = snapshot[key as keyof typeof snapshot];
-    } else if (typeof value === 'function') {
-      // Distinguish getters (computed, 0 args) from actions (bound fns, may have args)
-      // Computed getters are created with computed(() => expr) — the returned fn has length 0
-      // Action wrappers also have length 0, but we can try calling with no args:
-      // getters return a value, actions typically return undefined or a Promise
-      if ((value as Function).length === 0 && !key.startsWith('on')) {
-        try {
-          const result = (value as any)();
-          // If it's a Promise, it's likely an async action
-          if (result && typeof result === 'object' && typeof result.then === 'function') {
-            actions.push(key);
-          } else {
-            getters[key] = result;
-          }
-        } catch {
-          actions.push(key);
-        }
-      } else {
-        actions.push(key);
-      }
+  if (meta) {
+    // Use metadata from store creation — no function calling needed
+    for (const key of meta.getterKeys) {
+      try { getters[key] = (store as any)[key](); } catch { getters[key] = '<error>'; }
+    }
+    actions.push(...meta.actionKeys);
+  } else {
+    // Fallback for stores without metadata
+    for (const [key, value] of Object.entries(store)) {
+      if (key.startsWith('$') || key in snapshot) continue;
+      if (typeof value === 'function') actions.push(key);
     }
   }
 
@@ -182,8 +170,7 @@ function createDevToolsAPI(): DevToolsAPI {
     },
 
     version() {
-      // Read from package.json version injected at build time, fallback to placeholder
-      return { runtime: '__RUNTIME_VERSION__' };
+      return { runtime: __RUNTIME_VERSION__ };
     },
 
     log(storeId?: string) {

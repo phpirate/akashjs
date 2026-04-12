@@ -208,7 +208,7 @@ function togglePanel(): void {
 // --- Public API ---
 
 export function mountDevtoolsOverlay(): void {
-  if (typeof document === 'undefined') return;
+  if (typeof document === 'undefined' || !document.head || !document.body) return;
 
   // Inject styles
   const style = document.createElement('style');

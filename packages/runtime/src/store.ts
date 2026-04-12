@@ -164,9 +164,15 @@ function createStoreInstance<
     store[key] = stateSignals[key];
   }
 
+  // Metadata for devtools — avoids calling functions to classify them
+  const getterKeys: string[] = [];
+  const actionKeys: string[] = [];
+  store.$__meta = { stateKeys, getterKeys, actionKeys };
+
   // Create computed getters — bound to store so `this.otherGetter()` works
   if (definition.getters) {
     for (const [key, getterFn] of Object.entries(definition.getters)) {
+      getterKeys.push(key);
       store[key] = computed(() =>
         (getterFn as Function).call(store, stateSignals),
       );
@@ -179,6 +185,7 @@ function createStoreInstance<
   // Bind actions with `this` pointing to the full store (state + getters + actions)
   if (definition.actions) {
     for (const [key, actionFn] of Object.entries(definition.actions)) {
+      actionKeys.push(key);
       store[key] = (...args: unknown[]) => {
         for (const plugin of plugins) plugin.onAction?.(store, key, args);
         return (actionFn as Function).apply(store, args);
