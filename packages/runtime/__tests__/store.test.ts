@@ -1,3 +1,5 @@
+/** @vitest-environment happy-dom */
+
 import { describe, it, expect, beforeEach } from 'vitest';
 import { defineStore, clearStores } from '../src/store.js';
 
@@ -133,5 +135,57 @@ describe('clearStores', () => {
     clearStores();
     const second = useStore();
     expect(second.count()).toBe(0); // fresh instance
+  });
+
+  it('persist: true hydrates and saves to localStorage', () => {
+    clearStores();
+    // Seed localStorage
+    localStorage.setItem('akash-store:persist-test', JSON.stringify({ count: 10 }));
+
+    const useStore2 = defineStore('persist-test', {
+      state: () => ({ count: 0 }),
+      persist: true,
+    });
+    const store = useStore2();
+    // Should hydrate from localStorage
+    expect(store.count()).toBe(10);
+
+    // Change state — should write to localStorage after microtask
+    store.count.set(20);
+
+    clearStores();
+    localStorage.removeItem('akash-store:persist-test');
+  });
+
+  it('persist: { pick } only persists selected keys', () => {
+    clearStores();
+    localStorage.setItem('akash-store:pick-test', JSON.stringify({ name: 'saved', temp: 'old' }));
+
+    const useStore3 = defineStore('pick-test', {
+      state: () => ({ name: '', temp: '' }),
+      persist: { pick: ['name'] },
+    });
+    const store = useStore3();
+    // Only 'name' should hydrate
+    expect(store.name()).toBe('saved');
+    expect(store.temp()).toBe(''); // not in pick list
+
+    clearStores();
+    localStorage.removeItem('akash-store:pick-test');
+  });
+
+  it('persist: { key } uses custom storage key', () => {
+    clearStores();
+    localStorage.setItem('my-custom-key', JSON.stringify({ theme: 'dark' }));
+
+    const useStore4 = defineStore('theme-store', {
+      state: () => ({ theme: 'light' }),
+      persist: { key: 'my-custom-key' },
+    });
+    const store = useStore4();
+    expect(store.theme()).toBe('dark');
+
+    clearStores();
+    localStorage.removeItem('my-custom-key');
   });
 });

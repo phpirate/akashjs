@@ -68,6 +68,19 @@ export type Store<S, G, A> = SignalifiedState<S> & {
   $id: string;
 };
 
+export interface PersistOptions<S> {
+  /** Only persist these state keys (default: all) */
+  pick?: (keyof S)[];
+  /** Storage backend (default: 'localStorage') */
+  storage?: 'localStorage' | 'sessionStorage';
+  /** Custom storage key (default: 'akash-store:{storeId}') */
+  key?: string;
+  /** Custom serializer (default: JSON.stringify) */
+  serialize?: (value: unknown) => string;
+  /** Custom deserializer (default: JSON.parse) */
+  deserialize?: (value: string) => unknown;
+}
+
 export interface StoreDefinition<S, G, A> {
   state: StateFactory<S>;
   getters?: Getters<S, G>;
@@ -77,6 +90,8 @@ export interface StoreDefinition<S, G, A> {
     A
   >;
   plugins?: StorePlugin[];
+  /** Auto-persist state to storage. true = persist all to localStorage. */
+  persist?: boolean | PersistOptions<S> | PersistOptions<S>[];
 }
 
 // --- Plugin system ---
@@ -235,10 +250,78 @@ function createStoreInstance<
     };
   };
 
+  // --- Persistence ---
+  if (definition.persist && typeof window !== 'undefined') {
+    const configs = normalizePersistConfigs(id, definition.persist);
+    for (const cfg of configs) {
+      const storage = cfg.storage === 'sessionStorage' ? sessionStorage : localStorage;
+      const serialize = cfg.serialize ?? JSON.stringify;
+      const deserialize = cfg.deserialize ?? JSON.parse;
+      const persistKeys = cfg.pick ?? stateKeys;
+
+      // Hydrate: read from storage and merge into state
+      try {
+        const raw = storage.getItem(cfg.key);
+        if (raw) {
+          const saved = deserialize(raw) as Record<string, unknown>;
+          for (const key of persistKeys as string[]) {
+            if (key in saved && key in stateSignals) {
+              stateSignals[key].set(saved[key]);
+            }
+          }
+        }
+      } catch { /* corrupt storage — ignore */ }
+
+      // Write: subscribe to state changes and persist (debounced via microtask)
+      let persistScheduled = false;
+      effect(() => {
+        // Track only the persisted keys
+        const snapshot: Record<string, unknown> = {};
+        for (const key of persistKeys as string[]) {
+          if (key in stateSignals) snapshot[key] = stateSignals[key]();
+        }
+        // Debounce via microtask to batch rapid changes
+        if (!persistScheduled) {
+          persistScheduled = true;
+          queueMicrotask(() => {
+            persistScheduled = false;
+            try { storage.setItem(cfg.key, serialize(snapshot)); } catch { /* quota exceeded */ }
+          });
+        }
+      });
+
+      // Cross-tab sync: listen for storage events from other tabs
+      if (cfg.storage !== 'sessionStorage') {
+        window.addEventListener('storage', (e) => {
+          if (e.key !== cfg.key || !e.newValue) return;
+          try {
+            const updated = deserialize(e.newValue) as Record<string, unknown>;
+            for (const key of persistKeys as string[]) {
+              if (key in updated && key in stateSignals) {
+                stateSignals[key].set(updated[key]);
+              }
+            }
+          } catch { /* ignore parse errors */ }
+        });
+      }
+    }
+  }
+
   // Initialize plugins
   for (const plugin of plugins) plugin.init?.(store);
 
   return store as Store<S, G, A>;
+}
+
+function normalizePersistConfigs<S>(id: string, persist: boolean | PersistOptions<S> | PersistOptions<S>[]): Array<PersistOptions<S> & { key: string }> {
+  if (persist === true) {
+    return [{ key: `akash-store:${id}` }];
+  }
+  if (persist === false) return [];
+  if (Array.isArray(persist)) {
+    return persist.map((p, i) => ({ ...p, key: p.key ?? `akash-store:${id}:${i}` }));
+  }
+  return [{ ...persist, key: persist.key ?? `akash-store:${id}` }];
 }
 
 /**
