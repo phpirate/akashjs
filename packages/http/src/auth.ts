@@ -99,6 +99,8 @@ export interface Auth<U = unknown> {
   fetchUser(): Promise<void>;
   /** Refresh the token */
   refreshToken(): Promise<boolean>;
+  /** Fetch auth config from configUrl */
+  fetchConfig(): Promise<void>;
   /** HTTP interceptor that attaches the auth token */
   interceptor: HttpInterceptor;
   /** Router guard that redirects to login if not authenticated */
@@ -356,6 +358,7 @@ export function createAuth<U = unknown>(config: AuthConfig<U> = {}): Auth<U> {
     setToken: setTokenFn,
     fetchUser,
     refreshToken: refreshTokenFn,
+    fetchConfig,
     interceptor,
     guard,
   };

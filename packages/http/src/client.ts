@@ -37,7 +37,8 @@ export function createHttpClient(config: HttpClientConfig = {}): HttpClient {
     : (request: Request) => baseFetch(request);
 
   function buildUrl(path: string, params?: Record<string, string>): string {
-    let url = baseUrl + path;
+    // Skip baseUrl if path is already absolute
+    let url = /^https?:\/\//.test(path) ? path : baseUrl + path;
     if (params && Object.keys(params).length > 0) {
       const searchParams = new URLSearchParams(params);
       url += '?' + searchParams.toString();
