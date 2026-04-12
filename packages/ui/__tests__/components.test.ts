@@ -153,3 +153,61 @@ describe('Layout Components', () => {
     expect(Stack._akash).toBe(true);
   });
 });
+
+// --- markdownToHtml ---
+
+import { markdownToHtml } from '../src/components/rich-text.js';
+
+describe('markdownToHtml', () => {
+  it('escapes script tags (XSS)', () => {
+    const html = markdownToHtml('<script>alert(1)</script>');
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;');
+  });
+
+  it('escapes event handler attributes (XSS)', () => {
+    const html = markdownToHtml('<img src=x onerror=alert(1)>');
+    // The < and > are escaped, so the browser won't parse it as a tag
+    expect(html).not.toContain('<img');
+    expect(html).toContain('&lt;img');
+  });
+
+  it('blocks javascript: URIs in links', () => {
+    const html = markdownToHtml('[click](javascript:alert(1))');
+    expect(html).not.toContain('javascript:');
+  });
+
+  it('renders inline code', () => {
+    const html = markdownToHtml('use `signal()` here');
+    expect(html).toContain('<code>signal()</code>');
+  });
+
+  it('renders fenced code blocks', () => {
+    const html = markdownToHtml('```ts\nconst x = 1;\n```');
+    expect(html).toContain('<pre><code class="language-ts">');
+    expect(html).toContain('const x = 1;');
+  });
+
+  it('renders images', () => {
+    const html = markdownToHtml('![logo](logo.png)');
+    expect(html).toContain('<img src="logo.png" alt="logo">');
+  });
+
+  it('renders horizontal rules', () => {
+    const html = markdownToHtml('above\n\n---\n\nbelow');
+    expect(html).toContain('<hr>');
+  });
+
+  it('renders tables', () => {
+    const html = markdownToHtml('| A | B |\n|---|---|\n| 1 | 2 |');
+    expect(html).toContain('<table>');
+    expect(html).toContain('<th>A</th>');
+    expect(html).toContain('<td>1</td>');
+  });
+
+  it('renders headings and bold/italic', () => {
+    expect(markdownToHtml('# Title')).toContain('<h1>Title</h1>');
+    expect(markdownToHtml('**bold**')).toContain('<strong>bold</strong>');
+    expect(markdownToHtml('*italic*')).toContain('<em>italic</em>');
+  });
+});

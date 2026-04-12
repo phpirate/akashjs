@@ -161,4 +161,24 @@ describe('pluralization', () => {
     expect(i18n.t('items', { count: 5 })).toBe('5 items');
     expect(i18n.t('items', { count: 0 })).toBe('0 items');
   });
+
+  it('handles pipe-separated plural forms (2 forms)', () => {
+    const i18n = createI18n({
+      defaultLocale: 'en',
+      messages: { en: { items: '{count} item | {count} items' } },
+    });
+    expect(i18n.t('items', { count: 1 })).toBe('1 item');
+    expect(i18n.t('items', { count: 5 })).toBe('5 items');
+    expect(i18n.t('items', { count: 0 })).toBe('0 items');
+  });
+
+  it('handles pipe-separated plural forms (3 forms)', () => {
+    const i18n = createI18n({
+      defaultLocale: 'en',
+      messages: { en: { items: 'no items | {count} item | {count} items' } },
+    });
+    expect(i18n.t('items', { count: 0 })).toBe('no items');
+    expect(i18n.t('items', { count: 1 })).toBe('1 item');
+    expect(i18n.t('items', { count: 5 })).toBe('5 items');
+  });
 });

@@ -148,12 +148,27 @@ export function createI18n(config: I18nConfig): I18n {
       }
     }
 
-    // Direct key lookup — also check if this is a pluralization key
-    // that needs fallback (e.g., key missing in current locale but exists in fallback)
+    // Direct key lookup
     const template = currentMessages()[key]
       ?? fallbackMessages()[key];
 
     if (template !== undefined) {
+      // Handle pipe-separated plural forms: "singular | plural" or "zero | one | many"
+      if (pluralCount !== undefined && template.includes(' | ')) {
+        const forms = template.split(' | ');
+        const count = Number(pluralCount);
+        let form: string;
+        if (forms.length === 3) {
+          // zero | one | many
+          form = count === 0 ? forms[0] : count === 1 ? forms[1] : forms[2];
+        } else if (forms.length === 2) {
+          // singular | plural
+          form = count === 1 ? forms[0] : forms[1];
+        } else {
+          form = forms[forms.length - 1]; // fallback to last form
+        }
+        return params ? interpolate(form, params) : form;
+      }
       return params ? interpolate(template, params) : template;
     }
 

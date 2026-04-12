@@ -70,31 +70,97 @@ function htmlToMarkdown(html: string): string {
 }
 
 /** Convert Markdown to HTML (covers same features) */
+function escapeHtmlForMd(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function markdownToHtml(md: string): string {
-  let html = md;
+  // Step 1: Escape all HTML to prevent XSS
+  let html = escapeHtmlForMd(md);
+
+  // Fenced code blocks: ```lang\n...\n```
+  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    const cls = lang ? ` class="language-${lang}"` : '';
+    return `<pre><code${cls}>${code.trimEnd()}</code></pre>`;
+  });
+
+  // Inline code: `code`
+  html = html.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+
+  // Images: ![alt](url)
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+
+  // Horizontal rules: ---, ***, ___
+  html = html.replace(/^([-*_]){3,}\s*$/gm, '<hr>');
+
   // Block elements
   html = html.replace(/^(#{1,6})\s+(.+)$/gm, (_, hashes, text) => `<h${hashes.length}>${text}</h${hashes.length}>`);
-  html = html.replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>');
+  html = html.replace(/^&gt;\s+(.+)$/gm, '<blockquote>$1</blockquote>');
+
+  // Tables: | A | B |\n|---|---|\n| 1 | 2 |
+  html = html.replace(
+    /^(\|.+\|)\n(\|[\s:|-]+\|)\n((?:\|.+\|\n?)+)/gm,
+    (_, headerRow, _sep, bodyRows) => {
+      const headers = headerRow.split('|').filter(Boolean).map((c: string) => `<th>${c.trim()}</th>`).join('');
+      const rows = bodyRows.trim().split('\n').map((row: string) => {
+        const cells = row.split('|').filter(Boolean).map((c: string) => `<td>${c.trim()}</td>`).join('');
+        return `<tr>${cells}</tr>`;
+      }).join('');
+      return `<table><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+    },
+  );
+
+  // Ordered lists
   html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<li>$2</li>');
   html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => {
-    if (match.trim().startsWith('<li>')) return `<ol>${match}</ol>`;
+    if (match.trim().startsWith('<li>') && !match.includes('<ul>') && !match.includes('<ol>')) return `<ol>${match}</ol>`;
     return match;
   });
+  // Unordered lists
   html = html.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
   html = html.replace(/(<li>.*<\/li>\n?)+/g, (match) => {
-    if (!match.includes('<ol>')) return `<ul>${match}</ul>`;
+    if (!match.includes('<ol>') && !match.includes('<ul>')) return `<ul>${match}</ul>`;
     return match;
   });
-  // Inline
+
+  // Inline formatting
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
   html = html.replace(/~~(.+?)~~/g, '<s>$1</s>');
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-  // Paragraphs
-  html = html.replace(/\n\n/g, '</p><p>');
-  html = html.replace(/\n/g, '<br>');
-  if (!html.startsWith('<')) html = '<p>' + html + '</p>';
-  return html;
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, text, href) => {
+    // Sanitize href — block javascript: and data: URIs
+    const lower = href.trim().toLowerCase();
+    if (lower.startsWith('javascript:') || lower.startsWith('data:')) return text;
+    return `<a href="${href}">${text}</a>`;
+  });
+
+  // Paragraphs — wrap text blocks not already in block elements
+  const lines = html.split('\n');
+  const result: string[] = [];
+  let inParagraph = false;
+  const blockRe = /^<(h[1-6]|blockquote|pre|ul|ol|li|table|thead|tbody|tr|th|td|hr|img)/;
+
+  for (const line of lines) {
+    if (!line.trim()) {
+      if (inParagraph) { result.push('</p>'); inParagraph = false; }
+      continue;
+    }
+    if (blockRe.test(line)) {
+      if (inParagraph) { result.push('</p>'); inParagraph = false; }
+      result.push(line);
+    } else {
+      if (!inParagraph) { result.push('<p>'); inParagraph = true; }
+      else { result.push('<br>'); }
+      result.push(line);
+    }
+  }
+  if (inParagraph) result.push('</p>');
+
+  return result.join('\n');
 }
 
 function stripTags(html: string): string {
