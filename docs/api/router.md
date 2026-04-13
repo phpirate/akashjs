@@ -233,7 +233,7 @@ Define a route middleware function.
 
 ```ts
 function defineMiddleware(
-  fn: (ctx: MiddlewareContext, next: () => Promise<void>) => Promise<void>,
+  fn: (ctx: MiddlewareContext) => Promise<NavigationResult | void> | NavigationResult | void,
 ): Middleware;
 ```
 
@@ -242,7 +242,7 @@ function defineMiddleware(
 Execute an array of middleware in order.
 
 ```ts
-function runMiddleware(middlewares: Middleware[], ctx: MiddlewareContext): Promise<void>;
+function runMiddleware(middlewares: Middleware[], ctx: MiddlewareContext): Promise<NavigationResult | null>;
 ```
 
 ### composeMiddleware(...fns)

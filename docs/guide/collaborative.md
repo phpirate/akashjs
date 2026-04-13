@@ -11,7 +11,7 @@ AkashJS wraps this complexity in a familiar signals API. You read and write stat
 ## Basic Setup
 
 ```ts
-import { createSync, createWebSocketTransport } from '@akashjs/sync';
+import { createSync, createWebSocketTransport } from '@akashjs/runtime';
 
 const sync = createSync('my-room', {
   title: 'Untitled',
@@ -76,7 +76,7 @@ Transports define how state travels between clients.
 ### WebSocket (production)
 
 ```ts
-import { createWebSocketTransport } from '@akashjs/sync';
+import { createWebSocketTransport } from '@akashjs/runtime';
 
 const transport = createWebSocketTransport('wss://sync.example.com', {
   reconnect: true,        // auto-reconnect on disconnect
@@ -90,7 +90,7 @@ const transport = createWebSocketTransport('wss://sync.example.com', {
 For unit tests and local development, use a local transport that syncs in-memory:
 
 ```ts
-import { createLocalTransport } from '@akashjs/sync';
+import { createLocalTransport } from '@akashjs/runtime';
 
 const transport = createLocalTransport();
 
@@ -118,9 +118,9 @@ const sync = createSync('room', { content: '' }, {
 // Update your own presence
 sync.presence.set({ cursor: { x: 100, y: 200 } });
 
-// Read all peers' presence
-sync.others();
-// [{ id: 'peer-xyz', cursor: { x: 50, y: 80 }, name: 'Bob' }]
+// Read all peers' presence (returns Map<peerId, presenceData>)
+sync.peerPresence();
+// Map { 'peer-xyz' => { cursor: { x: 50, y: 80 }, name: 'Bob' } }
 ```
 
 Render cursors in a component:
@@ -129,14 +129,16 @@ Render cursors in a component:
 const Cursors = defineComponent((ctx) => {
   return () => (
     <div>
-      {sync.others().map((peer) => (
-        <div
-          class="cursor"
-          style={`left: ${peer.cursor.x}px; top: ${peer.cursor.y}px`}
-        >
-          {peer.name}
-        </div>
-      ))}
+      <For each={[...sync.peerPresence().entries()]} key={([id]) => id}>
+        {([id, peer]) => (
+          <div
+            class="cursor"
+            style={`left: ${peer.cursor.x}px; top: ${peer.cursor.y}px`}
+          >
+            {peer.name}
+          </div>
+        )}
+      </For>
     </div>
   );
 });
@@ -166,13 +168,148 @@ sync.peers();  // ['peer-abc', 'peer-xyz']
 // Your own peer ID
 sync.peerId;   // 'peer-123'
 
-// Listen for connection events
-sync.on('peer:join', (peerId) => {
-  console.log(`${peerId} joined`);
-});
+// Connection state
+sync.connected();  // true | false
+```
 
-sync.on('peer:leave', (peerId) => {
-  console.log(`${peerId} left`);
+Peers that disconnect are automatically removed from `peerPresence()` — their presence data is cleaned up.
+
+## Presence Helpers
+
+AkashJS provides high-level helpers that build on top of the presence system, so you don't have to wire up common patterns yourself.
+
+### useCursor
+
+Automatically tracks mouse movement and broadcasts cursor position to peers.
+
+```ts
+import { useCursor } from '@akashjs/runtime';
+
+const cursor = useCursor(sync, { throttle: 50 }); // ms
+
+// Reactive accessors
+cursor.x();  // current local x
+cursor.y();  // current local y
+
+// Stop tracking when done
+cursor.dispose();
+```
+
+`useCursor` listens to `mousemove` on the document, throttles updates to the given interval (default 100ms), and sets presence automatically. In components, it disposes when the component is destroyed.
+
+### useTypingIndicator
+
+Manages typing state with automatic timeout.
+
+```ts
+import { useTypingIndicator } from '@akashjs/runtime';
+
+const typing = useTypingIndicator(sync, { timeout: 2000 }); // ms
+
+// Call on keystrokes
+typing.start();
+
+// Manual stop (also stops automatically after timeout)
+typing.stop();
+
+// Read state
+typing.isTyping();       // true/false for local user
+typing.othersTyping();   // ['peer-abc', 'peer-xyz']
+```
+
+Wire it into an input:
+
+```ts
+<textarea
+  on:input={() => typing.start()}
+  on:blur={() => typing.stop()}
+/>
+{typing.othersTyping().length > 0 && (
+  <span>{typing.othersTyping().length} typing...</span>
+)}
+```
+
+## Conflict Resolution
+
+By default, AkashJS uses Last-Writer-Wins (LWW). For finer control, pass an `onConflict` callback in your sync options.
+
+### onConflict Callback
+
+```ts
+const sync = createSync({ score: 0 }, {
+  transport,
+  onConflict({ key, localValue, remoteValue }) {
+    // Return a value to auto-resolve
+    if (key === 'score') return Math.max(localValue, remoteValue);
+
+    // Return undefined to queue the conflict for manual resolution
+    return undefined;
+  },
+});
+```
+
+If `onConflict` throws, AkashJS falls back to LWW so the document always converges.
+
+### Reactive Conflicts
+
+Unresolved conflicts (where `onConflict` returned `undefined`) are exposed as a reactive signal:
+
+```ts
+sync.conflicts();
+// [{ key: 'title', localValue: 'Hello', remoteValue: 'World', localTimestamp: ..., remoteTimestamp: ..., remotePeerId: '...' }]
+```
+
+Resolve them manually:
+
+```ts
+sync.resolveConflict('title', 'Hello World');
+```
+
+Once resolved, the entry is removed from `sync.conflicts()` and the chosen value propagates to all peers.
+
+## Synced Stores
+
+For larger apps, you can enable sync directly on a store created with `defineStore`.
+
+```ts
+import { defineStore, createWebSocketTransport } from '@akashjs/runtime';
+
+const useTodos = defineStore('todos', {
+  state: () => ({
+    items: [],
+    filter: 'all',
+  }),
+  sync: {
+    transport: createWebSocketTransport('wss://sync.example.com'),
+    room: 'todos-room',
+    presence: true,
+  },
+});
+```
+
+When `sync` is provided, the store exposes a `$sync` object:
+
+```ts
+const store = useTodos();
+
+store.$sync.connected();      // true/false
+store.$sync.peers();          // ['peer-abc']
+store.$sync.presence;         // local presence (set/get)
+store.$sync.peerPresence();   // all peers' presence data
+```
+
+### Offline + Sync
+
+Synced stores work alongside `persist`. Writes are saved locally first, then synced when a connection is available:
+
+```ts
+const useTodos = defineStore('todos', {
+  state: () => ({ items: [] }),
+  persist: true,
+  sync: {
+    transport: createWebSocketTransport('wss://sync.example.com'),
+    room: 'todos-room',
+  },
 });
 ```
 
@@ -182,7 +319,7 @@ A complete collaborative editor in under 40 lines:
 
 ```ts
 import { defineComponent } from '@akashjs/runtime';
-import { createSync, createWebSocketTransport } from '@akashjs/sync';
+import { createSync, createWebSocketTransport } from '@akashjs/runtime';
 
 const CollaborativeEditor = defineComponent((ctx) => {
   const sync = createSync('editor-room', {
@@ -218,9 +355,9 @@ const CollaborativeEditor = defineComponent((ctx) => {
       <aside class="peers">
         <h4>Online ({sync.peers().length})</h4>
         <ul>
-          {sync.others().map((p) => (
-            <li>{p.name} — position {p.cursor}</li>
-          ))}
+          <For each={[...sync.peerPresence().entries()]} key={([id]) => id}>
+            {([id, p]) => <li>{p.name} — position {p.cursor}</li>}
+          </For>
         </ul>
       </aside>
     </div>

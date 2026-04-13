@@ -68,6 +68,18 @@ export function transform(sfc: ParsedSFC, options: CompileOptions = {}): Compile
     }
   }
 
+  // Server mode: remove client-only imports
+  if (isServer) {
+    runtimeImports.delete('defineComponent');
+    runtimeImports.delete('effect');
+    runtimeImports.delete('__getter');
+    runtimeImports.delete('renderConditional');
+    runtimeImports.delete('renderList');
+    runtimeImports.delete('Show');
+    runtimeImports.delete('For');
+    runtimeImports.delete('createElement');
+  }
+
   // Build output
   let code = '';
 
@@ -84,29 +96,49 @@ export function transform(sfc: ParsedSFC, options: CompileOptions = {}): Compile
   // Generate the component
   const generics = propsInterface ? `<${propsInterface}>` : '';
 
-  code += '\n';
-  code += `export default defineComponent${generics}((ctx) => {\n`;
+  if (isServer) {
 
-  // Inject props destructuring if the script uses `props`
-  if (script.includes('props')) {
-    code += `  const props = ctx.props;\n`;
+    code += '\n';
+    code += `export default function(props${propsInterface ? `: ${propsInterface}` : ''}) {\n`;
+
+    if (bodyScript.trim()) {
+      const indented = bodyScript
+        .trim()
+        .split('\n')
+        .map((line) => `  ${line}`)
+        .join('\n');
+      code += `${indented}\n`;
+    }
+
+    code += '\n';
+    code += templateCode;
+    code += `}\n`;
+  } else {
+    // Client mode: defineComponent wrapper
+    code += '\n';
+    code += `export default defineComponent${generics}((ctx) => {\n`;
+
+    // Inject props destructuring if the script uses `props`
+    if (script.includes('props')) {
+      code += `  const props = ctx.props;\n`;
+    }
+
+    // Include user script body (without imports, indented)
+    if (bodyScript.trim()) {
+      const indented = bodyScript
+        .trim()
+        .split('\n')
+        .map((line) => `  ${line}`)
+        .join('\n');
+      code += `${indented}\n`;
+    }
+
+    code += '\n';
+    code += `  return () => {\n`;
+    code += templateCode;
+    code += `  };\n`;
+    code += `});\n`;
   }
-
-  // Include user script body (without imports, indented)
-  if (bodyScript.trim()) {
-    const indented = bodyScript
-      .trim()
-      .split('\n')
-      .map((line) => `  ${line}`)
-      .join('\n');
-    code += `${indented}\n`;
-  }
-
-  code += '\n';
-  code += `  return () => {\n`;
-  code += templateCode;
-  code += `  };\n`;
-  code += `});\n`;
 
   // Process CSS
   let css: string | undefined;
@@ -1102,18 +1134,43 @@ function generateServerRenderBody(
   scopeId?: string,
 ): string {
   if (nodes.length === 0) {
-    return `    return '';\n`;
+    return `  return '';\n`;
   }
 
   const lines: string[] = [];
-  lines.push(`    let __html = '';`);
+  lines.push(`  let __html = '';`);
 
   for (const node of nodes) {
-    generateServerNode(node, lines, imports, 4, scopeId);
+    generateServerNode(node, lines, imports, 2, scopeId);
   }
 
-  lines.push(`    return __html;`);
+  lines.push(`  return __html;`);
   return lines.join('\n') + '\n';
+}
+
+/** Emit SSR HTML for children, extracting JSX from arrow function expressions */
+function emitServerChildren(
+  children: TemplateNode[],
+  lines: string[],
+  imports: Set<string>,
+  indent: number,
+  scopeId?: string,
+): void {
+  for (const child of children) {
+    if (child.type === 'expression') {
+      const expr = (child.content ?? '').trim();
+      // Arrow function with JSX body: (x) => <tag>...</tag> or () => <>...</>
+      const arrowMatch = /^\(?[^)]*\)?\s*=>\s*(<.+)$/s.exec(expr);
+      if (arrowMatch) {
+        const jsxNodes = parseTemplate(arrowMatch[1]);
+        for (const jsxNode of jsxNodes) {
+          generateServerNode(jsxNode, lines, imports, indent, scopeId);
+        }
+        continue;
+      }
+    }
+    generateServerNode(child, lines, imports, indent, scopeId);
+  }
 }
 
 function generateServerNode(
@@ -1149,11 +1206,55 @@ function generateServerNode(
       }
       break;
 
-    case 'component':
-      // Server-side component rendering — call the component's SSR render
-      lines.push(`${pad}// TODO: SSR component rendering for ${node.tag}`);
-      lines.push(`${pad}__html += '';`);
+    case 'component': {
+      const tag = node.tag!;
+
+      if (tag === 'Show') {
+        // Show → if (when) { children }
+        const whenAttr = node.attrs?.find(a => a.name === 'when');
+        const condition = whenAttr?.value ?? 'true';
+        lines.push(`${pad}if (${condition}) {`);
+        if (node.children) {
+          emitServerChildren(node.children, lines, imports, indent + 2, scopeId);
+        }
+        // Fallback — from _fallbackNodes (block syntax) or fallback prop
+        const fallbackNodes = (node as any)._fallbackNodes as TemplateNode[] | undefined;
+        const fallbackAttr = node.attrs?.find(a => a.name === 'fallback');
+        if (fallbackNodes) {
+          lines.push(`${pad}} else {`);
+          emitServerChildren(fallbackNodes, lines, imports, indent + 2, scopeId);
+        } else if (fallbackAttr?.dynamic) {
+          // fallback={<p>...</p>} or fallback={() => <p>...</p>}
+          const val = fallbackAttr.value.trim();
+          const arrowMatch = /^\(?[^)]*\)?\s*=>\s*(<.+)$/s.exec(val);
+          const jsxStr = arrowMatch ? arrowMatch[1] : (/^</.test(val) ? val : null);
+          if (jsxStr) {
+            const jsxNodes = parseTemplate(jsxStr);
+            if (jsxNodes.length > 0) {
+              lines.push(`${pad}} else {`);
+              for (const n of jsxNodes) {
+                generateServerNode(n, lines, imports, indent + 2, scopeId);
+              }
+            }
+          }
+        }
+        lines.push(`${pad}}`);
+      } else if (tag === 'For') {
+        // For → for (const item of each) { children }
+        const eachAttr = node.attrs?.find(a => a.name === 'each');
+        const listExpr = eachAttr?.value ?? '[]';
+        const itemVar = (node as any)._itemVar ?? 'item';
+        lines.push(`${pad}for (const ${itemVar} of ${listExpr}) {`);
+        if (node.children) {
+          emitServerChildren(node.children, lines, imports, indent + 2, scopeId);
+        }
+        lines.push(`${pad}}`);
+      } else {
+        // Generic component — call as function, append result
+        lines.push(`${pad}__html += String(${tag}(${node.attrs?.length ? '{' + node.attrs.map(a => a.dynamic ? `${a.name}: ${a.value}` : `${a.name}: ${JSON.stringify(a.value)}`).join(', ') + '}' : '{}'}));`);
+      }
       break;
+    }
   }
 }
 

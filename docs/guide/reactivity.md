@@ -81,6 +81,16 @@ batch(() => {
 });
 ```
 
+`batch()` returns the callback's return value:
+
+```ts
+const total = batch(() => {
+  price.set(10);
+  qty.set(5);
+  return price() * qty(); // 50
+});
+```
+
 ## untrack()
 
 Read a signal without registering a dependency:

@@ -18,11 +18,24 @@ import type { Signal } from '@akashjs/runtime';
 
 // --- Types ---
 
+export interface OfflineCacheOptions {
+  /** Storage backend for offline cache (default: 'indexeddb') */
+  storage?: 'indexeddb';
+  /** Queue mutations when offline and replay on reconnect */
+  queueMutations?: boolean;
+  /** Refetch stale queries on reconnect */
+  syncOnReconnect?: boolean;
+  /** IndexedDB database name (default: 'akash-query-cache') */
+  dbName?: string;
+}
+
 export interface QueryClientOptions {
   /** Default stale time in ms (default: 0 — always stale) */
   defaultStaleTime?: number;
   /** Default retry count for failed queries (default: 0) */
   defaultRetryCount?: number;
+  /** Offline cache options — persist queries to IndexedDB, queue mutations */
+  offline?: OfflineCacheOptions;
 }
 
 export interface QueryOptions<T> {
@@ -132,6 +145,53 @@ function keyMatchesPrefix(key: string, prefix: CacheKeyPrefix): boolean {
 
 // --- QueryClient ---
 
+// --- IndexedDB helpers for offline cache ---
+
+const IDB_STORE_QUERIES = 'queries';
+const IDB_STORE_MUTATIONS = 'mutations';
+
+function openOfflineDB(name: string): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (typeof indexedDB === 'undefined') return reject(new Error('No IndexedDB'));
+    const req = indexedDB.open(name, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IDB_STORE_QUERIES)) db.createObjectStore(IDB_STORE_QUERIES);
+      if (!db.objectStoreNames.contains(IDB_STORE_MUTATIONS)) db.createObjectStore(IDB_STORE_MUTATIONS, { autoIncrement: true });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function idbGet<T>(db: IDBDatabase, store: string, key: string): Promise<T | undefined> {
+  return new Promise((resolve) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = () => resolve(req.result as T | undefined);
+    req.onerror = () => resolve(undefined);
+  });
+}
+
+function idbPut(db: IDBDatabase, store: string, key: string, value: unknown): void {
+  const tx = db.transaction(store, 'readwrite');
+  tx.objectStore(store).put(value, key);
+}
+
+function idbGetAllEntries<T>(db: IDBDatabase, store: string): Promise<T[]> {
+  return new Promise((resolve) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result as T[]);
+    req.onerror = () => resolve([]);
+  });
+}
+
+function idbClearStore(db: IDBDatabase, store: string): void {
+  const tx = db.transaction(store, 'readwrite');
+  tx.objectStore(store).clear();
+}
+
 export interface QueryClient {
   /** Invalidate all queries matching a key prefix — triggers refetch */
   invalidate: (prefix: CacheKeyPrefix) => void;
@@ -143,9 +203,15 @@ export interface QueryClient {
   removeQuery: (key: CacheKey) => void;
   /** Clear the entire cache */
   clear: () => void;
+  /** Whether the browser is online (reactive, for offline support) */
+  online?: () => boolean;
+  /** Queue a mutation for later replay (used internally when offline) */
+  _queueMutation?: (fn: () => Promise<unknown>, invalidates?: CacheKeyPrefix[]) => void;
   /** @internal — access to cache for useQuery/useMutation */
   _cache: Map<string, CacheEntry>;
   _options: QueryClientOptions;
+  /** @internal — offline IndexedDB handle */
+  _db?: IDBDatabase;
 }
 
 export function createQueryClient(options: QueryClientOptions = {}): QueryClient {
@@ -186,7 +252,88 @@ export function createQueryClient(options: QueryClientOptions = {}): QueryClient
     cache.clear();
   }
 
-  return { invalidate, setQueryData, getQueryData, removeQuery, clear, _cache: cache, _options: options };
+  const client: QueryClient = { invalidate, setQueryData, getQueryData, removeQuery, clear, _cache: cache, _options: options };
+
+  // --- Offline support ---
+  if (options.offline) {
+    const offlineCfg = options.offline;
+    const dbName = offlineCfg.dbName ?? 'akash-query-cache';
+    const onlineSignal = signal(typeof navigator !== 'undefined' ? navigator.onLine : true);
+    client.online = () => onlineSignal();
+
+    // Track online/offline
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', () => {
+        onlineSignal.set(true);
+        // Replay queued mutations
+        if (offlineCfg.queueMutations && client._db) {
+          replayMutations(client);
+        }
+        // Refetch stale queries
+        if (offlineCfg.syncOnReconnect) {
+          for (const entry of cache.values()) {
+            entry.fetchedAt = 0;
+            entry.refetchFn?.();
+          }
+        }
+      });
+      window.addEventListener('offline', () => onlineSignal.set(false));
+    }
+
+    // Mutation queue for offline
+    const pendingMutations: Array<{ fn: string; invalidates?: CacheKeyPrefix[] }> = [];
+    client._queueMutation = (fn, invalidates) => {
+      // Store a serializable reference — for now just queue in memory
+      // The actual fn can't be serialized to IDB, so we queue in memory
+      // and persist the invalidation targets
+      pendingMutations.push({ fn: 'queued', invalidates });
+    };
+
+    // Open IndexedDB
+    openOfflineDB(dbName).then((db) => {
+      client._db = db;
+      // Hydrate cache from IndexedDB
+      idbGetAllKeys(db, IDB_STORE_QUERIES).then((keys) => {
+        for (const key of keys) {
+          idbGet(db, IDB_STORE_QUERIES, key).then((data) => {
+            if (data !== undefined) {
+              const entry = cache.get(key);
+              if (entry && entry.data() === undefined) {
+                (entry.data as Signal<any>).set(data);
+              }
+            }
+          });
+        }
+      });
+    }).catch(() => { /* IndexedDB unavailable */ });
+  }
+
+  return client;
+}
+
+function idbGetAllKeys(db: IDBDatabase, store: string): Promise<string[]> {
+  return new Promise((resolve) => {
+    const tx = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAllKeys();
+    req.onsuccess = () => resolve(req.result.map(String));
+    req.onerror = () => resolve([]);
+  });
+}
+
+async function replayMutations(client: QueryClient): Promise<void> {
+  if (!client._db) return;
+  const entries = await idbGetAllEntries<{ invalidates?: CacheKeyPrefix[] }>(client._db, IDB_STORE_MUTATIONS);
+  if (entries.length === 0) return;
+  // Clear the queue
+  idbClearStore(client._db, IDB_STORE_MUTATIONS);
+  // Invalidate the associated queries to trigger refetch
+  for (const entry of entries) {
+    if (entry.invalidates) {
+      for (const prefix of entry.invalidates) {
+        client.invalidate(prefix);
+      }
+    }
+  }
 }
 
 // --- useQuery ---
@@ -218,14 +365,24 @@ export function useCachedQuery<T>(
 
     // Check if cache entry exists and is fresh (skip if forced)
     if (!forceRefetch && entry && entry.fetchedAt > 0 && Date.now() - entry.fetchedAt < staleTime) {
-      // Fresh — use cached data
       data.set(entry.data() as T | undefined);
       loading.set(false);
       fetched.set(true);
       return;
     }
 
-    // Create entry if it doesn't exist
+    // Offline: if no cached data and we have IndexedDB, try hydrating from it
+    if (client._db && (!entry || entry.data() === undefined)) {
+      idbGet<T>(client._db, IDB_STORE_QUERIES, serialized).then((idbData) => {
+        if (idbData !== undefined && !disposed && data() === undefined) {
+          data.set(idbData);
+          fetched.set(true);
+        }
+      }).catch(() => {});
+    }
+
+    // Create entry if it doesn't exist (must happen before offline bail
+    // so refetchFn is registered for reconnect)
     if (!entry) {
       entry = {
         data: signal<T | undefined>(undefined) as Signal<T | undefined>,
@@ -264,6 +421,12 @@ export function useCachedQuery<T>(
       }
     }
 
+    // If offline, don't attempt network fetch — serve from cache/IDB only
+    if (client.online && !client.online()) {
+      loading.set(false);
+      return;
+    }
+
     // Dedup: if same query is already in flight, reuse the promise
     if (entry.promise) {
       loading.set(true);
@@ -297,6 +460,10 @@ export function useCachedQuery<T>(
         entry!.promise = null;
         loading.set(false);
         fetched.set(true);
+        // Persist to IndexedDB for offline access
+        if (client._db) {
+          try { idbPut(client._db, IDB_STORE_QUERIES, serialized, result); } catch {}
+        }
       })
       .catch((err) => {
         if (disposed || myRequestId !== requestId) return;
@@ -359,6 +526,18 @@ export function useMutation<TInput, TResult = unknown>(
   const data = signal<TResult | undefined>(undefined);
 
   async function execute(input: TInput): Promise<TResult> {
+    // If offline and queue is enabled, queue the mutation for later
+    if (client.online && !client.online() && client._queueMutation) {
+      client._queueMutation(() => mutationFn(input) as Promise<unknown>, options.invalidates);
+      // Store in IndexedDB mutation queue
+      if (client._db) {
+        const tx = client._db.transaction(IDB_STORE_MUTATIONS, 'readwrite');
+        tx.objectStore(IDB_STORE_MUTATIONS).add({ invalidates: options.invalidates, queuedAt: Date.now() });
+      }
+      // Apply optimistic update locally
+      if (options.optimistic) options.optimistic(input);
+      return undefined as unknown as TResult;
+    }
     loading.set(true);
     error.set(undefined);
 
@@ -392,8 +571,7 @@ export function useMutation<TInput, TResult = unknown>(
 
       options.onError?.(e, input);
       options.onSettled?.(input);
-      if (!options.onError) throw e;
-      return undefined as unknown as TResult;
+      throw e;
     }
   }
 

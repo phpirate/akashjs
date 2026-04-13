@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * @akashjs/cli — The AkashJS command-line tool.
  *
@@ -13,6 +11,9 @@
  */
 
 import { Command } from 'commander';
+
+declare const __CLI_VERSION__: string | undefined;
+const CLI_VERSION = typeof __CLI_VERSION__ !== 'undefined' ? __CLI_VERSION__ : '0.0.0-dev';
 import { registerNewCommand } from './commands/new.js';
 import { registerDevCommand } from './commands/dev.js';
 import { registerBuildCommand } from './commands/build.js';
@@ -31,7 +32,7 @@ export function createProgram(): Command {
   program
     .name('akash')
     .description('AkashJS — Angular structure, Svelte simplicity')
-    .version('0.1.0');
+    .version(CLI_VERSION);
 
   registerNewCommand(program);
   registerDevCommand(program);

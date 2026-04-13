@@ -297,14 +297,8 @@ configureStores({
         // Called when a store is first created
         console.log(`Store "${store.$id}" initialized`);
       },
-      onAction({ store, name, args, after, onError }) {
-        console.log(`Action "${name}" called on "${store.$id}"`);
-        after((result) => {
-          console.log(`Action "${name}" completed`);
-        });
-        onError((err) => {
-          console.error(`Action "${name}" failed:`, err);
-        });
+      onAction(store, name, args) {
+        console.log(`Action "${name}" called on "${store.$id}" with`, args);
       },
     },
   ],
@@ -316,4 +310,157 @@ configureStores({
 | Hook | Description |
 |---|---|
 | `init(store)` | Called once when the store is first instantiated. Use it to add properties, subscribe, or set up side effects. |
-| `onAction({ store, name, args, after, onError })` | Called before every action. `after` registers a post-action callback, `onError` registers an error handler. |
+| `onAction(store, name, args)` | Called before every action executes. Receives the store instance, action name, and arguments array. |
+
+## Persistence
+
+Stores can automatically persist state to `localStorage` or `sessionStorage` using the `persist` option.
+
+### Basic persistence
+
+Set `persist: true` to save all state to `localStorage` under the store's ID:
+
+```ts
+const useSettingsStore = defineStore('settings', {
+  state: () => ({
+    theme: 'light',
+    locale: 'en',
+  }),
+  persist: true,
+});
+```
+
+State is hydrated from storage when the store is first created. If stored data exists, it overwrites the factory defaults.
+
+### Selective persistence
+
+Pick which keys to persist, change the storage key, or use `sessionStorage`:
+
+```ts
+const useAuthStore = defineStore('auth', {
+  state: () => ({
+    user: null as { name: string } | null,
+    token: '',
+    loginAttempts: 0,
+  }),
+  persist: {
+    pick: ['user', 'token'],
+    key: 'my-auth',
+    storage: 'sessionStorage',
+  },
+});
+```
+
+Only `user` and `token` are saved. `loginAttempts` is always fresh on reload.
+
+### Multiple targets
+
+Persist different keys to different storage backends:
+
+```ts
+const useAppStore = defineStore('app', {
+  state: () => ({
+    preferences: { theme: 'dark' },
+    session: { tabId: '' },
+  }),
+  persist: [
+    { pick: ['preferences'], storage: 'localStorage' },
+    { pick: ['session'], storage: 'sessionStorage' },
+  ],
+});
+```
+
+### Cross-tab sync
+
+Persisted stores automatically listen to `storage` events. When another tab writes to the same key, the store updates in real time — no extra configuration needed.
+
+## Real-time Sync
+
+The `sync` option connects a store to other clients over a real-time transport, enabling collaborative and multiplayer state.
+
+### Basic setup
+
+```ts
+import { defineStore } from '@akashjs/runtime';
+import { createWebSocketTransport } from '@akashjs/runtime';
+
+const wsTransport = createWebSocketTransport('wss://sync.example.com');
+
+const useTodoStore = defineStore('todos', {
+  state: () => ({
+    items: [] as { text: string; done: boolean }[],
+  }),
+  actions: {
+    add(text: string) {
+      this.items.update((list) => [...list, { text, done: false }]);
+    },
+    toggle(index: number) {
+      this.items.update((list) =>
+        list.map((t, i) => (i === index ? { ...t, done: !t.done } : t)),
+      );
+    },
+  },
+  sync: {
+    transport: wsTransport,
+    room: 'project-42',
+    presence: true,
+  },
+});
+```
+
+All mutations are broadcast to peers in the same room. Incoming changes merge into local state automatically.
+
+### Presence and peer info
+
+When `presence: true` is set, the store exposes sync metadata through `$sync`:
+
+```ts
+const store = useTodoStore();
+
+store.$sync.connected();        // true | false
+store.$sync.peers();            // ['peer-a', 'peer-b']
+store.$sync.presence;           // signal — your own presence data
+store.$sync.peerPresence();     // Map { 'peer-a' => { cursor: 3 }, ... }
+
+// Set your own presence
+store.$sync.presence.set({ cursor: 5 });
+```
+
+### Offline + sync
+
+Combine `persist` and `sync` for offline-first apps. State saves locally so the app works without a connection, then syncs when the transport reconnects:
+
+```ts
+const useDocStore = defineStore('doc', {
+  state: () => ({ blocks: [] as string[] }),
+  persist: true,
+  sync: {
+    transport: createWebSocketTransport('wss://sync.example.com'),
+    room: 'doc-1',
+  },
+});
+```
+
+## TypeScript
+
+Actions have full `this` typing out of the box. Inside any action, `this` is typed as the union of state signals, getters, and other actions — powered by `ThisType`. No manual annotations needed:
+
+```ts
+const useStore = defineStore('example', {
+  state: () => ({ count: 0, label: '' }),
+  getters: {
+    summary: (state) => `${state.label()}: ${state.count()}`,
+  },
+  actions: {
+    reset() {
+      this.count.set(0);    // Signal<number>
+      this.label.set('');   // Signal<string>
+      this.summary();       // string (getter)
+      this.bump();          // other action
+    },
+    bump() {
+      this.count.update((c) => c + 1);
+    },
+  },
+});
+```

@@ -15,7 +15,7 @@
 | `ErrorBoundary` (class) | `<ErrorBoundary>` (component) | No class required. |
 | Redux / Zustand | `defineStore()` | Built-in, signal-based. |
 | React Router | `@akashjs/router` | File-based routing with guards and loaders. |
-| JSX | `.akash` templates | Similar syntax. `{}` for expressions, not `<>` fragments. |
+| JSX | `.akash` templates | Similar syntax. `{}` for expressions. `<>` fragments supported. |
 | `key` prop | `key` function in `<For>` | Function instead of prop. |
 | `className` | `class` | Standard HTML attribute name. |
 | `children` | `ctx.children()` | Function call, not prop. |

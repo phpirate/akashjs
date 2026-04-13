@@ -83,7 +83,7 @@ describe('parseTemplate', () => {
     const nodes = parseTemplate('<span>Count: {count()}</span>');
     expect(nodes[0].children).toHaveLength(2);
     expect(nodes[0].children![0].type).toBe('text');
-    expect(nodes[0].children![0].content).toBe('Count:');
+    expect(nodes[0].children![0].content).toBe('Count: ');
     expect(nodes[0].children![1].type).toBe('expression');
     expect(nodes[0].children![1].content).toBe('count()');
   });

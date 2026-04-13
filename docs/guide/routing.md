@@ -42,7 +42,8 @@ src/routes/
 - `loader.ts` — Data loader (runs before rendering)
 - `guard.ts` — Route guard (runs before loader)
 - `[param]` — Dynamic parameter
-- `[...rest]` — Catch-all
+- `[...rest]` — Catch-all (requires at least one segment)
+- `[[...rest]]` — Optional catch-all (also matches `/`)
 
 ## Navigation
 
@@ -195,15 +196,15 @@ const analyticsMiddleware = defineMiddleware(({ to, from }) => {
 });
 ```
 
-Register middleware when creating the router:
+Register middleware using `runMiddleware()` in your app's navigation setup, or compose them into a single guard:
 
 ```ts
-import { createRouter } from '@akashjs/router';
+import { createRouter, composeMiddleware, runMiddleware } from '@akashjs/router';
 
-const router = createRouter({
-  routes,
-  middleware: [authMiddleware, analyticsMiddleware],
-});
+const router = createRouter(routes);
+
+// Or compose into a guard for specific routes:
+const appMiddleware = composeMiddleware(authMiddleware, analyticsMiddleware);
 ```
 
 ### Middleware Context

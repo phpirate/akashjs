@@ -139,8 +139,7 @@ export function useConfirmDialog() {
 
 ```ts
 // src/components/FormModal.ts
-import { defineForm } from '@akashjs/forms';
-import { required, email } from '@akashjs/forms/validators';
+import { defineForm, required, email } from '@akashjs/forms';
 import { createModal } from './Modal';
 
 const modal = createModal();

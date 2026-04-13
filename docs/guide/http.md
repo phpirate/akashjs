@@ -258,7 +258,7 @@ const auth = createAuth({
   loginUrl: '/api/auth/login',
   refreshUrl: '/api/auth/refresh',
   userUrl: '/api/auth/me',
-  storage: 'localStorage',  // 'localStorage' | 'sessionStorage' | 'memory'
+  tokenStorage: 'localStorage',  // 'localStorage' | 'sessionStorage' | 'memory'
 });
 ```
 
@@ -321,19 +321,16 @@ The interceptor adds an `Authorization: Bearer <token>` header to outgoing reque
 ```ts
 import { createRouter } from '@akashjs/router';
 
-const router = createRouter({
-  routes,
-  middleware: [],
-});
+const router = createRouter(routes);
 
 // Use as a per-route guard:
 // routes/dashboard/guard.ts
-export const guard = auth.guard({ redirectTo: '/login' });
+export const guard = auth.guard('/login');
 ```
 
-### Token Storage Options
+### Token Storage Options (`tokenStorage`)
 
-| Option | Description |
+| Value | Description |
 |---|---|
 | `'localStorage'` | Persists across tabs and browser restarts (default) |
 | `'sessionStorage'` | Cleared when the tab closes |
@@ -397,3 +394,189 @@ scroll.dispose();   // disconnect observer and clean up
 ```
 
 `useInfiniteScroll` uses `IntersectionObserver` internally and automatically calls `dispose()` when the component unmounts.
+
+## Query Cache
+
+`createQueryClient` provides a centralized cache for server state with automatic stale-time management, background refetching, and cache invalidation.
+
+### Setup
+
+```ts
+import { createQueryClient } from '@akashjs/http';
+
+const qc = createQueryClient({
+  defaultStaleTime: 30_000,  // 30s before data considered stale
+});
+```
+
+### useCachedQuery()
+
+```ts
+import { useCachedQuery } from '@akashjs/http';
+
+const users = useCachedQuery(qc, ['users'], () => http.get<User[]>('/users'), {
+  staleTime: 60_000,          // override default stale time
+  refetchOnFocus: true,        // refetch when tab regains focus
+  placeholderData: [],         // shown while loading (no loading flash)
+  initialData: cachedUsers,    // seed the cache
+  enabled: () => isReady(),    // disable until condition is met
+});
+
+users();          // User[] | undefined
+users.loading();  // boolean
+users.error();    // Error | undefined
+```
+
+Pass `null` as the key to disable the query entirely:
+
+```ts
+const profile = useCachedQuery(qc, userId() ? ['user', userId()] : null, () =>
+  http.get<User>(`/users/${userId()}`),
+);
+```
+
+### useMutation()
+
+```ts
+import { useMutation } from '@akashjs/http';
+
+const addUser = useMutation(qc, (data: NewUser) => http.post<User>('/users', data), {
+  invalidates: ['users'],     // prefix match — invalidates ['users'], ['users', 1], etc.
+  onSuccess: (user) => { toast.success(`Created ${user.name}`); },
+  onError: (err) => { toast.error(err.message); },
+  optimistic: (data) => {
+    qc.setQueryData(['users'], (prev) => [...(prev ?? []), { ...data, id: 'temp' }]);
+  },
+});
+
+await addUser.execute({ name: 'Alice', email: 'alice@example.com' });
+```
+
+### Manual Cache Operations
+
+```ts
+qc.setQueryData(['users', 1], updatedUser);       // write directly to cache
+qc.getQueryData<User[]>(['users']);                // read from cache
+qc.invalidate(['users']);                          // mark stale, trigger refetch
+qc.removeQuery(['users', 1]);                     // remove entry entirely
+qc.clear();                                       // wipe the entire cache
+```
+
+## Offline Query Cache
+
+Enable offline support by passing `offline` options to the query client:
+
+```ts
+const qc = createQueryClient({
+  defaultStaleTime: 30_000,
+  offline: {
+    storage: 'indexeddb',        // persist cache to IndexedDB
+    queueMutations: true,        // queue mutations when offline
+    syncOnReconnect: true,       // replay queued mutations on reconnect
+  },
+});
+```
+
+When the network drops, queries are served from the persisted cache. Mutations are queued locally and automatically replayed in order when connectivity returns.
+
+```ts
+// Reactive online/offline signal
+client.online();  // boolean — updates reactively
+```
+
+## Default Credentials
+
+Set a default `credentials` policy on the HTTP client so every request includes cookies without per-request configuration:
+
+```ts
+const http = createHttpClient({
+  baseUrl: '/api',
+  credentials: 'include',  // 'include' | 'same-origin' | 'omit'
+});
+```
+
+This applies to all requests made through the client. Per-request `credentials` still overrides the default.
+
+## WebSocket / Cache Bridge
+
+`bindSocket` connects a WebSocket to the query cache so server-pushed events automatically update or invalidate cached data:
+
+```ts
+import { bindSocket } from '@akashjs/http';
+
+bindSocket(ws, qc, {
+  'user:updated': { invalidates: ['users'] },
+  'message:new': {
+    update: (event) => ({
+      key: ['messages'],
+      updater: (prev) => [...(prev ?? []), event],
+    }),
+  },
+  'cache:clear': { handler: () => qc.clear() },
+});
+```
+
+Each key is a message `type` that maps to a rule. Rules can `invalidates` (prefix match), `update` (direct cache patch), or use a custom `handler`. You can also pass a custom message parser:
+
+```ts
+bindSocket(ws, qc, rules, {
+  getType: (msg) => msg.method,    // e.g., for SignalR format
+  getData: (msg) => msg.args?.[0],
+});
+```
+
+## Enhanced Auth
+
+`createAuth` supports additional options for cookie-based auth, account management flows, session recovery, and multi-tab coordination.
+
+### Cookie Mode
+
+```ts
+const auth = createAuth({
+  loginUrl: '/api/auth/login',
+  userUrl: '/api/auth/me',
+  mode: 'cookie',  // no token stored client-side; relies on httpOnly cookies
+});
+```
+
+### Account Flows
+
+```ts
+await auth.signup({ email, password, name });
+await auth.forgotPassword({ email });
+await auth.resetPassword({ token, newPassword });
+```
+
+### Session Recovery and Expiration
+
+```ts
+const auth = createAuth({
+  loginUrl: '/api/auth/login',
+  refreshUrl: '/api/auth/refresh',
+  userUrl: '/api/auth/me',
+  autoRestore: true,             // restore session from storage on init
+  onSessionExpired: () => {      // called when refresh fails
+    router.push('/login');
+    toast.error('Session expired');
+  },
+});
+```
+
+### Custom Login Payload and Fetch Config
+
+```ts
+const auth = createAuth({
+  loginUrl: '/api/auth/login',
+  userUrl: '/api/auth/me',
+  loginPayload: (creds) => ({ username: creds.email, pass: creds.password }),
+  fetchConfig: { credentials: 'include' },
+});
+```
+
+### Cross-Tab Token Sync
+
+When using `localStorage` storage, token changes in one tab are automatically synced to all other tabs via the `storage` event. Logging out in one tab logs out everywhere.
+
+### Concurrent 401 Deduplication
+
+When multiple requests hit a 401 simultaneously, only a single token refresh is triggered. All waiting requests are paused and retried once the refresh completes, avoiding redundant refresh calls and race conditions.

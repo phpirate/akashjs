@@ -5,7 +5,7 @@ AkashJS includes a built-in visual inspector for development. Hover over any ele
 ## Enable in Dev Mode
 
 ```ts
-import { enableInspector } from '@akashjs/devtools';
+import { enableInspector } from '@akashjs/runtime';
 
 if (import.meta.env.DEV) {
   enableInspector();
@@ -55,7 +55,7 @@ enableInspector({
 Use `createInspector()` for full control over the inspector lifecycle:
 
 ```ts
-import { createInspector } from '@akashjs/devtools';
+import { createInspector } from '@akashjs/runtime';
 
 const inspector = createInspector({
   highlightColor: 'rgba(255, 107, 107, 0.3)',
@@ -89,7 +89,7 @@ Toggle the inspector from a debug button:
 
 ```ts
 import { defineComponent, signal } from '@akashjs/runtime';
-import { createInspector } from '@akashjs/devtools';
+import { createInspector } from '@akashjs/runtime';
 
 const DevToolbar = defineComponent((ctx) => {
   const inspector = createInspector();

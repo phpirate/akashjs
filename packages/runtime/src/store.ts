@@ -27,6 +27,9 @@
  */
 
 import { signal, computed, effect } from './signals.js';
+import { batch } from './scheduler.js';
+import { createSync } from './sync.js';
+import type { SyncDoc } from './sync.js';
 import type { Signal, ReadonlySignal } from './signals.js';
 
 // --- Types ---
@@ -81,6 +84,21 @@ export interface PersistOptions<S> {
   deserialize?: (value: string) => unknown;
 }
 
+export interface StoreSyncOptions {
+  /** Sync transport (WebSocket, local, etc.) */
+  transport?: import('./sync.js').SyncTransport;
+  /** Enable sync — uses provided or default transport */
+  enabled?: boolean;
+  /** Sync room/channel name (default: store ID) */
+  room?: string;
+  /** Unique peer ID */
+  peerId?: string;
+  /** Enable presence tracking */
+  presence?: boolean;
+  /** Only sync these state keys (default: all) */
+  pick?: string[];
+}
+
 export interface StoreDefinition<S, G, A> {
   state: StateFactory<S>;
   getters?: Getters<S, G>;
@@ -92,6 +110,8 @@ export interface StoreDefinition<S, G, A> {
   plugins?: StorePlugin[];
   /** Auto-persist state to storage. true = persist all to localStorage. */
   persist?: boolean | PersistOptions<S> | PersistOptions<S>[];
+  /** Sync state across peers via CRDT. Adds real-time collaboration to any store. */
+  sync?: StoreSyncOptions;
 }
 
 // --- Plugin system ---
@@ -201,17 +221,19 @@ function createStoreInstance<
     }
   };
 
-  // $patch — merge partial state or apply via callback
+  // $patch — merge partial state or apply via callback (batched)
   store.$patch = (partialOrFn: Partial<S> | ((state: any) => void)) => {
-    if (typeof partialOrFn === 'function') {
-      partialOrFn(stateSignals);
-    } else {
-      for (const [key, value] of Object.entries(partialOrFn)) {
-        if (key in stateSignals) {
-          stateSignals[key].set(value);
+    batch(() => {
+      if (typeof partialOrFn === 'function') {
+        partialOrFn(stateSignals);
+      } else {
+        for (const [key, value] of Object.entries(partialOrFn)) {
+          if (key in stateSignals) {
+            stateSignals[key].set(value);
+          }
         }
       }
-    }
+    });
   };
 
   // $snapshot
@@ -321,6 +343,55 @@ function createStoreInstance<
         });
       }
     }
+  }
+
+  // --- Sync ---
+  if (definition.sync && (definition.sync.enabled !== false)) {
+    const syncOpts = definition.sync;
+    const syncKeys = syncOpts.pick ?? stateKeys;
+
+    const syncState: Record<string, unknown> = {};
+    for (const key of syncKeys) {
+      syncState[key] = stateSignals[key]?.peek?.() ?? initialState[key as keyof S];
+    }
+
+    const doc = createSync(syncState as Record<string, unknown>, {
+      transport: syncOpts.transport,
+      peerId: syncOpts.peerId,
+    });
+
+    // Wire: local signal changes → sync broadcast
+    for (const key of syncKeys) {
+      if (!(key in stateSignals) || !(key in doc.state)) continue;
+      const localSignal = stateSignals[key];
+      const syncSignal = (doc.state as Record<string, any>)[key];
+
+      const originalSet = localSignal.set;
+      let fromSync = false;
+      localSignal.set = (value: unknown) => {
+        originalSet.call(localSignal, value);
+        if (!fromSync) syncSignal.set(value);
+      };
+
+      // Listen for remote changes
+      effect(() => {
+        const remoteVal = syncSignal();
+        fromSync = true;
+        localSignal.set(remoteVal);
+        fromSync = false;
+      });
+    }
+
+    // Expose sync metadata on the store
+    (store as any).$sync = {
+      peers: doc.peers,
+      presence: doc.presence,
+      peerPresence: doc.peerPresence,
+      peerId: doc.peerId,
+      connected: doc.connected,
+      connect: doc.connect.bind(doc),
+      disconnect: doc.disconnect.bind(doc),
+    };
   }
 
   // Initialize plugins

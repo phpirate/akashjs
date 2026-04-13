@@ -121,11 +121,12 @@ AkashJS's router can use view transitions automatically for page navigations. En
 ```ts
 import { createRouter } from '@akashjs/router';
 
-const router = createRouter({
-  routes: [
-    { path: '/', component: Home },
-    { path: '/about', component: About },
-  ],
+const routes = [
+  { path: '/', component: Home },
+  { path: '/about', component: About },
+];
+
+const router = createRouter(routes, {
   viewTransitions: {
     enabled: true,
     fallback: 'fade',  // fade for unsupported browsers

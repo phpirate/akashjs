@@ -6,7 +6,7 @@ AkashJS lets you define your API once and use it on both server and client with 
 
 ```ts
 // shared/api.ts — this file is imported by both server and client
-import { defineAPI } from '@akashjs/api';
+import { defineAPI } from '@akashjs/http';
 import { z } from 'zod';
 
 export const api = defineAPI({
@@ -60,7 +60,7 @@ Use `createAPIClient()` to get a fully typed client. Every endpoint becomes a ca
 
 ```ts
 // client.ts
-import { createAPIClient } from '@akashjs/api/client';
+import { createAPIClient } from '@akashjs/http';
 import type { api } from './shared/api';
 
 const client = createAPIClient<typeof api>({
@@ -85,7 +85,7 @@ Use `createAPIHandler()` to mount the API on your server. It works with any HTTP
 
 ```ts
 // server.ts
-import { createAPIHandler } from '@akashjs/api/server';
+import { createAPIHandler } from '@akashjs/http';
 import { api } from './shared/api';
 
 const handler = createAPIHandler(api, {
@@ -100,7 +100,7 @@ createServer(handler).listen(3000);
 app.use('/api', handler);
 
 // Or with AkashJS server
-import { createServer as createAkashServer } from '@akashjs/server';
+import { createServer as createAkashServer } from '@akashjs/http';
 const server = createAkashServer({ api: handler });
 server.listen(3000);
 ```
@@ -143,7 +143,7 @@ In components, use `useQuery()` to fetch data reactively. It returns signals for
 
 ```ts
 import { defineComponent } from '@akashjs/runtime';
-import { useQuery } from '@akashjs/api/client';
+import { useQuery } from '@akashjs/http';
 
 const UserProfile = defineComponent((ctx) => {
   const userId = ctx.prop('userId');
@@ -184,7 +184,7 @@ posts.refetch();
 Throw `APIError` in your resolve function to return structured errors.
 
 ```ts
-import { defineAPI, APIError } from '@akashjs/api';
+import { defineAPI, APIError } from '@akashjs/http';
 
 const api = defineAPI({
   deleteUser: {
@@ -226,7 +226,7 @@ A complete API for managing a todo list:
 
 ```ts
 // shared/api.ts
-import { defineAPI, APIError } from '@akashjs/api';
+import { defineAPI, APIError } from '@akashjs/http';
 import { z } from 'zod';
 
 const TodoInput = z.object({
@@ -295,7 +295,7 @@ export const api = defineAPI({
 ```ts
 // client component
 import { defineComponent, signal } from '@akashjs/runtime';
-import { useQuery } from '@akashjs/api/client';
+import { useQuery } from '@akashjs/http';
 
 const TodoApp = defineComponent((ctx) => {
   const filter = signal<'all' | 'active' | 'done'>('all');

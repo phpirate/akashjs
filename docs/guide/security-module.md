@@ -1,6 +1,6 @@
 # Security
 
-Most frameworks leave security entirely to third-party libraries. AkashJS ships a built-in `@akashjs/security` module and a CLI audit command so that common vulnerabilities are covered out of the box — no extra dependencies, no configuration drift.
+Most frameworks leave security entirely to third-party libraries. AkashJS ships a built-in `@akashjs/runtime` module and a CLI audit command so that common vulnerabilities are covered out of the box — no extra dependencies, no configuration drift.
 
 ## Why Built-in Security Matters
 
@@ -15,7 +15,7 @@ Most frameworks leave security entirely to third-party libraries. AkashJS ships 
 Strip dangerous HTML and return a safe string. By default, only a curated set of tags and attributes survive.
 
 ```ts
-import { sanitize } from '@akashjs/security';
+import { sanitize } from '@akashjs/runtime';
 
 const safe = sanitize(userInput);
 ```
@@ -57,7 +57,7 @@ Or use the auto-sanitizing helper below.
 Returns a setter function that automatically sanitizes any HTML before assigning it to `innerHTML`.
 
 ```ts
-import { createSafeHTML } from '@akashjs/security';
+import { createSafeHTML } from '@akashjs/runtime';
 
 const setHTML = createSafeHTML(myElement);
 setHTML(userInput); // sanitized automatically
@@ -70,7 +70,7 @@ setHTML(userInput); // sanitized automatically
 Generate a Content-Security-Policy header value with a cryptographic nonce.
 
 ```ts
-import { generateCSP } from '@akashjs/security';
+import { generateCSP } from '@akashjs/runtime';
 
 const { header, nonce } = generateCSP({
   'script-src': ["'self'"],
@@ -95,7 +95,7 @@ Always use nonces instead of `'unsafe-inline'` for scripts. AkashJS generates a 
 Returns a `Record<string, string>` of recommended security headers. Use this in your SSR server or middleware.
 
 ```ts
-import { generateSecurityHeaders } from '@akashjs/security';
+import { generateSecurityHeaders } from '@akashjs/runtime';
 
 const headers = generateSecurityHeaders();
 // {
@@ -130,7 +130,7 @@ const headers = generateSecurityHeaders();
 Creates an HTTP client interceptor that attaches a CSRF token to every mutating request (`POST`, `PUT`, `PATCH`, `DELETE`).
 
 ```ts
-import { createCSRFInterceptor } from '@akashjs/security';
+import { createCSRFInterceptor } from '@akashjs/runtime';
 import { createHttpClient } from '@akashjs/http';
 
 const http = createHttpClient({
@@ -154,7 +154,7 @@ createCSRFInterceptor({ source: 'cookie', cookieName: 'XSRF-TOKEN' })
 Deep-merge objects while blocking `__proto__`, `constructor`, and `prototype` keys.
 
 ```ts
-import { safeMerge } from '@akashjs/security';
+import { safeMerge } from '@akashjs/runtime';
 
 const config = safeMerge(defaults, userProvidedConfig);
 ```
@@ -184,7 +184,7 @@ const config = safeMerge({}, userInput);
 Recursively freeze an object so it cannot be mutated at runtime.
 
 ```ts
-import { deepFreeze } from '@akashjs/security';
+import { deepFreeze } from '@akashjs/runtime';
 
 const config = deepFreeze({
   api: { baseUrl: 'https://api.example.com' },
@@ -201,7 +201,7 @@ config.api.baseUrl = 'https://evil.com'; // throws in strict mode, silently fail
 Validate and sanitize a URL. Blocks `javascript:`, `data:`, and `vbscript:` schemes by default to prevent open redirects and script injection.
 
 ```ts
-import { sanitizeURL } from '@akashjs/security';
+import { sanitizeURL } from '@akashjs/runtime';
 
 const safeUrl = sanitizeURL(userProvidedUrl);
 // Returns the URL if safe, or an empty string if blocked
@@ -221,7 +221,7 @@ window.location.href = sanitizeURL(redirectUrl);
 Prevent abuse by limiting how often a function can be called.
 
 ```ts
-import { createRateLimiter } from '@akashjs/security';
+import { createRateLimiter } from '@akashjs/runtime';
 
 const limiter = createRateLimiter({
   maxRequests: 10,
@@ -252,7 +252,7 @@ The limiter exposes:
 Compute a Subresource Integrity hash for a given resource content.
 
 ```ts
-import { generateSRI } from '@akashjs/security';
+import { generateSRI } from '@akashjs/runtime';
 
 const integrity = await generateSRI(scriptContent);
 // "sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/uxy9rx7HNQlGYl1kPzQho1wx4JwY8wC"

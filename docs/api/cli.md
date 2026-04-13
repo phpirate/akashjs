@@ -14,7 +14,15 @@ akash new my-app --no-git      # Skip git init
 akash new my-app --no-install  # Skip npm install
 ```
 
-Scaffolds: `package.json`, `tsconfig.json`, `vite.config.ts`, `vitest.config.ts`, `index.html`, `src/main.ts`, `src/App.akash`, `src/components/Counter.akash`.
+Scaffolds: `package.json`, `tsconfig.json`, `vite.config.ts`, `index.html`, `src/main.ts`, `src/App.akash`, `src/env.d.ts`, plus AI context files (`CLAUDE.md`, `GEMINI.md`, `.cursor/rules/`, `.github/copilot-instructions.md`, `.windsurfrules`).
+
+### create-akash (standalone scaffolder)
+
+```sh
+npx create-akash my-app                         # basic template
+npx create-akash my-app --template=full          # routing, stores, i18n, HTTP
+npx create-akash my-app --template=local-first   # offline + sync + service worker
+```
 
 ## akash dev
 
@@ -188,3 +196,13 @@ akash audit --json         # Output results as JSON (for CI)
 | `--json` | Output structured JSON for programmatic consumption and CI integration |
 
 Exit code is `1` when critical issues are found, making it suitable for CI gates.
+
+## akash doctor
+
+Diagnose project setup issues. Checks package versions, config files, and compatibility.
+
+```sh
+akash doctor
+```
+
+Runs checks for: `package.json`, `@akashjs/*` packages installed, vite config with akash plugin, TypeScript config, source directory, and version compatibility.

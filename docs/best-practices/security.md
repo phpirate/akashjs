@@ -193,7 +193,7 @@ const auth = createAuth({
   loginUrl: '/api/auth/login',
   refreshUrl: '/api/auth/refresh',
   userUrl: '/api/auth/me',
-  storage: 'memory',  // cleared on page refresh — most secure
+  tokenStorage: 'memory',  // cleared on page refresh — most secure
 });
 ```
 

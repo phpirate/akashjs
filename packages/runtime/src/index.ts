@@ -141,8 +141,9 @@ export type { StructuredData, OpenGraphData, TwitterCardData, SEOConfig, Sitemap
 
 export {
   createSync, LWWRegister, createWebSocketTransport, createLocalTransport,
+  useCursor, useTypingIndicator,
 } from './sync.js';
-export type { SyncDoc, SyncOptions, SyncTransport, SyncOp, PeerInfo, LWWEntry } from './sync.js';
+export type { SyncDoc, SyncOptions, SyncTransport, SyncOp, PeerInfo, LWWEntry, SyncConflict } from './sync.js';
 
 export { createOfflineStore } from './offline.js';
 export type { OfflineStore, OfflineStoreOptions, ConflictStrategy } from './offline.js';

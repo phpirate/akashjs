@@ -130,8 +130,7 @@ To customize the announcement:
 ```ts
 import { createRouter } from '@akashjs/router';
 
-const router = createRouter({
-  routes,
+const router = createRouter(routes, {
   announceRouteChanges: true,                        // enabled by default
   formatRouteAnnouncement: (title) => `Navigated to ${title}`,
 });

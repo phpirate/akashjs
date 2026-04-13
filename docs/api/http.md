@@ -12,6 +12,7 @@ interface HttpClientConfig {
   headers?: Record<string, string>;
   interceptors?: HttpInterceptor[];
   fetch?: typeof globalThis.fetch;
+  credentials?: RequestCredentials;
 }
 
 interface HttpClient {
@@ -117,9 +118,12 @@ Create a reactive WebSocket connection with auto-reconnect.
 ```ts
 function createSocket(url: string, options?: {
   protocols?: string | string[];
-  reconnect?: boolean;
+  autoReconnect?: boolean;
   maxRetries?: number;
-  retryInterval?: number;
+  reconnectDelay?: number;
+  maxReconnectDelay?: number;
+  serialize?: (data: unknown) => string;
+  deserialize?: (data: string) => unknown;
 }): Socket;
 
 interface Socket {
@@ -139,19 +143,22 @@ interface Socket {
 Offset-based pagination helper with reactive state.
 
 ```ts
-function createPagination<T>(options: {
-  fetcher: (params: { page: number; pageSize: number }) => Promise<{ data: T[]; total: number }>;
-  pageSize?: number;
+function createPagination(options: {
+  pageSize: number;
+  totalItems?: (() => number) | number;
+  initialPage?: number;
 }): {
-  data: () => T[];
   page: () => number;
-  pageSize: () => number;
-  total: () => number;
+  pageSize: number;
   totalPages: () => number;
-  loading: () => boolean;
+  hasNext: () => boolean;
+  hasPrev: () => boolean;
   next(): void;
   prev(): void;
   goTo(page: number): void;
+  reset(): void;
+  offset: () => number;
+  range: () => { from: number; to: number; total: number };
 };
 ```
 
@@ -160,14 +167,14 @@ function createPagination<T>(options: {
 Cursor-based pagination helper for infinite-scroll patterns.
 
 ```ts
-function createCursorPagination<T>(options: {
-  fetcher: (cursor: string | null) => Promise<{ data: T[]; nextCursor: string | null }>;
+function createCursorPagination<C>(options: {
+  pageSize: number;
+  initialCursor?: C | null;
 }): {
-  data: () => T[];
-  loading: () => boolean;
+  cursor: () => C | null;
+  pageSize: number;
   hasMore: () => boolean;
-  loadMore(): void;
-  reset(): void;
+  setNextCursor(cursor: C | null): void;
 };
 ```
 
@@ -180,27 +187,47 @@ Create a reactive authentication manager with token handling, user fetching, and
 ```ts
 function createAuth(config?: AuthConfig): Auth;
 
-interface AuthConfig {
+interface AuthConfig<U = unknown> {
   loginUrl?: string;
   logoutUrl?: string;
-  userUrl?: string;
+  signupUrl?: string;
   refreshUrl?: string;
+  userUrl?: string;
+  configUrl?: string;
+  forgotPasswordUrl?: string;
+  resetPasswordUrl?: string;
+  mode?: 'token' | 'cookie';
+  tokenStorage?: 'localStorage' | 'sessionStorage' | 'memory';
   tokenKey?: string;
-  storage?: Storage;
+  refreshTokenKey?: string;
+  autoRestore?: boolean;
+  getToken?: (response: unknown) => string;
+  getRefreshToken?: (response: unknown) => string | null;
+  getUser?: (response: unknown) => U;
+  loginPayload?: (credentials: unknown) => unknown;
+  onSessionExpired?: () => void;
+  onLogin?: (user: U) => void;
+  onLogout?: () => void;
+  fetch?: typeof globalThis.fetch;
 }
 
-interface Auth {
-  user: () => Record<string, unknown> | null;
+interface Auth<U = unknown> {
+  user: () => U | null;
   token: () => string | null;
   isLoggedIn: () => boolean;
   loading: () => boolean;
-  login(credentials: Record<string, unknown>): Promise<void>;
-  logout(): Promise<void>;
-  setToken(token: string): void;
+  config: () => unknown | null;
+  login(credentials: unknown): Promise<void>;
+  logout(): void;
+  signup(data: unknown): Promise<void>;
+  forgotPassword(email: string): Promise<void>;
+  resetPassword(token: string, password: string): Promise<void>;
+  setToken(token: string, refreshToken?: string): void;
   fetchUser(): Promise<void>;
-  refreshToken(): Promise<void>;
+  fetchConfig(): Promise<void>;
+  refreshToken(): Promise<boolean>;
   interceptor: HttpInterceptor;
-  guard(redirectTo?: string): () => boolean;
+  guard(redirectTo?: string): RouteGuard;
 }
 ```
 

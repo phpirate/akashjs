@@ -280,3 +280,24 @@ const form = createFormFromSchema(schema, {
 ```
 
 Overrides are merged with the auto-generated field config, so Zod validation still applies alongside any extra validators you add.
+
+## Async Validator Error Handling
+
+If an async validator throws or rejects (instead of returning a string), the error is caught and surfaced as a validation error — the app won't crash with an unhandled promise rejection:
+
+```ts
+const form = defineForm({
+  email: {
+    initial: '',
+    asyncValidators: [
+      async (value) => {
+        // If this throws, the error message becomes the validation error
+        const res = await fetch(`/api/check-email?email=${value}`);
+        if (!res.ok) throw new Error('Unable to validate email');
+        const { taken } = await res.json();
+        return taken ? 'Email already taken' : null;
+      },
+    ],
+  },
+});
+```

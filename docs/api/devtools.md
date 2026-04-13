@@ -1,20 +1,23 @@
-# @akashjs/devtools API
+# DevTools API
 
-## installDevTools()
+DevTools are part of `@akashjs/runtime`. No separate package needed.
 
-Install the devtools hook on `window.__AKASH_DEVTOOLS__`. Call in dev mode.
+## installDevtools(options?)
+
+Install the devtools hook on `window.__AKASH_DEVTOOLS__`. Call in dev mode. Pass `{ overlay: true }` to enable the visual overlay panel.
 
 ```ts
-import { installDevTools } from '@akashjs/devtools';
+import { installDevtools } from '@akashjs/runtime';
 
 if (import.meta.env.DEV) {
-  installDevTools();
+  installDevtools();           // console API only
+  installDevtools({ overlay: true }); // + visual panel (Ctrl+Shift+D)
 }
 ```
 
 ## createDevToolsHook()
 
-Create a devtools hook instance (called internally by `installDevTools`).
+Create a devtools hook instance (called internally by `installDevtools`).
 
 ```ts
 function createDevToolsHook(): DevToolsHook;

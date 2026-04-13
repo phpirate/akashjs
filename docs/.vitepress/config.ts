@@ -24,6 +24,7 @@ export default defineConfig({
         text: 'More',
         items: [
           { text: 'UI Components', link: '/ui/getting-started' },
+          { text: 'Examples', link: '/examples/' },
           { text: 'Cookbook', link: '/cookbook/' },
           { text: 'Best Practices', link: '/best-practices/' },
           { text: 'Migration Guides', link: '/migration/' },
@@ -75,6 +76,7 @@ export default defineConfig({
             { text: 'Directives', link: '/guide/directives' },
             { text: 'PWA', link: '/guide/pwa' },
             { text: 'Web Components', link: '/guide/web-components' },
+            { text: 'SSR', link: '/guide/ssr' },
             { text: 'SSG / Prerendering', link: '/guide/ssg' },
             { text: 'URL State', link: '/guide/query-state' },
             { text: 'Animations', link: '/guide/animations' },
@@ -116,6 +118,19 @@ export default defineConfig({
             { text: '8. Styling & Theme', link: '/tutorial/styling' },
             { text: '9. Testing', link: '/tutorial/testing' },
             { text: '10. Deployment', link: '/tutorial/deployment' },
+          ],
+        },
+      ],
+      '/examples/': [
+        {
+          text: 'Examples',
+          items: [
+            { text: 'Overview', link: '/examples/' },
+            { text: 'Todo App', link: '/examples/todo' },
+            { text: 'Data Dashboard', link: '/examples/dashboard' },
+            { text: 'Real-time Chat', link: '/examples/chat' },
+            { text: 'Auth Flow', link: '/examples/auth' },
+            { text: 'Offline Notes', link: '/examples/offline-notes' },
           ],
         },
       ],

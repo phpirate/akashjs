@@ -12,11 +12,11 @@ AkashJS is **batteries-included** like Angular but **simple** like Svelte. Unlik
 
 ### Is AkashJS production-ready?
 
-AkashJS is at v0.1.x — it's functional with 934 tests passing, but it's early. The API may change before 1.0. It's suitable for personal projects, prototypes, and adventurous production apps.
+AkashJS is functional with 1050+ tests passing. The API is stabilizing. It's suitable for personal projects, prototypes, and production apps.
 
 ### What's the bundle size?
 
-The core runtime is under 8KB gzipped. With tree-shaking, you only ship the features you use — an app using just signals and components ships significantly less than the full runtime.
+The core runtime is ~24KB gzipped. With tree-shaking, you only ship the features you use — an app using just signals and components ships significantly less. The full framework (runtime + router + HTTP) is ~35KB gzipped, which includes what React needs 80KB+ of separate libraries to achieve.
 
 ### What license is AkashJS under?
 

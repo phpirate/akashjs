@@ -6,6 +6,42 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
+### Latest (runtime 0.2.6 / http 0.2.7 / compiler 0.1.57 / router 0.1.11 / i18n 0.1.11 / forms 0.1.7 / vite-plugin 0.2.1 / ui 0.2.3)
+
+**New features:**
+
+- **Runtime:** `defineStore` `persist` option — auto-sync state to localStorage/sessionStorage with cross-tab sync
+- **Runtime:** `defineStore` `sync` option — CRDT-synced real-time collaborative state via `$sync`
+- **Runtime:** `useCursor(doc)` — throttled cursor tracking composable for collaborative apps
+- **Runtime:** `useTypingIndicator(doc)` — typing state with auto-timeout
+- **Runtime:** Conflict resolution — `onConflict` callback, `conflicts()` signal, `resolveConflict()` for manual resolution
+- **Runtime:** DevTools visual overlay — floating panel toggled with Ctrl+Shift+D, live store inspection
+- **Runtime:** `batch()` returns the callback's return value
+- **Runtime:** Test utilities — `cleanup()`, `createTestStore()`, `mockFetch()`, `mockQueryClient()`
+- **HTTP:** Query cache — `createQueryClient`, `useCachedQuery`, `useMutation` with cache key invalidation
+- **HTTP:** Offline query cache — IndexedDB persistence, mutation queue, reconnect replay
+- **HTTP:** `bindSocket` — declarative WebSocket ↔ query cache bridge
+- **HTTP:** Enhanced `createAuth` — cookie mode, signup/forgotPassword/resetPassword, autoRestore, lifecycle callbacks, concurrent 401 dedup, cross-tab token sync
+- **HTTP:** `credentials` option on `createHttpClient`
+- **Vite plugin:** File-based route discovery via `virtual:akash-routes`
+- **Vite plugin:** SSR auto-detection (`vite build --ssr` → server compiler mode)
+- **Compiler:** SSR mode generates plain functions returning HTML strings (no DOM APIs)
+- **Compiler:** SSR Show → `if`, For → `for...of`, fallback → `else`
+- **CLI:** Templates: `basic`, `full`, `local-first`
+- **CLI:** AI context files: CLAUDE.md, GEMINI.md, .cursor/rules, copilot-instructions, .windsurfrules
+- **i18n:** Pipe-separated plural forms, XSS sanitization (default on), fallback to defaultLocale
+- **Forms:** Async validator throws surfaced as validation errors
+- **UI:** `markdownToHtml` XSS sanitization + inline code, fenced blocks, tables, images, HR
+
+**Bug fixes:**
+
+- **Compiler:** Fragment `<>...</>` compilation, import dedup, nesting-aware `__getter()` prop parser, object literal disambiguation
+- **Router:** Nested child routes, false match prevention, specificity-based priority, `[[...rest]]` optional catch-all, query string stripping from `matchPath`
+- **Runtime:** `useHead` returns dispose function, `renderHeadToString` handles empty, `$patch` batched, presence cleanup on disconnect, LWW same-timestamp tiebreaker
+- **i18n:** Prototype pollution prevention (null-prototype objects), `setLocale` race condition guard
+- **HTTP:** `setQueryData` propagates to reactive signals, `refetch()` bypasses staleTime, null key disables query, sync fetcher throws caught, absolute URL handling
+- **CLI:** Double shebang removed, CJS build with bundled deps, dynamic version injection
+
 ### 0.1.57 (compiler) / 0.2.1 (runtime) / 0.1.10 (router) / 0.1.6 (forms) / 0.1.6 (http) / 0.1.7 (i18n) / 0.2.2 (ui) / 0.1.14 (vite-plugin)
 
 **New features:**

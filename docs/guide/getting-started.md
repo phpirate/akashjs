@@ -26,6 +26,26 @@ This scaffolds a project with:
 
 ### Options
 
+Or use `create-akash` with a template:
+
+```sh
+npx create-akash my-app                         # basic — counter example
+npx create-akash my-app --template=full          # routing, stores, i18n, HTTP
+npx create-akash my-app --template=local-first   # offline + sync + service worker
+```
+
+### Templates
+
+| Template | Includes |
+|---|---|
+| `basic` | Runtime, compiler, vite-plugin, counter example |
+| `full` | + Router (file-based), stores (with persist), HTTP, i18n, devtools |
+| `local-first` | + Offline query cache, synced store, service worker, online indicator |
+
+All templates include AI context files (`CLAUDE.md`, `GEMINI.md`, `.cursor/rules/`, `.github/copilot-instructions.md`, `.windsurfrules`) so Claude Code, Cursor, Copilot, Gemini, and Windsurf understand your project from the first prompt.
+
+### CLI Options
+
 ```sh
 npx @akashjs/cli new my-app --router    # Include @akashjs/router
 npx @akashjs/cli new my-app --forms     # Include @akashjs/forms
@@ -73,9 +93,11 @@ my-app/
 ├── package.json
 ├── vite.config.ts
 ├── tsconfig.json
+├── CLAUDE.md                 # AI context (Claude, Gemini, Copilot, Cursor, Windsurf)
 └── src/
     ├── main.ts              # Entry point
     ├── App.akash             # Root component
+    ├── env.d.ts             # Type declarations for .akash files and virtual modules
     ├── components/           # Shared components
     │   └── Counter.akash
     └── routes/               # File-based routes (with --router)

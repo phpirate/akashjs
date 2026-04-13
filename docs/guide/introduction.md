@@ -12,6 +12,8 @@ AkashJS takes a different path:
 - **Single-file components** — `.akash` files with `<script>`, `<template>`, and `<style scoped>` sections, compiled to optimized JS at build time.
 - **Batteries included** — Router, forms, HTTP client, and CLI ship with the framework. Zero setup to go from idea to production.
 - **TypeScript-native** — Every API is designed for TypeScript first. Full inference, no decorators, no `any` leaks.
+- **Local-first** — Built-in CRDT sync, offline stores, IndexedDB query cache, and service worker support. Your app works offline and syncs automatically when reconnected.
+- **AI-native** — Every scaffolded project includes context files for Claude Code, Cursor, Copilot, Gemini, and Windsurf. AI tools understand your AkashJS code from the first prompt.
 
 ## Core Principles
 
@@ -31,6 +33,6 @@ AkashJS takes a different path:
 | `@akashjs/forms` | Signal-based forms with declarative validation |
 | `@akashjs/http` | Promise-based HTTP client with interceptors |
 | `@akashjs/i18n` | Signal-based internationalization with lazy loading |
-| `@akashjs/devtools` | Browser extension hook for inspecting components and signals |
-| `@akashjs/security` | XSS sanitization, CSP, CSRF, security headers, audit CLI |
+| `@akashjs/ui` | 60+ Material Design 3 components (Button, TextField, DataTable, etc.) |
 | `@akashjs/cli` | Project scaffolding, dev tooling, and `akash audit` security scanner |
+| `@akashjs/create` | `npx create-akash` — project templates (basic, full, local-first) |

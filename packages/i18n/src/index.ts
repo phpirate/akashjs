@@ -203,16 +203,22 @@ export function createI18n(config: I18nConfig): I18n {
     return key in currentMessages() || key in fallbackMessages();
   }
 
+  let localeGeneration = 0;
+
   async function setLocale(newLocale: string): Promise<void> {
+    const gen = ++localeGeneration;
     // Load messages if not already loaded
     const msgs = loadedMessages();
     if (!msgs[newLocale] && config.loadMessages) {
       const loaded = await config.loadMessages(newLocale);
+      // Discard if a newer setLocale was called while loading
+      if (gen !== localeGeneration) return;
       loadedMessages.set({
         ...loadedMessages(),
         [newLocale]: flattenMessages(loaded),
       });
     }
+    if (gen !== localeGeneration) return;
     locale.set(newLocale);
   }
 

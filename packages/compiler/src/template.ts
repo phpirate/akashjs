@@ -107,10 +107,12 @@ export function parseTemplate(content: string): TemplateNode[] {
     // (e.g., a stray '<' that doesn't start a valid tag)
     const textEnd = findNextBoundary(content, pos + 1);
     const rawText = content.slice(pos, textEnd);
-    const text = rawText.trim();
+    // Preserve trailing space when followed by an expression (e.g., "text {expr}")
+    const nextIsExpr = textEnd < content.length && content[textEnd] === '{';
+    const text = nextIsExpr ? rawText.trimStart() : rawText.trim();
     if (text) {
       nodes.push({ type: 'text', content: text });
-    } else if (rawText.includes(' ') && nodes.length > 0 && textEnd < content.length && content[textEnd] === '{') {
+    } else if (rawText.includes(' ') && nodes.length > 0 && nextIsExpr) {
       // Preserve whitespace between inline expressions (e.g., {a()} {b()})
       nodes.push({ type: 'text', content: ' ' });
     }

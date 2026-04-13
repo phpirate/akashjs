@@ -76,7 +76,8 @@ export function collectSSRHead(): HeadConfig[] {
 }
 
 /** Render collected head tags to HTML string (for SSR) */
-export function renderHeadToString(configs: HeadConfig[]): string {
+export function renderHeadToString(configs?: HeadConfig[] | null): string {
+  if (!configs || configs.length === 0) return '';
   let html = '';
 
   // Last title wins
@@ -125,13 +126,13 @@ const MANAGED_ATTR = 'data-akash-head';
  * Tags are automatically cleaned up when the component unmounts.
  * Reactive values (signals) in the config trigger updates.
  */
-export function useHead(config: HeadConfig | (() => HeadConfig)): void {
+export function useHead(config: HeadConfig | (() => HeadConfig)): () => void {
   const getConfig = typeof config === 'function' ? config : () => config;
 
   // SSR: just collect
   if (typeof document === 'undefined') {
     ssrHeadTags.push(getConfig());
-    return;
+    return () => {};
   }
 
   const managedElements: Element[] = [];
@@ -204,16 +205,21 @@ export function useHead(config: HeadConfig | (() => HeadConfig)): void {
     }
   });
 
+  const cleanup = () => {
+    dispose();
+    for (const el of managedElements) {
+      el.remove();
+    }
+    managedElements.length = 0;
+  };
+
   // Cleanup on unmount
   try {
-    onUnmount(() => {
-      dispose();
-      for (const el of managedElements) {
-        el.remove();
-      }
-    });
+    onUnmount(cleanup);
   } catch {
     // onUnmount may throw if called outside component — that's fine,
-    // the effect will just persist until the page unloads
+    // caller can use the returned dispose function manually
   }
+
+  return cleanup;
 }

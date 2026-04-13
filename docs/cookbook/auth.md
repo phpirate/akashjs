@@ -60,8 +60,7 @@ The auth interceptor automatically attaches the Bearer token to every request an
 
 ```ts
 // src/pages/login.ts
-import { defineForm } from '@akashjs/forms';
-import { required, email } from '@akashjs/forms/validators';
+import { defineForm, required, email } from '@akashjs/forms';
 import { signal } from '@akashjs/runtime';
 import { auth } from '../auth';
 
@@ -120,14 +119,14 @@ async function handleLogin(values) {
 import { createRouter } from '@akashjs/router';
 import { auth, requireRole } from './auth';
 
-export const router = createRouter({
-  routes: [
-    { path: '/login', component: LoginPage },
-    { path: '/dashboard', component: Dashboard, guard: auth.guard('/login') },
-    { path: '/admin', component: AdminPanel, guard: requireRole('admin') },
-    { path: '/unauthorized', component: UnauthorizedPage },
-  ],
-});
+const routes = [
+  { path: '/login', component: LoginPage },
+  { path: '/dashboard', component: Dashboard, guard: auth.guard('/login') },
+  { path: '/admin', component: AdminPanel, guard: requireRole('admin') },
+  { path: '/unauthorized', component: UnauthorizedPage },
+];
+
+export const router = createRouter(routes);
 ```
 
 ### 5. Logout

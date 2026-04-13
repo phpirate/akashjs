@@ -116,10 +116,10 @@ export function scheduleEffect(fx: ScheduledEffect): void {
  * Batch multiple signal writes — subscribers are notified only once
  * at the end of the batch.
  */
-export function batch(fn: () => void): void {
+export function batch<T>(fn: () => T): T {
   batchDepth++;
   try {
-    fn();
+    return fn();
   } finally {
     batchDepth--;
     if (batchDepth === 0) {

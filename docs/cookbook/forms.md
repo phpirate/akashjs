@@ -14,7 +14,7 @@ Combine `defineForm` from `@akashjs/forms` with `createMachine` for wizard flows
 // src/forms/checkout-wizard.ts
 import { createMachine } from '@akashjs/runtime';
 import { defineForm } from '@akashjs/forms';
-import { required, email, minLength } from '@akashjs/forms/validators';
+import { required, email, minLength } from '@akashjs/forms';
 
 type Step = 'account' | 'shipping' | 'payment' | 'review';
 type Event = 'NEXT' | 'BACK';
@@ -89,7 +89,7 @@ Using a state machine for wizard navigation prevents users from skipping steps o
 ```ts
 import { signal } from '@akashjs/runtime';
 import { defineForm } from '@akashjs/forms';
-import { required } from '@akashjs/forms/validators';
+import { required } from '@akashjs/forms';
 
 interface LineItem { name: string; qty: number; price: number; }
 

@@ -164,11 +164,21 @@ export interface CacheRoute {
  * ]);
  * ```
  */
-export function generateSWScript(routes: CacheRoute[]): string {
+export function generateSWScript(routesOrConfig: CacheRoute[] | { cacheName?: string; precache?: string[]; runtimeCache?: CacheRoute[] }): string {
+  // Accept both array of routes and config object
+  const routes: CacheRoute[] = Array.isArray(routesOrConfig)
+    ? routesOrConfig
+    : routesOrConfig.runtimeCache ?? [];
+  const precache = Array.isArray(routesOrConfig) ? [] : routesOrConfig.precache ?? [];
+  const globalCacheName = Array.isArray(routesOrConfig) ? 'akash-cache-v1' : routesOrConfig.cacheName ?? 'akash-cache-v1';
   let script = `// Auto-generated service worker by AkashJS
-const CACHE_VERSION = 'v1';
+const CACHE_NAME = '${globalCacheName}';
+const PRECACHE_URLS = ${JSON.stringify(precache)};
 
 self.addEventListener('install', (event) => {
+  ${precache.length > 0 ? `event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE_URLS))
+  );` : ''}
   self.skipWaiting();
 });
 
@@ -187,11 +197,15 @@ self.addEventListener('fetch', (event) => {
 `;
 
   for (const route of routes) {
-    const pattern = route.match instanceof RegExp
-      ? route.match.toString()
-      : `new RegExp(${JSON.stringify(route.match.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))})`;
+    // Support both 'match' and 'urlPattern' property names
+    const matchValue = route.match ?? (route as any).urlPattern;
+    if (!matchValue) continue;
 
-    const cacheName = route.cacheName ?? 'akash-cache';
+    const pattern = matchValue instanceof RegExp
+      ? matchValue.toString()
+      : `new RegExp(${JSON.stringify(matchValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))})`;
+
+    const cacheName = route.cacheName ?? globalCacheName;
 
     script += `
   if (${pattern}.test(url.pathname)) {

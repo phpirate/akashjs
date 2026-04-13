@@ -187,6 +187,9 @@ function defineStore<S, G, A>(
     state: () => S;
     getters?: G & Record<string, (state: S) => unknown>;
     actions?: A & Record<string, (...args: any[]) => unknown>;
+    persist?: boolean | PersistConfig | PersistConfig[];
+    sync?: SyncConfig;
+    plugins?: StorePlugin[];
   },
 ): () => Store<S, G, A>;
 ```
@@ -195,8 +198,10 @@ function defineStore<S, G, A>(
 
 - `$id` — the store identifier string.
 - `$reset()` — reset state to initial values.
+- `$patch(partial | fn)` — merge partial state or apply a callback. Batched — `$subscribe` fires once.
 - `$snapshot()` — return a plain copy of current state.
 - `$subscribe(callback)` — listen for state changes. Returns an unsubscribe function.
+- `$sync` — (when `sync` option provided) peer info, presence, connect/disconnect.
 
 ### clearStores()
 
@@ -270,12 +275,17 @@ function generateTransitionCSS(name: string, options?: {
 Set document head tags reactively. Supports title, meta, link, and script tags.
 
 ```ts
-function useHead(config: {
-  title?: string | (() => string);
+function useHead(config: HeadConfig | (() => HeadConfig)): () => void;
+
+interface HeadConfig {
+  title?: string;
+  titleTemplate?: string;
   meta?: Array<Record<string, string>>;
   link?: Array<Record<string, string>>;
   script?: Array<Record<string, string>>;
-}): void;
+  htmlAttrs?: Record<string, string>;
+  bodyAttrs?: Record<string, string>;
+}
 ```
 
 ### renderHeadToString()
@@ -368,10 +378,10 @@ function useThrottle<T>(source: () => T, interval: number): () => T;
 Reactive counter with convenience methods.
 
 ```ts
-function useCounter(initial?: number): {
+function useCounter(initial?: number, options?: { min?: number; max?: number }): {
   count: () => number;
-  increment(): void;
-  decrement(): void;
+  inc(): void;
+  dec(): void;
   set(value: number): void;
   reset(): void;
 };

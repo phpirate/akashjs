@@ -9,7 +9,7 @@ Traditional apps fail when the network drops. Offline-first apps do not — they
 ## Setup
 
 ```ts
-import { createOfflineStore } from '@akashjs/offline';
+import { createOfflineStore } from '@akashjs/runtime';
 
 interface Todo {
   id: string;
@@ -149,10 +149,6 @@ The store automatically detects network status and pauses/resumes sync according
 // Reactive signal — true when the browser is online
 todos.online();  // true | false
 
-// Manual control
-todos.pauseSync();
-todos.resumeSync();
-
 // Force an immediate sync attempt
 await todos.sync();
 ```
@@ -229,7 +225,7 @@ A complete offline-capable todo app:
 
 ```ts
 import { defineComponent, signal } from '@akashjs/runtime';
-import { createOfflineStore } from '@akashjs/offline';
+import { createOfflineStore } from '@akashjs/runtime';
 
 interface Todo {
   id: string;
@@ -309,3 +305,42 @@ const TodoApp = defineComponent((ctx) => {
 ```
 
 The app works identically whether the user is online or offline. Changes persist in IndexedDB and sync automatically when connectivity returns.
+
+## Offline Query Cache
+
+The HTTP query cache can also work offline. Enable IndexedDB persistence so cached API responses survive page reloads and serve data when the network is unavailable:
+
+```ts
+import { createQueryClient, useCachedQuery, useMutation } from '@akashjs/http';
+
+const qc = createQueryClient({
+  defaultStaleTime: 30_000,
+  offline: {
+    storage: 'indexeddb',       // persist cache to IndexedDB
+    queueMutations: true,       // queue mutations when offline
+    syncOnReconnect: true,      // refetch stale queries on reconnect
+  },
+});
+```
+
+Queries automatically:
+- **Persist** successful responses to IndexedDB
+- **Hydrate** from IndexedDB when the in-memory cache is empty
+- **Skip network** when offline (`client.online()` returns `false`)
+- **Refetch** all stale queries when the browser goes back online
+
+Mutations automatically:
+- **Queue** to IndexedDB when offline (with optimistic updates applied locally)
+- **Replay** on reconnect — invalidating the associated query keys to trigger refetch
+
+```ts
+// Check connectivity reactively
+const online = qc.online?.();
+
+// In your template
+<Show when={!online}>
+  {() => <div class="banner">You're offline. Changes will sync when reconnected.</div>}
+</Show>
+```
+
+See the [HTTP guide](/guide/http) for full query cache API details.

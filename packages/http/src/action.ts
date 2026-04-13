@@ -93,9 +93,7 @@ export function createAction<TInput, TResult>(
 
       options.onError?.(e, input);
       options.onSettled?.(input);
-      // Only re-throw if no onError handler — otherwise the error is considered handled
-      if (!options.onError) throw e;
-      return undefined as unknown as TResult;
+      throw e;
     }
   }
 

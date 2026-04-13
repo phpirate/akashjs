@@ -12,9 +12,11 @@ import { defineComponent } from './component.js';
 import { provide } from './context.js';
 import { signal } from './signals.js';
 import { flushSync } from './scheduler.js';
+import { clearStores } from './store.js';
 import type { Signal } from './signals.js';
 import type { Component } from './component.js';
 import type { InjectionKey } from './context.js';
+import type { Store } from './store.js';
 
 // --- Mount result ---
 
@@ -83,6 +85,7 @@ export function mount<P extends Record<string, unknown> = Record<string, unknown
 
   // Attach to document so queries work properly
   document.body.appendChild(container);
+  mountedContainers.push(container);
 
   return {
     container,
@@ -403,4 +406,168 @@ export function createTestSignal<T>(initialValue: T): TestSignal<T> {
   };
 
   return read;
+}
+
+// =========================================================================
+// Store test helpers
+// =========================================================================
+
+/** Track mounted containers for cleanup */
+const mountedContainers: HTMLElement[] = [];
+
+/**
+ * Unmount all rendered components and clear store singletons.
+ * Call in afterEach() for clean test isolation.
+ */
+export function cleanup(): void {
+  for (const container of mountedContainers) {
+    container.remove();
+  }
+  mountedContainers.length = 0;
+  clearStores();
+}
+
+/**
+ * Create a fresh store instance for testing, bypassing the singleton cache.
+ * Automatically calls clearStores() first so the factory returns a new instance.
+ *
+ * ```ts
+ * const store = createTestStore(useCounter);
+ * store.increment();
+ * expect(store.count()).toBe(1);
+ * ```
+ */
+export function createTestStore<S, G, A>(
+  useStore: () => Store<S, G, A>,
+): Store<S, G, A> {
+  clearStores();
+  const store = useStore();
+  // Remove from singleton cache so subsequent useStore() calls create
+  // independent instances, not the same test store
+  clearStores();
+  return store;
+}
+
+// =========================================================================
+// Mock fetch
+// =========================================================================
+
+export interface MockFetchCall {
+  url: string;
+  method: string;
+  body?: unknown;
+  headers: Record<string, string>;
+}
+
+export interface MockFetchInstance {
+  /** The mock fetch function — pass to createHttpClient({ fetch }) */
+  (input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+  /** All recorded calls */
+  calls: () => MockFetchCall[];
+  /** Number of calls made */
+  callCount: () => number;
+  /** Reset call history */
+  reset: () => void;
+}
+
+/**
+ * Create a mock fetch that returns predefined responses.
+ *
+ * ```ts
+ * const fetch = mockFetch({
+ *   '/api/users': [{ id: 1, name: 'Alice' }],
+ *   '/api/users/1': { id: 1, name: 'Alice' },
+ * });
+ * const res = await fetch('/api/users');
+ * const data = await res.json(); // [{ id: 1, name: 'Alice' }]
+ * expect(fetch.callCount()).toBe(1);
+ * ```
+ */
+export function mockFetch(
+  responses: Record<string, unknown> = {},
+  defaultStatus = 200,
+): MockFetchInstance {
+  const recorded: MockFetchCall[] = [];
+
+  const fn = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url = typeof input === 'string' ? input
+      : input instanceof URL ? input.toString()
+      : input.url;
+    const method = init?.method ?? 'GET';
+    let body: unknown;
+    if (init?.body) {
+      try { body = JSON.parse(String(init.body)); } catch { body = init.body; }
+    }
+    const headers: Record<string, string> = {};
+    if (init?.headers) {
+      const h = new Headers(init.headers);
+      h.forEach((v, k) => { headers[k] = v; });
+    }
+
+    recorded.push({ url, method, body, headers });
+
+    // Match response by URL path
+    const path = url.replace(/^https?:\/\/[^/]+/, '').split('?')[0];
+    const responseData = responses[path] ?? responses[url];
+
+    if (responseData === undefined) {
+      return new Response('Not Found', { status: 404 });
+    }
+
+    // Support _status convention: { _status: 500, error: 'msg' }
+    let responseStatus = defaultStatus;
+    let responseBody: unknown = responseData;
+    if (responseBody && typeof responseBody === 'object' && !Array.isArray(responseBody) && '_status' in (responseBody as Record<string, unknown>)) {
+      const { _status, ...rest } = responseBody as Record<string, unknown>;
+      responseStatus = Number(_status);
+      responseBody = rest;
+    }
+
+    // Null-body statuses (204, 304) cannot have a response body
+    const isNullBody = responseStatus === 204 || responseStatus === 304;
+    return new Response(isNullBody ? null : JSON.stringify(responseBody), {
+      status: responseStatus,
+      headers: isNullBody ? {} : { 'Content-Type': 'application/json' },
+    });
+  };
+
+  fn.calls = () => [...recorded];
+  fn.callCount = () => recorded.length;
+  fn.reset = () => { recorded.length = 0; };
+
+  return fn as MockFetchInstance;
+}
+
+// =========================================================================
+// Mock query client
+// =========================================================================
+
+/**
+ * Create a mock query client for testing. Behaves like createQueryClient
+ * but with no real caching — each useCachedQuery gets a fresh context.
+ *
+ * ```ts
+ * const qc = mockQueryClient();
+ * const posts = useCachedQuery(qc, ['posts'], fetcher);
+ * ```
+ */
+export function mockQueryClient(): {
+  invalidate: (prefix: unknown) => void;
+  setQueryData: (key: unknown, updater: unknown) => void;
+  getQueryData: (key: unknown) => unknown;
+  removeQuery: (key: unknown) => void;
+  clear: () => void;
+  _cache: Map<string, unknown>;
+  _options: { defaultStaleTime?: number };
+} {
+  const cache = new Map<string, unknown>();
+  return {
+    invalidate: () => {},
+    setQueryData: () => {},
+    getQueryData: () => undefined,
+    removeQuery: (key) => { cache.delete(JSON.stringify(key)); },
+    clear: () => { cache.clear(); },
+    _cache: cache,
+    _options: { defaultStaleTime: 0 },
+  };
 }

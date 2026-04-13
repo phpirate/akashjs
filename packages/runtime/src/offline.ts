@@ -49,6 +49,8 @@ export interface OfflineStoreOptions<T> {
 export interface OfflineStore<T extends Record<string, unknown>> {
   /** All items (reactive) */
   items: ReadonlySignal<T[]>;
+  /** Alias for items (reactive) */
+  data: ReadonlySignal<T[]>;
   /** Get a single item by key */
   get(key: string): T | undefined;
   /** Add or update an item */
@@ -281,6 +283,7 @@ export function createOfflineStore<T extends Record<string, unknown>>(
 
   return {
     items: () => items(),
+    data: () => items(),
     get(key: string) { return items().find((i) => getKey(i) === key); },
     put,
     add: put,

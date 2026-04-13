@@ -316,3 +316,83 @@ import { measureAsync } from '@akashjs/runtime';
 
 const { result, duration } = await measureAsync('api-call', () => fetch('/api/data'));
 ```
+
+## cleanup()
+
+Unmount all rendered components and clear store singletons in one call. Use it in `afterEach()` so every test starts fresh:
+
+```ts
+import { cleanup } from '@akashjs/runtime/test';
+
+afterEach(() => {
+  cleanup();
+});
+```
+
+## createTestStore()
+
+Create a fresh store instance that bypasses the singleton cache. Useful when tests need isolated state:
+
+```ts
+import { createTestStore } from '@akashjs/runtime/test';
+import { useCounter } from './stores/counter';
+
+it('increments independently', () => {
+  const counter = createTestStore(useCounter);
+  counter.increment();
+  expect(counter.count()).toBe(1);
+});
+```
+
+Each call returns a brand-new instance — no shared state between tests.
+
+## mockFetch()
+
+Replace `globalThis.fetch` with a mock that returns predefined responses:
+
+```ts
+import { mockFetch } from '@akashjs/runtime/test';
+
+const mock = mockFetch({
+  '/api/users': [{ id: 1, name: 'Alice' }],
+  '/api/health': { ok: true },
+});
+```
+
+Return an error status by adding a `_status` property:
+
+```ts
+const mock = mockFetch({
+  '/api/users': { _status: 500 },
+});
+```
+
+Inspect calls after your test runs:
+
+```ts
+mock.callCount();          // total number of fetch calls
+mock.calls();              // array of [url, init] pairs
+mock.reset();              // clear recorded calls
+```
+
+The original `fetch` is restored when you call `cleanup()`.
+
+## mockQueryClient()
+
+Create a lightweight query client for testing `useCachedQuery` and `useMutation` without a real cache layer:
+
+```ts
+import { mockQueryClient } from '@akashjs/runtime/test';
+
+it('fetches and caches', async () => {
+  const qc = mockQueryClient();
+
+  const users = useCachedQuery(qc, ['users'], () =>
+    fetch('/api/users').then((r) => r.json()),
+  );
+
+  await waitFor(() => expect(users()).toHaveLength(2));
+});
+```
+
+Pair it with `mockFetch()` to control both the network layer and the cache in a single test.

@@ -267,3 +267,38 @@ export async function GET() {
 | `lastmod` | `string` | ISO 8601 date of last modification |
 | `changefreq` | `'always' \| 'hourly' \| 'daily' \| 'weekly' \| 'monthly' \| 'yearly' \| 'never'` | How often the page changes |
 | `priority` | `number` | Priority from 0.0 to 1.0 (default: 0.5) |
+
+## useHead Lifecycle
+
+`useHead()` returns a cleanup function that removes all injected elements from `<head>`:
+
+```ts
+const dispose = useHead({
+  title: 'My Page',
+  meta: [{ name: 'description', content: 'Page description' }],
+});
+
+// Later (e.g., on route change):
+dispose(); // removes all injected meta/link/script tags
+```
+
+When used inside a `defineComponent`, cleanup happens automatically on unmount. For reactive updates, pass a getter function:
+
+```ts
+useHead(() => ({
+  title: currentTitle(),
+  meta: [{ name: 'description', content: currentDescription() }],
+}));
+```
+
+## SSR Head Rendering
+
+`renderHeadToString()` collects head tags during server-side rendering:
+
+```ts
+import { collectSSRHead, renderHeadToString } from '@akashjs/runtime';
+
+const html = await renderToString(App);
+const headHtml = renderHeadToString(collectSSRHead());
+// Returns '' if no head tags were collected (safe for empty case)
+```

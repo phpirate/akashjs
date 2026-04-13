@@ -196,9 +196,16 @@ describe('useMutation', () => {
     const onError = vi.fn();
     const m = useMutation(qc, mutFn, { onError });
 
-    await m.execute('input');
+    await m.execute('input').catch(() => {});
     expect(m.error()?.message).toBe('Server error');
     expect(onError).toHaveBeenCalled();
+  });
+
+  it('execute rejects even when onError is set', async () => {
+    const m = useMutation(qc, () => Promise.reject(new Error('fail')), {
+      onError: () => {},
+    });
+    await expect(m.execute(null)).rejects.toThrow('fail');
   });
 
   it('invalidates queries after successful mutation', async () => {

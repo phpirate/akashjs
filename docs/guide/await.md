@@ -170,7 +170,7 @@ inspect(signal1, signal2, {
 `defineFormAction()` creates server-side form handlers with progressive enhancement. Forms work without JavaScript and upgrade to async submission when JS is available.
 
 ```ts
-import { defineFormAction } from '@akashjs/runtime/server';
+import { defineFormAction } from '@akashjs/runtime';
 
 export const submitContact = defineFormAction(async (formData) => {
   const name = formData.get('name');

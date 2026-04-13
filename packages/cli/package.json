@@ -2,16 +2,13 @@
   "name": "@akashjs/cli",
   "version": "0.1.5",
   "description": "AkashJS CLI — project scaffolding, dev server, build tool",
-  "type": "module",
   "bin": {
     "akash": "dist/index.js"
   },
   "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     }
   },
   "scripts": {

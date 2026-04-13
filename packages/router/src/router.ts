@@ -106,8 +106,10 @@ export function matchPath(
   pathname: string,
   path: string,
 ): { params: Record<string, string> } | null {
+  // Strip query string and hash — only match against the path portion
+  const cleanPathname = pathname.split('?')[0].split('#')[0];
   const { regex, paramNames } = compilePath(path);
-  const match = pathname.match(regex);
+  const match = cleanPathname.match(regex);
 
   if (!match) return null;
 

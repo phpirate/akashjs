@@ -35,6 +35,7 @@ const RESOLVED_VIRTUAL_ROUTES_ID = '\0' + VIRTUAL_ROUTES_ID;
 export default function akash(options: AkashPluginOptions = {}): Plugin {
   const cssMode = options.css ?? 'injected';
   let isProduction = false;
+  let isSSR = false;
   let projectRoot = '';
 
   // Cache previous source for HMR diffing
@@ -70,6 +71,7 @@ export default function akash(options: AkashPluginOptions = {}): Plugin {
 
     configResolved(config) {
       isProduction = config.command === 'build';
+      isSSR = !!config.build?.ssr;
       projectRoot = config.root;
       if (options.routes) {
         routesDir = resolve(config.root, options.routes.dir ?? 'src/routes');
@@ -121,6 +123,7 @@ export default function akash(options: AkashPluginOptions = {}): Plugin {
         result = compile(code, {
           filename: id,
           dev: !isProduction,
+          mode: isSSR ? 'server' : 'client',
         });
       } catch (err) {
         // Compile error — show overlay in dev, throw in prod
