@@ -1,6 +1,6 @@
 {
   "name": "@akashjs/eslint-plugin",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "ESLint plugin for AkashJS — lint .akash files and enforce reactive patterns",
   "type": "module",
   "main": "dist/index.cjs",

@@ -1,6 +1,6 @@
 {
   "name": "@akashjs/ui",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "AkashJS UI — Material Design component library",
   "type": "module",
   "main": "dist/index.cjs",

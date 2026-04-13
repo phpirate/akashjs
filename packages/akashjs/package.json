@@ -1,6 +1,6 @@
 {
   "name": "@akashjs/akashjs",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "A TypeScript-first UI framework with Angular's structure and Svelte's simplicity",
   "type": "module",
   "license": "MIT",
