@@ -14,35 +14,273 @@
     },
     "./core": {
       "import": "./dist/core.js",
-      "require": "./dist/core.cjs"
+      "require": "./dist/core.cjs",
+      "types": "./dist/core.d.ts"
     },
     "./test": {
       "import": "./dist/test.js",
-      "require": "./dist/test.cjs"
+      "require": "./dist/test.cjs",
+      "types": "./dist/test.d.ts"
     },
     "./store": {
-      "import": "./dist/store.js"
+      "import": "./dist/store.js",
+      "require": "./dist/store.cjs",
+      "types": "./dist/store.d.ts"
     },
     "./ssr": {
-      "import": "./dist/ssr.js"
+      "import": "./dist/ssr.js",
+      "require": "./dist/ssr.cjs",
+      "types": "./dist/ssr.d.ts"
     },
     "./sync": {
-      "import": "./dist/sync.js"
+      "import": "./dist/sync.js",
+      "require": "./dist/sync.cjs",
+      "types": "./dist/sync.d.ts"
     },
     "./offline": {
-      "import": "./dist/offline.js"
+      "import": "./dist/offline.js",
+      "require": "./dist/offline.cjs",
+      "types": "./dist/offline.d.ts"
     },
     "./animate": {
-      "import": "./dist/animate.js"
+      "import": "./dist/animate.js",
+      "require": "./dist/animate.cjs",
+      "types": "./dist/animate.d.ts"
     },
     "./machine": {
-      "import": "./dist/machine.js"
+      "import": "./dist/machine.js",
+      "require": "./dist/machine.cjs",
+      "types": "./dist/machine.d.ts"
     },
     "./pwa": {
-      "import": "./dist/pwa.js"
+      "import": "./dist/pwa.js",
+      "require": "./dist/pwa.cjs",
+      "types": "./dist/pwa.d.ts"
+    },
+    "./head": {
+      "import": "./dist/head.js",
+      "require": "./dist/head.cjs",
+      "types": "./dist/head.d.ts"
+    },
+    "./seo": {
+      "import": "./dist/seo.js",
+      "require": "./dist/seo.cjs",
+      "types": "./dist/seo.d.ts"
+    },
+    "./transition": {
+      "import": "./dist/transition.js",
+      "require": "./dist/transition.cjs",
+      "types": "./dist/transition.d.ts"
+    },
+    "./portal": {
+      "import": "./dist/portal.js",
+      "require": "./dist/portal.cjs",
+      "types": "./dist/portal.d.ts"
+    },
+    "./error-boundary": {
+      "import": "./dist/error-boundary.js",
+      "require": "./dist/error-boundary.cjs",
+      "types": "./dist/error-boundary.d.ts"
+    },
+    "./suspense": {
+      "import": "./dist/suspense.js",
+      "require": "./dist/suspense.cjs",
+      "types": "./dist/suspense.d.ts"
+    },
+    "./virtual-list": {
+      "import": "./dist/virtual-list.js",
+      "require": "./dist/virtual-list.cjs",
+      "types": "./dist/virtual-list.d.ts"
+    },
+    "./async-component": {
+      "import": "./dist/async-component.js",
+      "require": "./dist/async-component.cjs",
+      "types": "./dist/async-component.d.ts"
+    },
+    "./await-block": {
+      "import": "./dist/await-block.js",
+      "require": "./dist/await-block.cjs",
+      "types": "./dist/await-block.d.ts"
+    },
+    "./switch": {
+      "import": "./dist/switch.js",
+      "require": "./dist/switch.cjs",
+      "types": "./dist/switch.d.ts"
+    },
+    "./image": {
+      "import": "./dist/image.js",
+      "require": "./dist/image.cjs",
+      "types": "./dist/image.d.ts"
+    },
+    "./watch": {
+      "import": "./dist/watch.js",
+      "require": "./dist/watch.cjs",
+      "types": "./dist/watch.d.ts"
+    },
+    "./deep-signal": {
+      "import": "./dist/deep-signal.js",
+      "require": "./dist/deep-signal.cjs",
+      "types": "./dist/deep-signal.d.ts"
+    },
+    "./query-state": {
+      "import": "./dist/query-state.js",
+      "require": "./dist/query-state.cjs",
+      "types": "./dist/query-state.d.ts"
+    },
+    "./tweened": {
+      "import": "./dist/tweened.js",
+      "require": "./dist/tweened.cjs",
+      "types": "./dist/tweened.d.ts"
+    },
+    "./flip": {
+      "import": "./dist/flip.js",
+      "require": "./dist/flip.cjs",
+      "types": "./dist/flip.d.ts"
+    },
+    "./composables": {
+      "import": "./dist/composables.js",
+      "require": "./dist/composables.cjs",
+      "types": "./dist/composables.d.ts"
+    },
+    "./browser": {
+      "import": "./dist/browser.js",
+      "require": "./dist/browser.cjs",
+      "types": "./dist/browser.d.ts"
+    },
+    "./di": {
+      "import": "./dist/di.js",
+      "require": "./dist/di.cjs",
+      "types": "./dist/di.d.ts"
+    },
+    "./plugin": {
+      "import": "./dist/plugin.js",
+      "require": "./dist/plugin.cjs",
+      "types": "./dist/plugin.d.ts"
+    },
+    "./toast": {
+      "import": "./dist/toast.js",
+      "require": "./dist/toast.cjs",
+      "types": "./dist/toast.d.ts"
+    },
+    "./theme": {
+      "import": "./dist/theme.js",
+      "require": "./dist/theme.cjs",
+      "types": "./dist/theme.d.ts"
+    },
+    "./css": {
+      "import": "./dist/css.js",
+      "require": "./dist/css.cjs",
+      "types": "./dist/css.d.ts"
+    },
+    "./data-table": {
+      "import": "./dist/data-table.js",
+      "require": "./dist/data-table.cjs",
+      "types": "./dist/data-table.d.ts"
+    },
+    "./pipes": {
+      "import": "./dist/pipes.js",
+      "require": "./dist/pipes.cjs",
+      "types": "./dist/pipes.d.ts"
+    },
+    "./directive": {
+      "import": "./dist/directive.js",
+      "require": "./dist/directive.cjs",
+      "types": "./dist/directive.d.ts"
+    },
+    "./event-modifiers": {
+      "import": "./dist/event-modifiers.js",
+      "require": "./dist/event-modifiers.cjs",
+      "types": "./dist/event-modifiers.d.ts"
+    },
+    "./snippets": {
+      "import": "./dist/snippets.js",
+      "require": "./dist/snippets.cjs",
+      "types": "./dist/snippets.d.ts"
+    },
+    "./event-bus": {
+      "import": "./dist/event-bus.js",
+      "require": "./dist/event-bus.cjs",
+      "types": "./dist/event-bus.d.ts"
+    },
+    "./security": {
+      "import": "./dist/security.js",
+      "require": "./dist/security.cjs",
+      "types": "./dist/security.d.ts"
+    },
+    "./leak-detector": {
+      "import": "./dist/leak-detector.js",
+      "require": "./dist/leak-detector.cjs",
+      "types": "./dist/leak-detector.d.ts"
+    },
+    "./perf": {
+      "import": "./dist/perf.js",
+      "require": "./dist/perf.cjs",
+      "types": "./dist/perf.d.ts"
+    },
+    "./a11y": {
+      "import": "./dist/a11y.js",
+      "require": "./dist/a11y.cjs",
+      "types": "./dist/a11y.d.ts"
+    },
+    "./devtools": {
+      "import": "./dist/devtools.js",
+      "require": "./dist/devtools.cjs",
+      "types": "./dist/devtools.d.ts"
+    },
+    "./error-hints": {
+      "import": "./dist/error-hints.js",
+      "require": "./dist/error-hints.cjs",
+      "types": "./dist/error-hints.d.ts"
+    },
+    "./deprecation": {
+      "import": "./dist/deprecation.js",
+      "require": "./dist/deprecation.cjs",
+      "types": "./dist/deprecation.d.ts"
+    },
+    "./errors": {
+      "import": "./dist/errors.js",
+      "require": "./dist/errors.cjs",
+      "types": "./dist/errors.d.ts"
+    },
+    "./defer": {
+      "import": "./dist/defer.js",
+      "require": "./dist/defer.cjs",
+      "types": "./dist/defer.d.ts"
+    },
+    "./view-transition": {
+      "import": "./dist/view-transition.js",
+      "require": "./dist/view-transition.cjs",
+      "types": "./dist/view-transition.d.ts"
+    },
+    "./web-component": {
+      "import": "./dist/web-component.js",
+      "require": "./dist/web-component.cjs",
+      "types": "./dist/web-component.d.ts"
+    },
+    "./ssg": {
+      "import": "./dist/ssg.js",
+      "require": "./dist/ssg.cjs",
+      "types": "./dist/ssg.d.ts"
+    },
+    "./hydration": {
+      "import": "./dist/hydration.js",
+      "require": "./dist/hydration.cjs",
+      "types": "./dist/hydration.d.ts"
+    },
+    "./infinite-scroll": {
+      "import": "./dist/infinite-scroll.js",
+      "require": "./dist/infinite-scroll.cjs",
+      "types": "./dist/infinite-scroll.d.ts"
+    },
+    "./reconcile": {
+      "import": "./dist/reconcile.js",
+      "require": "./dist/reconcile.cjs",
+      "types": "./dist/reconcile.d.ts"
     }
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "./dist/devtools-overlay-*.js"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",

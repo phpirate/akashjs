@@ -34,10 +34,20 @@ const doubled = computed(() => count() * 2);
     expect(result.code).toContain('computed');
     expect(result.code).toContain('effect');
 
-    // Should contain DOM creation
-    expect(result.code).toContain("document.createElement('div')");
-    expect(result.code).toContain("document.createElement('span')");
-    expect(result.code).toContain("document.createElement('button')");
+    // Should contain DOM creation (template cloning or createElement)
+    expect(
+      result.code.includes("document.createElement('div')") ||
+      result.code.includes('cloneNode(true)')
+    ).toBe(true);
+    // With template cloning, elements appear in the innerHTML string
+    expect(
+      result.code.includes("document.createElement('span')") ||
+      result.code.includes('<span')
+    ).toBe(true);
+    expect(
+      result.code.includes("document.createElement('button')") ||
+      result.code.includes('<button')
+    ).toBe(true);
 
     // Should contain reactive text binding
     expect(result.code).toContain('count()');

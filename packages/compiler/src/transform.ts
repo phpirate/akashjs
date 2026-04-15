@@ -7,7 +7,7 @@
  */
 
 import type { ParsedSFC, CompileOptions, CompileResult } from './types.js';
-import { parseTemplate, type TemplateNode } from './template.js';
+import { parseTemplate, type TemplateNode, type Directive } from './template.js';
 import { scopeStyles, generateScopeId } from './style.js';
 
 // SVG elements that require createElementNS
@@ -17,6 +17,606 @@ const SVG_ELEMENTS = new Set([
   'linearGradient', 'radialGradient', 'stop', 'pattern', 'image', 'foreignObject',
   'animate', 'animateTransform', 'animateMotion', 'set', 'marker', 'textPath',
 ]);
+
+// HTML void elements (self-closing, no children)
+const VOID_ELEMENTS = new Set([
+  'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+  'link', 'meta', 'param', 'source', 'track', 'wbr',
+]);
+
+// Minimum number of static elements for template cloning to be worthwhile
+const CLONE_THRESHOLD = 3;
+
+// ---- Template Cloning Types ----
+
+interface DynamicPart {
+  path: string[];         // e.g., ['firstChild', 'nextSibling', 'firstChild']
+  type: 'attr' | 'text' | 'event' | 'component' | 'directive' | 'bind' | 'classToggle' | 'ref' | 'spread' | 'value';
+  node: TemplateNode;     // original AST node
+  attr?: { name: string; value: string; dynamic: boolean };
+  directive?: Directive;
+  childIndex?: number;    // for component/expression markers
+}
+
+// ---- Template Cloning Helpers ----
+
+/**
+ * Check if a node is eligible for template cloning.
+ * A node can be part of the cloned template if it's a plain HTML element
+ * (not a component, not SVG, no :if/:for directives).
+ */
+function isCloneable(node: TemplateNode): boolean {
+  if (node.type !== 'element') return false;
+  if (!node.tag) return false;
+  // SVG elements stay on createElement path
+  if (SVG_ELEMENTS.has(node.tag)) return false;
+  // Elements with :if or :for directives can't be cloned
+  if (node.directives?.some(d => d.name === 'if' || d.name === 'for')) return false;
+  // Elements with spreads are too dynamic
+  if (node.spreads && node.spreads.length > 0) return false;
+  return true;
+}
+
+/**
+ * Count how many static DOM elements exist in a tree.
+ * Counts the element itself plus any cloneable child elements recursively.
+ * Non-cloneable children don't count but don't disqualify the parent.
+ */
+function countStaticElements(node: TemplateNode): number {
+  if (!isCloneable(node)) return 0;
+  let count = 1; // this element
+  if (node.children) {
+    for (const child of node.children) {
+      if (child.type === 'element' && isCloneable(child)) {
+        count += countStaticElements(child);
+      }
+    }
+  }
+  return count;
+}
+
+/**
+ * Build the HTML string for a template and collect dynamic parts.
+ * Static attributes go in HTML, dynamic ones become DynamicParts.
+ * Expression children become `<!>` comment markers.
+ * Component/non-cloneable children become `<!--$-->` markers.
+ */
+function buildTemplateHTML(
+  node: TemplateNode,
+  scopeId: string | undefined,
+  parts: DynamicPart[],
+  currentPath: string[],
+): string {
+  const tag = node.tag!;
+  let html = `<${tag}`;
+
+  // Scope ID attribute
+  if (scopeId) {
+    html += ` ${scopeId}`;
+  }
+
+  // Process attributes
+  if (node.attrs) {
+    for (const attr of node.attrs) {
+      if (attr.name === 'ref' && attr.dynamic) {
+        // ref is always dynamic
+        parts.push({ path: [...currentPath], type: 'ref', node, attr });
+        continue;
+      }
+      if (attr.name.startsWith('on')) {
+        // Event handlers are never in HTML
+        parts.push({ path: [...currentPath], type: 'event', node, attr });
+        continue;
+      }
+      if (attr.name === 'value') {
+        // value attribute needs special handling (set after children for <select>)
+        if (attr.dynamic) {
+          parts.push({ path: [...currentPath], type: 'value', node, attr });
+        } else {
+          // Static value still set via property for correctness
+          parts.push({ path: [...currentPath], type: 'value', node, attr });
+        }
+        continue;
+      }
+      if (attr.dynamic) {
+        parts.push({ path: [...currentPath], type: 'attr', node, attr });
+        continue;
+      }
+      // Static attribute - include in HTML
+      if (attr.name === 'class' || attr.name === 'className') {
+        html += ` class="${escapeAttr(attr.value)}"`;
+      } else {
+        html += ` ${attr.name}="${escapeAttr(attr.value)}"`;
+      }
+    }
+  }
+
+  // Process directives (bind:, class:, etc.)
+  if (node.directives) {
+    for (const dir of node.directives) {
+      if (dir.name === 'bind') {
+        parts.push({ path: [...currentPath], type: 'bind', node, directive: dir });
+      } else if (dir.name === 'class') {
+        parts.push({ path: [...currentPath], type: 'classToggle', node, directive: dir });
+      }
+      // :if and :for are excluded by isCloneable, other directives ignored
+    }
+  }
+
+  // Void elements
+  if (VOID_ELEMENTS.has(tag)) {
+    html += '>';
+    return html;
+  }
+
+  html += '>';
+
+  // Process children
+  if (node.children && node.children.length > 0) {
+    let childNavIndex = 0; // tracks position for firstChild/nextSibling navigation
+    for (let i = 0; i < node.children.length; i++) {
+      const child = node.children[i];
+      const childPath = childNavIndex === 0
+        ? [...currentPath, 'firstChild']
+        : [...currentPath, 'firstChild'];
+
+      // Build the actual path: first child uses firstChild, subsequent use nextSibling chains
+      const actualChildPath = buildChildPath(currentPath, childNavIndex);
+
+      if (child.type === 'text') {
+        // Static text goes directly in HTML
+        html += child.content ?? '';
+        childNavIndex++;
+      } else if (child.type === 'element' && isCloneable(child)) {
+        // Recursively include cloneable child elements
+        html += buildTemplateHTML(child, scopeId, parts, actualChildPath);
+        childNavIndex++;
+      } else if (child.type === 'expression') {
+        // Dynamic expression - insert comment marker
+        html += '<!>';
+        parts.push({ path: actualChildPath, type: 'text', node: child, childIndex: i });
+        childNavIndex++;
+      } else if (child.type === 'component' || (child.type === 'element' && !isCloneable(child))) {
+        // Component or non-cloneable element - insert comment marker
+        html += '<!--$-->';
+        parts.push({ path: actualChildPath, type: 'component', node: child, childIndex: i });
+        childNavIndex++;
+      } else if (child.type === 'fragment') {
+        // Fragments: insert marker
+        html += '<!--$-->';
+        parts.push({ path: actualChildPath, type: 'component', node: child, childIndex: i });
+        childNavIndex++;
+      }
+    }
+  }
+
+  html += `</${tag}>`;
+  return html;
+}
+
+/**
+ * Build the navigation path to the Nth child of a parent.
+ * Child 0 = [...parentPath, 'firstChild']
+ * Child 1 = [...parentPath, 'firstChild', 'nextSibling']
+ * Child 2 = [...parentPath, 'firstChild', 'nextSibling', 'nextSibling']
+ */
+function buildChildPath(parentPath: string[], childIndex: number): string[] {
+  const path = [...parentPath, 'firstChild'];
+  for (let i = 0; i < childIndex; i++) {
+    path.push('nextSibling');
+  }
+  return path;
+}
+
+/** Escape special characters in HTML attribute values */
+function escapeAttr(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/**
+ * Generate walker variable assignments from path arrays.
+ * Shares common path prefixes to avoid redundant traversals.
+ */
+function generateWalkerCode(
+  parts: DynamicPart[],
+  rootVar: string,
+  indent: number,
+): { lines: string[]; varMap: Map<string, string> } {
+  const pad = ' '.repeat(indent);
+  const lines: string[] = [];
+  const varMap = new Map<string, string>(); // path key -> variable name
+  let walkerCount = 0;
+
+  // Sort parts by path length (shorter first) so prefixes are created first
+  const sortedParts = [...parts].sort((a, b) => a.path.length - b.path.length);
+
+  for (const part of sortedParts) {
+    const pathKey = part.path.join('.');
+    if (pathKey === '' || varMap.has(pathKey)) continue;
+
+    // Find the longest prefix that's already assigned
+    let bestPrefix = '';
+    let bestVar = rootVar;
+    for (let len = part.path.length - 1; len > 0; len--) {
+      const prefix = part.path.slice(0, len).join('.');
+      if (varMap.has(prefix)) {
+        bestPrefix = prefix;
+        bestVar = varMap.get(prefix)!;
+        break;
+      }
+    }
+
+    // Generate intermediate variables if needed
+    const startIdx = bestPrefix ? bestPrefix.split('.').length : 0;
+    let currentVar = bestVar;
+
+    for (let i = startIdx; i < part.path.length; i++) {
+      const step = part.path[i];
+      const subPath = part.path.slice(0, i + 1).join('.');
+
+      if (varMap.has(subPath)) {
+        currentVar = varMap.get(subPath)!;
+        continue;
+      }
+
+      const newVar = `_w${walkerCount++}`;
+      lines.push(`${pad}const ${newVar} = ${currentVar}.${step};`);
+      varMap.set(subPath, newVar);
+      currentVar = newVar;
+    }
+  }
+
+  return { lines, varMap };
+}
+
+/**
+ * Generate dynamic binding code for each DynamicPart.
+ * Uses the walker variable map to reference the correct DOM nodes.
+ */
+function generateDynamicBindings(
+  parts: DynamicPart[],
+  varMap: Map<string, string>,
+  rootVar: string,
+  imports: Set<string>,
+  indent: number,
+  scopeId: string | undefined,
+  isSvg: boolean,
+): string[] {
+  const pad = ' '.repeat(indent);
+  const lines: string[] = [];
+
+  // Boolean DOM properties
+  const booleanProps = new Set([
+    'checked', 'disabled', 'selected', 'readonly', 'required', 'multiple', 'hidden', 'open',
+    'autoplay', 'controls', 'loop', 'muted', 'default', 'novalidate',
+    'autofocus', 'formnovalidate', 'nomodule', 'playsinline', 'reversed', 'allowfullscreen',
+  ]);
+  const idlProps = new Set([
+    'tabIndex', 'contentEditable', 'draggable', 'spellcheck', 'translate',
+    'id', 'name', 'type', 'placeholder', 'src', 'href', 'alt', 'title',
+    'width', 'height', 'colSpan', 'rowSpan', 'htmlFor',
+  ]);
+  const attrToProp: Record<string, string> = {
+    readonly: 'readOnly', tabindex: 'tabIndex', contenteditable: 'contentEditable',
+    colspan: 'colSpan', rowspan: 'rowSpan', for: 'htmlFor',
+  };
+
+  // Separate parts: collect value attrs and events for deferred processing
+  const valueParts: DynamicPart[] = [];
+  const eventParts: DynamicPart[] = [];
+  const componentParts: DynamicPart[] = [];
+  const otherParts: DynamicPart[] = [];
+
+  for (const part of parts) {
+    if (part.type === 'value') {
+      valueParts.push(part);
+    } else if (part.type === 'event') {
+      eventParts.push(part);
+    } else if (part.type === 'component') {
+      componentParts.push(part);
+    } else {
+      otherParts.push(part);
+    }
+  }
+
+  // 1. Process regular dynamic attrs, refs, bind, classToggle, text
+  for (const part of otherParts) {
+    const pathKey = part.path.join('.');
+    const walkerVar = pathKey ? (varMap.get(pathKey) ?? rootVar) : rootVar;
+
+    switch (part.type) {
+      case 'attr': {
+        const attr = part.attr!;
+        if (attr.dynamic) {
+          imports.add('effect');
+          lines.push(`${pad}effect(() => {`);
+          if (attr.name === 'class' || attr.name === 'className') {
+            lines.push(`${pad}  ${walkerVar}.className = ${attr.value};`);
+          } else if (booleanProps.has(attr.name)) {
+            const domProp = attrToProp[attr.name] ?? attr.name;
+            lines.push(`${pad}  ${walkerVar}.${domProp} = !!(${attr.value});`);
+          } else if (attr.name === 'innerHTML') {
+            lines.push(`${pad}  ${walkerVar}.innerHTML = ${attr.value};`);
+          } else if (attr.name === 'style') {
+            lines.push(`${pad}  ${walkerVar}.style.cssText = ${attr.value};`);
+          } else if (idlProps.has(attr.name) || attrToProp[attr.name]) {
+            const domProp = attrToProp[attr.name] ?? attr.name;
+            lines.push(`${pad}  ${walkerVar}.${domProp} = ${attr.value};`);
+          } else {
+            lines.push(`${pad}  ${walkerVar}.setAttribute('${attr.name}', String(${attr.value}));`);
+          }
+          lines.push(`${pad}}, { render: true });`);
+        }
+        break;
+      }
+
+      case 'ref': {
+        const attr = part.attr!;
+        const refValue = attr.value.trim();
+        if (isAlreadyFunction(refValue)) {
+          lines.push(`${pad}(${refValue})(${walkerVar});`);
+        } else {
+          lines.push(`${pad}if (typeof ${refValue} === 'function') { (${refValue})(${walkerVar}); } else { ${refValue}.current = ${walkerVar}; }`);
+        }
+        break;
+      }
+
+      case 'bind': {
+        const dir = part.directive!;
+        const prop = dir.arg ?? 'value';
+        const signalExpr = dir.value;
+        imports.add('effect');
+
+        const isContentEditable = part.node.attrs?.some(a => a.name === 'contentEditable' || a.name === 'contenteditable');
+        const bindProp = isContentEditable && prop === 'value' ? 'textContent' : prop;
+
+        lines.push(`${pad}effect(() => { const __v = ${signalExpr}(); if (${walkerVar}.${bindProp} !== __v) ${walkerVar}.${bindProp} = __v; }, { render: true });`);
+
+        const isCheckbox = bindProp === 'checked';
+        const eventName = isCheckbox ? 'change' : 'input';
+        const valuePath = isCheckbox ? 'checked' : isContentEditable ? 'textContent' : 'value';
+        const isNumberInput = part.node.attrs?.some(a => a.name === 'type' && (a.value === 'number' || a.value === 'range'));
+        const setter = isNumberInput
+          ? `${signalExpr}.set(Number(e.target.${valuePath}))`
+          : `${signalExpr}.set(e.target.${valuePath})`;
+        lines.push(`${pad}${walkerVar}.addEventListener('${eventName}', (e) => { ${setter}; });`);
+        break;
+      }
+
+      case 'classToggle': {
+        const dir = part.directive!;
+        imports.add('effect');
+        lines.push(`${pad}effect(() => { ${walkerVar}.classList.toggle('${dir.arg}', !!(${dir.value})); }, { render: true });`);
+        break;
+      }
+
+      case 'text': {
+        // Expression child - the walker points to the comment marker <!>
+        // Replace it with reactive text
+        const expr = part.node.content ?? '';
+
+        // Check for && with JSX pattern
+        const andMatch = /^(.+?)\s*&&\s*(<(?:[a-zA-Z]|>).*)$/s.exec(expr);
+        if (andMatch) {
+          const condExpr = andMatch[1].trim();
+          const jsxStr = andMatch[2].trim();
+          const jsxNodes = parseTemplate(jsxStr);
+          if (jsxNodes.length > 0) {
+            imports.add('renderConditional');
+            // The walker var points to the comment marker; use it as anchor
+            const fragVar = `${walkerVar}_frag`;
+            lines.push(`${pad}const ${fragVar} = document.createDocumentFragment();`);
+            lines.push(`${pad}${fragVar}.appendChild(${walkerVar});`);
+
+            // We need to re-insert the marker's parent, but actually the marker is already in the cloned DOM.
+            // Use the marker directly as the anchor for renderConditional.
+            // renderConditional needs a container and anchor already in DOM.
+            lines.push(`${pad}renderConditional(${walkerVar}.parentNode, ${walkerVar}, () => !!(${condExpr}), () => {`);
+            const innerLines: string[] = [];
+            if (jsxNodes.length === 1) {
+              generateNode(jsxNodes[0], innerLines, imports, indent + 2, '__cond_el', scopeId);
+              innerLines.push(`${pad}  return __cond_el;`);
+            } else {
+              innerLines.push(`${pad}  const __frag = document.createDocumentFragment();`);
+              for (let j = 0; j < jsxNodes.length; j++) {
+                generateNode(jsxNodes[j], innerLines, imports, indent + 2, `__cond_el${j}`, scopeId);
+                innerLines.push(`${pad}  __frag.appendChild(__cond_el${j});`);
+              }
+              innerLines.push(`${pad}  return __frag;`);
+            }
+            lines.push(...innerLines);
+            lines.push(`${pad}});`);
+            break;
+          }
+        }
+
+        // Check for ternary with JSX
+        const ternaryMatch = /^(.+?)\s*\?\s*(<(?:[a-zA-Z]|>).*?)\s*:\s*(<(?:[a-zA-Z]|>).*)$/s.exec(expr);
+        if (ternaryMatch) {
+          const condExpr = ternaryMatch[1].trim();
+          const trueJsx = ternaryMatch[2].trim();
+          const falseJsx = ternaryMatch[3].trim();
+          const trueNodes = parseTemplate(trueJsx);
+          const falseNodes = parseTemplate(falseJsx);
+          if (trueNodes.length > 0 && falseNodes.length > 0) {
+            imports.add('renderConditional');
+            lines.push(`${pad}renderConditional(${walkerVar}.parentNode, ${walkerVar}, () => !!(${condExpr}), () => {`);
+            const trueLines: string[] = [];
+            generateNode(trueNodes[0], trueLines, imports, indent + 2, '__cond_t', scopeId);
+            trueLines.push(`${pad}  return __cond_t;`);
+            lines.push(...trueLines);
+            lines.push(`${pad}}, () => {`);
+            const falseLines: string[] = [];
+            generateNode(falseNodes[0], falseLines, imports, indent + 2, '__cond_f', scopeId);
+            falseLines.push(`${pad}  return __cond_f;`);
+            lines.push(...falseLines);
+            lines.push(`${pad}});`);
+            break;
+          }
+        }
+
+        // Component call pattern
+        const componentCallMatch = /^([A-Z][a-zA-Z0-9_$]*)\s*\(\s*\{([\s\S]*)\}\s*\)$/.exec(expr);
+        if (componentCallMatch) {
+          const compName = componentCallMatch[1];
+          const propsBody = componentCallMatch[2];
+          const propEntries = parseObjectProps(propsBody);
+          const wrappedParts: string[] = [];
+          for (const { key, value } of propEntries) {
+            const val = value.trim();
+            if (key.startsWith('on') || isAlreadyFunction(val)) {
+              wrappedParts.push(`${key}: ${val}`);
+            } else if (needsReactiveWrapper(val)) {
+              wrappedParts.push(`${key}: ${wrapGetter(val, imports)}`);
+            } else {
+              wrappedParts.push(`${key}: ${val}`);
+            }
+          }
+          // Replace marker with the component result
+          const compVar = `${walkerVar}_comp`;
+          lines.push(`${pad}const ${compVar} = ${compName}({ ${wrappedParts.join(', ')} });`);
+          lines.push(`${pad}${walkerVar}.parentNode.replaceChild(${compVar}, ${walkerVar});`);
+          break;
+        }
+
+        // Default: reactive expression
+        imports.add('effect');
+        const curVar = `${walkerVar}_cur`;
+        lines.push(`${pad}let ${curVar} = null;`);
+        lines.push(`${pad}effect(() => {`);
+        lines.push(`${pad}  const __val = ${expr};`);
+        lines.push(`${pad}  if (${curVar} && ${curVar}.parentNode) ${curVar}.parentNode.removeChild(${curVar});`);
+        lines.push(`${pad}  if (__val instanceof Node) {`);
+        lines.push(`${pad}    ${curVar} = __val;`);
+        lines.push(`${pad}    if (${walkerVar}.parentNode) ${walkerVar}.parentNode.insertBefore(__val, ${walkerVar});`);
+        lines.push(`${pad}  } else if (__val != null && __val !== false && __val !== '') {`);
+        lines.push(`${pad}    ${curVar} = document.createTextNode(String(__val));`);
+        lines.push(`${pad}    if (${walkerVar}.parentNode) ${walkerVar}.parentNode.insertBefore(${curVar}, ${walkerVar});`);
+        lines.push(`${pad}  } else { ${curVar} = null; }`);
+        lines.push(`${pad}}, { render: true });`);
+        break;
+      }
+    }
+  }
+
+  // 2. Process component/non-cloneable element markers
+  for (const part of componentParts) {
+    const pathKey = part.path.join('.');
+    const walkerVar = pathKey ? (varMap.get(pathKey) ?? rootVar) : rootVar;
+
+    // Generate the component/element via existing codegen, then replace marker
+    const innerLines: string[] = [];
+    const compVar = `${walkerVar}_node`;
+    generateNode(part.node, innerLines, imports, indent, compVar, scopeId);
+    lines.push(...innerLines);
+    lines.push(`${pad}${walkerVar}.parentNode.replaceChild(${compVar}, ${walkerVar});`);
+  }
+
+  // 3. Set value properties AFTER children (for <select>)
+  for (const part of valueParts) {
+    const pathKey = part.path.join('.');
+    const walkerVar = pathKey ? (varMap.get(pathKey) ?? rootVar) : rootVar;
+    const attr = part.attr!;
+
+    if (attr.dynamic) {
+      lines.push(`${pad}${walkerVar}.value = ${attr.value};`);
+      imports.add('effect');
+      lines.push(`${pad}effect(() => {`);
+      lines.push(`${pad}  const __v = ${attr.value};`);
+      lines.push(`${pad}  if (${walkerVar}.value !== String(__v)) ${walkerVar}.value = __v;`);
+      lines.push(`${pad}}, { render: true });`);
+    } else {
+      lines.push(`${pad}${walkerVar}.value = ${JSON.stringify(attr.value)};`);
+    }
+  }
+
+  // 4. Attach event listeners LAST
+  for (const part of eventParts) {
+    const pathKey = part.path.join('.');
+    const walkerVar = pathKey ? (varMap.get(pathKey) ?? rootVar) : rootVar;
+    const attr = part.attr!;
+    const tag = part.node.tag ?? '';
+    const isSelect = tag === 'select';
+
+    if (attr.dynamic) {
+      const attrParts = attr.name.split('|');
+      const eventName = attrParts[0].slice(2).toLowerCase();
+      const modifiers = attrParts.slice(1);
+
+      const needsWrapper = modifiers.length > 0 || (isSelect && eventName === 'change');
+
+      if (needsWrapper) {
+        const modCode: string[] = [];
+        if (isSelect && eventName === 'change') {
+          lines.push(`${pad}{ let __mounted = false; queueMicrotask(() => { __mounted = true; });`);
+          modCode.push('if (!__mounted) return');
+        }
+        for (const mod of modifiers) {
+          if (mod === 'preventDefault') modCode.push('e.preventDefault()');
+          else if (mod === 'stopPropagation') modCode.push('e.stopPropagation()');
+          else if (mod === 'stopImmediatePropagation') modCode.push('e.stopImmediatePropagation()');
+          else if (mod === 'self') modCode.push(`if (e.target !== ${walkerVar}) return`);
+        }
+
+        const listenerOpts: string[] = [];
+        if (modifiers.includes('once')) listenerOpts.push('once: true');
+        if (modifiers.includes('capture')) listenerOpts.push('capture: true');
+        if (modifiers.includes('passive')) listenerOpts.push('passive: true');
+        const optsStr = listenerOpts.length > 0 ? `, { ${listenerOpts.join(', ')} }` : '';
+
+        lines.push(`${pad}  ${walkerVar}.addEventListener('${eventName}', (e) => { ${modCode.join('; ')}; (${attr.value})(e); }${optsStr});`);
+        if (isSelect && eventName === 'change') {
+          lines.push(`${pad}}`);
+        }
+      } else {
+        lines.push(`${pad}${walkerVar}.addEventListener('${eventName}', ${attr.value});`);
+      }
+    } else {
+      lines.push(`${pad}${walkerVar}.setAttribute('${attr.name}', ${JSON.stringify(attr.value)});`);
+    }
+  }
+
+  return lines;
+}
+
+/**
+ * Generate the template-cloning codegen for an element.
+ * Returns { templateDecl, bodyLines } where templateDecl goes at module scope
+ * and bodyLines go in the render function.
+ */
+function generateClonedElement(
+  node: TemplateNode,
+  imports: Set<string>,
+  indent: number,
+  varName: string,
+  scopeId: string | undefined,
+  templateId: number,
+): { templateDecl: string; bodyLines: string[] } {
+  const pad = ' '.repeat(indent);
+  const tmplVar = `_tmpl${templateId}`;
+
+  // 1. Build template HTML and collect dynamic parts
+  const parts: DynamicPart[] = [];
+  const html = buildTemplateHTML(node, scopeId, parts, []);
+
+  // 2. Generate the hoisted template declaration
+  const templateDecl =
+    `const ${tmplVar} = /*#__PURE__*/ (() => { const t = document.createElement('template'); t.innerHTML = ${JSON.stringify(html)}; return t; })();\n`;
+
+  // 3. Generate clone + walker code
+  const bodyLines: string[] = [];
+  bodyLines.push(`${pad}const ${varName} = ${tmplVar}.content.firstChild.cloneNode(true);`);
+
+  // 4. Generate walker assignments
+  const { lines: walkerLines, varMap } = generateWalkerCode(parts, varName, indent);
+  bodyLines.push(...walkerLines);
+
+  // 5. Generate dynamic bindings
+  const bindingLines = generateDynamicBindings(parts, varMap, varName, imports, indent, scopeId, false);
+  bodyLines.push(...bindingLines);
+
+  return { templateDecl, bodyLines };
+}
 
 export function transform(sfc: ParsedSFC, options: CompileOptions = {}): CompileResult {
   const scopeId = options.scopeId ?? (options.filename ? generateScopeId(options.filename) : undefined);
@@ -35,12 +635,13 @@ export function transform(sfc: ParsedSFC, options: CompileOptions = {}): Compile
 
   // Parse template
   let templateCode = '';
+  const hoistedTemplates: string[] = [];
   if (sfc.template) {
     const nodes = parseTemplate(sfc.template.content);
     if (isServer) {
       templateCode = generateServerRenderBody(nodes, runtimeImports, scopeId);
     } else {
-      templateCode = generateRenderBody(nodes, runtimeImports, scopeId);
+      templateCode = generateRenderBody(nodes, runtimeImports, scopeId, hoistedTemplates);
     }
   }
 
@@ -91,6 +692,14 @@ export function transform(sfc: ParsedSFC, options: CompileOptions = {}): Compile
   // Hoist user imports to top level (excluding already-merged runtime imports)
   if (mergedUserImports.length > 0) {
     code += mergedUserImports.join('\n') + '\n';
+  }
+
+  // Insert hoisted template declarations (between imports and component)
+  if (hoistedTemplates.length > 0) {
+    code += '\n// Hoisted static templates (created once, cloned per instance)\n';
+    for (const tmpl of hoistedTemplates) {
+      code += tmpl;
+    }
   }
 
   // Generate the component
@@ -387,15 +996,34 @@ function generateRenderBody(
   nodes: TemplateNode[],
   imports: Set<string>,
   scopeId?: string,
+  hoistedTemplates?: string[],
 ): string {
   if (nodes.length === 0) {
     return `    return null;\n`;
   }
 
-  // If there's a single root element, generate it directly
+  // If there's a single root element, try template cloning optimization
   if (nodes.length === 1) {
+    const rootNode = nodes[0];
+
+    // Check if this root element qualifies for template cloning
+    if (
+      hoistedTemplates &&
+      isCloneable(rootNode) &&
+      countStaticElements(rootNode) >= CLONE_THRESHOLD
+    ) {
+      const templateId = hoistedTemplates.length;
+      const { templateDecl, bodyLines } = generateClonedElement(
+        rootNode, imports, 4, 'root', scopeId, templateId,
+      );
+      hoistedTemplates.push(templateDecl);
+      bodyLines.push(`    return root;`);
+      return bodyLines.join('\n') + '\n';
+    }
+
+    // Fallback: generate imperatively
     const lines: string[] = [];
-    generateNode(nodes[0], lines, imports, 4, 'root', scopeId);
+    generateNode(rootNode, lines, imports, 4, 'root', scopeId);
     lines.push(`    return root;`);
     return lines.join('\n') + '\n';
   }

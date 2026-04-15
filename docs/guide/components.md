@@ -48,7 +48,7 @@ div { display: flex; gap: 1rem; }
 </style>
 ```
 
-The compiler transforms this into a `defineComponent()` call with direct DOM operations.
+The compiler transforms this into a `defineComponent()` call. Static elements are compiled to a hoisted `<template>` that's cloned per instance; dynamic expressions get fine-grained effects.
 
 ## Fragments
 

@@ -4,9 +4,17 @@
  * Inspired by SolidJS/Preact Signals. Provides signal(), computed(),
  * effect(), and untrack() primitives with automatic dependency tracking
  * and glitch-free diamond dependency resolution.
+ *
+ * Optimized for minimal memory footprint:
+ * - Class-based nodes for V8 hidden class sharing
+ * - Lazy subscriber collections (null → single → array)
+ * - Shared method functions (no per-instance closures for update/peek)
+ * - Version-based dirty checking for computed
+ * - Dev-only code stripped in production builds
  */
 
 import { scheduleEffect, batch, enterBatch, exitBatch, type ScheduledEffect } from './scheduler.js';
+
 import { recordPerfEntry, isProfiling } from './perf.js';
 
 const __DEV__ = typeof process === 'undefined' || process.env?.NODE_ENV !== 'production';
@@ -17,8 +25,51 @@ let notifyDepth = 0;
 // --- Tracking scope ---
 
 type Subscriber = EffectNode | ComputedNode<any>;
+type SubscriberSlot = Subscriber | Subscriber[] | null;
 
 let currentSubscriber: Subscriber | null = null;
+
+// --- Subscriber collection helpers (lazy: null → single → array) ---
+
+function addSubscriber(slot: SubscriberSlot, sub: Subscriber): SubscriberSlot {
+  if (slot === null) return sub;
+  if (Array.isArray(slot)) {
+    if (slot.indexOf(sub) === -1) slot.push(sub);
+    return slot;
+  }
+  // slot is a single subscriber
+  if (slot === sub) return slot;
+  return [slot, sub];
+}
+
+function removeSubscriber(slot: SubscriberSlot, sub: Subscriber): SubscriberSlot {
+  if (slot === null) return null;
+  if (slot === sub) return null;
+  if (Array.isArray(slot)) {
+    const idx = slot.indexOf(sub);
+    if (idx !== -1) {
+      if (slot.length === 2) return slot[1 - idx];
+      slot.splice(idx, 1);
+    }
+    return slot;
+  }
+  return slot;
+}
+
+function forEachSubscriber(slot: SubscriberSlot, fn: (sub: Subscriber) => void): void {
+  if (slot === null) return;
+  if (Array.isArray(slot)) {
+    // Snapshot to avoid mutation during iteration
+    const copy = slot.slice();
+    for (let i = 0; i < copy.length; i++) fn(copy[i]);
+  } else {
+    fn(slot);
+  }
+}
+
+function hasSubscribers(slot: SubscriberSlot): boolean {
+  return slot !== null;
+}
 
 // --- Signal ---
 
@@ -35,44 +86,58 @@ export interface Signal<T> {
 
 export type ReadonlySignal<T> = () => T;
 
-interface SignalNode<T> {
-  value: T;
-  subscribers: Set<Subscriber>;
-  equals: (a: T, b: T) => boolean;
+// Strategy 1: Class-based node for V8 hidden class optimization
+class SignalNode<T> {
+  _value: T;
+  _subscribers: SubscriberSlot;
+  _equals: (a: T, b: T) => boolean;
+  _version: number; // Strategy 5: cheap dirty checking
+
+  constructor(value: T, equals?: (a: T, b: T) => boolean) {
+    this._value = value;
+    this._subscribers = null; // Strategy 2: lazy (not new Set())
+    this._equals = equals ?? Object.is;
+    this._version = 0;
+  }
+}
+
+// Strategy 3: Shared method functions (not per-instance closures)
+function signalUpdate<T>(this: Signal<T> & { _node: SignalNode<T> }, fn: (prev: T) => T): void {
+  this.set(fn(this._node._value));
+}
+
+function signalPeek<T>(this: { _node: SignalNode<T> }): T {
+  return this._node._value;
 }
 
 export function signal<T>(
   initialValue: T,
   options?: { equals?: (a: T, b: T) => boolean },
 ): Signal<T> {
-  const node: SignalNode<T> = {
-    value: initialValue,
-    subscribers: new Set(),
-    equals: options?.equals ?? Object.is,
-  };
+  const node = new SignalNode(initialValue, options?.equals);
 
   const read = (): T => {
     trackSubscriber(node);
-    return node.value;
+    return node._value;
   };
 
   read.set = (value: T): void => {
-    if (__DEV__ && currentSubscriber && currentSubscriber._tag === 'computed') {
+    if (__DEV__ && currentSubscriber && (currentSubscriber as any)._tag === 'computed') {
       console.warn('[AkashJS] Writing to a signal inside computed() is not allowed. The write will be lost on the next evaluation.');
     }
-    if (node.equals(node.value, value)) return;
-    node.value = value;
-    if (isProfiling()) recordPerfEntry('signal-update', 'signal.set', 0);
+    if (node._equals(node._value, value)) return;
+    node._value = value;
+    node._version++;
+    if (__DEV__ && isProfiling()) recordPerfEntry('signal-update', 'signal.set', 0);
     batch(() => { notifySubscribers(node); });
   };
 
-  read.update = (fn: (prev: T) => T): void => {
-    read.set(fn(node.value));
-  };
+  // Strategy 3: bind shared functions instead of creating per-instance closures
+  (read as any)._node = node;
+  read.update = signalUpdate.bind(read as any);
+  read.peek = signalPeek.bind(read as any);
 
-  read.peek = (): T => node.value;
-
-  return read;
+  return read as Signal<T>;
 }
 
 // --- Computed ---
@@ -82,47 +147,99 @@ const enum ComputedState {
   Dirty = 1,
 }
 
-interface ComputedNode<T> {
-  _tag: 'computed';
-  fn: () => T;
-  value: T | undefined;
-  state: ComputedState;
-  subscribers: Set<Subscriber>;
-  sources: Set<SignalNode<any> | ComputedNode<any>>;
-  equals: (a: T, b: T) => boolean;
+// Strategy 1: Class-based computed node
+class ComputedNode<T> {
+  _tag: 'computed' = 'computed';
+  _fn: () => T;
+  _value: T | undefined;
+  _state: ComputedState;
+  _subscribers: SubscriberSlot;
+  _sources: (SignalNode<any> | ComputedNode<any>)[] | null;
+  _equals: (a: T, b: T) => boolean;
+  _version: number; // Strategy 5
+
+  // Strategy 5: version snapshots of dependencies at last evaluation
+  _depVersions: number[] | null;
+
+  constructor(fn: () => T, equals?: (a: T, b: T) => boolean) {
+    this._fn = fn;
+    this._value = undefined;
+    this._state = ComputedState.Dirty;
+    this._subscribers = null; // lazy
+    this._sources = null; // lazy
+    this._equals = equals ?? Object.is;
+    this._version = 0;
+    this._depVersions = null;
+  }
 }
 
 export function computed<T>(
   fn: () => T,
   options?: { equals?: (a: T, b: T) => boolean },
 ): ReadonlySignal<T> {
-  const node: ComputedNode<T> = {
-    _tag: 'computed',
-    fn,
-    value: undefined,
-    state: ComputedState.Dirty,
-    subscribers: new Set(),
-    sources: new Set(),
-    equals: options?.equals ?? Object.is,
-  };
+  const node = new ComputedNode<T>(fn, options?.equals);
 
   const read = (): T => {
     // Track this computed as a dependency of the current subscriber
     if (currentSubscriber) {
-      node.subscribers.add(currentSubscriber);
-      if ('sources' in currentSubscriber) {
-        currentSubscriber.sources.add(node);
+      node._subscribers = addSubscriber(node._subscribers, currentSubscriber);
+      if ('_sources' in currentSubscriber) {
+        addSource(currentSubscriber, node);
       }
     }
 
-    if (node.state !== ComputedState.Clean) {
-      recompute(node);
+    if (node._state !== ComputedState.Clean) {
+      // Strategy 5: check if deps actually changed via version
+      if (!isDirtyByVersion(node)) {
+        node._state = ComputedState.Clean;
+      } else {
+        recompute(node);
+      }
     }
 
-    return node.value as T;
+    return node._value as T;
   };
 
   return read;
+}
+
+// Strategy 5: version-based dirty check
+function isDirtyByVersion(node: ComputedNode<any>): boolean {
+  if (node._depVersions === null || node._sources === null) return true;
+  const deps = node._sources;
+  const versions = node._depVersions;
+  if (deps.length !== versions.length) return true;
+  for (let i = 0; i < deps.length; i++) {
+    const dep = deps[i];
+    // If a dep is a dirty computed, recompute it first to get the real version
+    if (dep instanceof ComputedNode && dep._state === ComputedState.Dirty) {
+      recompute(dep);
+    }
+    if (dep._version !== versions[i]) return true;
+  }
+  return false;
+}
+
+// Snapshot dependency versions after evaluation
+function snapshotVersions(node: ComputedNode<any>): void {
+  if (node._sources === null || node._sources.length === 0) {
+    node._depVersions = null;
+    return;
+  }
+  const deps = node._sources;
+  const versions = node._depVersions = new Array(deps.length);
+  for (let i = 0; i < deps.length; i++) {
+    versions[i] = deps[i]._version;
+  }
+}
+
+// Helper: add source to node's sources array
+function addSource(sub: { _sources: (SignalNode<any> | ComputedNode<any>)[] | null }, source: SignalNode<any> | ComputedNode<any>): void {
+  if (sub._sources === null) {
+    sub._sources = [source];
+  } else if (sub._sources.indexOf(source) === -1) {
+    sub._sources.push(source);
+  }
 }
 
 const computingSet = new Set<ComputedNode<unknown>>();
@@ -140,49 +257,50 @@ function recompute<T>(node: ComputedNode<T>, skipEffectNotify = false): void {
   computingSet.add(node as ComputedNode<unknown>);
 
   // Prevent effects from flushing while computed is evaluating.
-  // Without this, a computed that reads other dirty computeds can trigger
-  // notifySubscribers → scheduleEffect → flush → re-enter recompute on
-  // a node still in computingSet (false circular detection).
   enterBatch();
 
   // Clean up old source subscriptions
-  for (const source of node.sources) {
-    source.subscribers.delete(node);
+  if (node._sources !== null) {
+    for (let i = 0; i < node._sources.length; i++) {
+      node._sources[i]._subscribers = removeSubscriber(node._sources[i]._subscribers, node);
+    }
+    node._sources = null;
   }
-  node.sources.clear();
 
   const prevSubscriber = currentSubscriber;
   currentSubscriber = node;
 
-  const _t0 = isProfiling() ? performance.now() : 0;
+  const _t0 = __DEV__ && isProfiling() ? performance.now() : 0;
   try {
-    const newValue = node.fn();
-    const isFirst = node.value === undefined;
-    const changed = isFirst || !node.equals(node.value as T, newValue);
-    node.value = newValue;
-    node.state = ComputedState.Clean;
+    const newValue = node._fn();
+    const isFirst = node._value === undefined && node._state === ComputedState.Dirty;
+    const changed = isFirst || !node._equals(node._value as T, newValue);
+    node._value = newValue;
+    node._state = ComputedState.Clean;
+    if (changed) node._version++;
+
+    // Snapshot dep versions for next dirty check
+    snapshotVersions(node);
 
     // Only propagate if value actually changed (skip first computation —
     // the effect that triggered the read is already running).
     if (changed && !isFirst) {
       if (skipEffectNotify) {
         // Only mark downstream computeds as dirty — don't schedule effects.
-        // Effects are already handled by the runEffect that triggered this recompute.
-        for (const sub of [...node.subscribers]) {
+        forEachSubscriber(node._subscribers, (sub) => {
           if (sub._tag === 'computed') {
-            sub.state = ComputedState.Dirty;
-            // Recursively propagate to further computeds
-            for (const sub2 of [...sub.subscribers]) {
-              if (sub2._tag === 'computed') sub2.state = ComputedState.Dirty;
-            }
+            (sub as ComputedNode<any>)._state = ComputedState.Dirty;
+            forEachSubscriber((sub as ComputedNode<any>)._subscribers, (sub2) => {
+              if (sub2._tag === 'computed') (sub2 as ComputedNode<any>)._state = ComputedState.Dirty;
+            });
           }
-        }
+        });
       } else {
         notifySubscribers(node);
       }
     }
   } finally {
-    if (_t0) recordPerfEntry('computed', 'computed', performance.now() - _t0);
+    if (__DEV__ && _t0) recordPerfEntry('computed', 'computed', performance.now() - _t0);
     computingSet.delete(node as ComputedNode<unknown>);
     currentSubscriber = prevSubscriber;
     exitBatch();
@@ -191,72 +309,73 @@ function recompute<T>(node: ComputedNode<T>, skipEffectNotify = false): void {
 
 // --- Effect ---
 
-interface EffectNode extends ScheduledEffect {
-  _tag: 'effect';
-  fn: () => void | (() => void);
-  cleanup: (() => void) | null;
-  sources: Set<SignalNode<any> | ComputedNode<any>>;
-  disposed: boolean;
+// Strategy 1: Class-based effect node
+class EffectNode implements ScheduledEffect {
+  _tag: 'effect' = 'effect';
+  _fn: () => void | (() => void);
+  _cleanup: (() => void) | null;
+  _sources: (SignalNode<any> | ComputedNode<any>)[] | null;
+  _disposed: boolean;
   isRender: boolean;
+  _lastSeen: Map<unknown, unknown> | null;
+
+  constructor(fn: () => void | (() => void), isRender: boolean) {
+    this._fn = fn;
+    this._cleanup = null;
+    this._sources = null; // lazy
+    this._disposed = false;
+    this.isRender = isRender;
+    this._lastSeen = null;
+  }
+
+  run(): void {
+    runEffect(this);
+  }
 }
 
 export function effect(
   fn: () => void | (() => void),
   options?: { render?: boolean },
 ): () => void {
-  const node: EffectNode = {
-    _tag: 'effect',
-    fn,
-    cleanup: null,
-    sources: new Set(),
-    disposed: false,
-    isRender: options?.render ?? false,
-    run() {
-      runEffect(node);
-    },
-  };
+  const node = new EffectNode(fn, options?.render ?? false);
 
   // Run immediately to establish dependencies
   runEffect(node);
 
   // Return dispose function
   return () => {
-    node.disposed = true;
+    node._disposed = true;
     cleanupEffect(node);
-    for (const source of node.sources) {
-      source.subscribers.delete(node);
+    if (node._sources !== null) {
+      for (let i = 0; i < node._sources.length; i++) {
+        node._sources[i]._subscribers = removeSubscriber(node._sources[i]._subscribers, node);
+      }
+      node._sources = null;
     }
-    node.sources.clear();
   };
 }
 
 function runEffect(node: EffectNode): void {
-  if (node.disposed) return;
+  if (node._disposed) return;
 
   // Before re-running, check if any dirty computed source actually changed.
-  // Compare against per-effect cached values (not the shared source.value which
-  // may have been updated by another effect's recompute already).
-  if (node.sources.size > 0) {
+  if (node._sources !== null && node._sources.length > 0) {
     let anyChanged = false;
-    for (const source of node.sources) {
-      if ('_tag' in source && source._tag === 'computed') {
-        if (source.state === ComputedState.Dirty) {
+    for (let i = 0; i < node._sources.length; i++) {
+      const source = node._sources[i];
+      if (source instanceof ComputedNode) {
+        if (source._state === ComputedState.Dirty) {
           recompute(source, true);
         }
-        // Compare against this effect's last-seen value (not the shared source.value
-        // which another effect's recompute may have already updated)
-        const cachedValues = (node as any)._lastSeen as Map<unknown, unknown> | undefined;
-        if (cachedValues?.has(source)) {
-          const lastSeen = cachedValues.get(source);
-          if (!source.equals(lastSeen as never, source.value as never)) {
+        if (node._lastSeen !== null && node._lastSeen.has(source)) {
+          const lastSeen = node._lastSeen.get(source);
+          if (!source._equals(lastSeen as never, source._value as never)) {
             anyChanged = true;
           }
         } else {
-          // No cached value — first dirty check after creation. Always run.
           anyChanged = true;
         }
       } else {
-        // Plain signal source — if we got scheduled, something changed
         anyChanged = true;
       }
     }
@@ -266,55 +385,64 @@ function runEffect(node: EffectNode): void {
   // Clean up previous run
   cleanupEffect(node);
 
-  // Save old sources in case the effect throws — we need to re-subscribe
-  const prevSources = new Set(node.sources);
+  // Save old sources in case the effect throws
+  const prevSources = node._sources !== null ? node._sources.slice() : null;
 
   // Clean up old source subscriptions
-  for (const source of node.sources) {
-    source.subscribers.delete(node);
+  if (node._sources !== null) {
+    for (let i = 0; i < node._sources.length; i++) {
+      node._sources[i]._subscribers = removeSubscriber(node._sources[i]._subscribers, node);
+    }
+    node._sources = null;
   }
-  node.sources.clear();
 
   const prevSubscriber = currentSubscriber;
   currentSubscriber = node;
-  const _t0 = isProfiling() ? performance.now() : 0;
+  const _t0 = __DEV__ && isProfiling() ? performance.now() : 0;
 
   try {
-    const result = node.fn();
+    const result = node._fn();
     if (typeof result === 'function') {
-      node.cleanup = result;
+      node._cleanup = result;
     }
   } catch (err) {
     // Re-subscribe to previous sources so the effect can recover on next change
-    for (const source of prevSources) {
-      source.subscribers.add(node);
-      node.sources.add(source);
+    if (prevSources !== null) {
+      node._sources = prevSources;
+      for (let i = 0; i < prevSources.length; i++) {
+        prevSources[i]._subscribers = addSubscriber(prevSources[i]._subscribers, node);
+      }
     }
     console.error('[AkashJS] Error in effect (will retry on next signal change):', err);
   } finally {
-    if (_t0) recordPerfEntry('effect', 'effect', performance.now() - _t0);
+    if (__DEV__ && _t0) recordPerfEntry('effect', 'effect', performance.now() - _t0);
     currentSubscriber = prevSubscriber;
 
-    // Cache computed values so the next dirty check compares against THIS effect's
-    // last-seen values, not the shared source.value (which another effect may update)
-    const lastSeen = new Map();
-    for (const source of node.sources) {
-      if ('_tag' in source && source._tag === 'computed') {
-        lastSeen.set(source, source.value);
+    // Cache computed values for next dirty check
+    if (node._sources !== null) {
+      let lastSeen: Map<unknown, unknown> | null = null;
+      for (let i = 0; i < node._sources.length; i++) {
+        const source = node._sources[i];
+        if (source instanceof ComputedNode) {
+          if (lastSeen === null) lastSeen = new Map();
+          lastSeen.set(source, source._value);
+        }
       }
+      node._lastSeen = lastSeen;
+    } else {
+      node._lastSeen = null;
     }
-    if (lastSeen.size > 0) (node as any)._lastSeen = lastSeen;
   }
 }
 
 function cleanupEffect(node: EffectNode): void {
-  if (node.cleanup) {
+  if (node._cleanup) {
     try {
-      node.cleanup();
+      node._cleanup();
     } catch (err) {
       console.error('[AkashJS] Error in effect cleanup (ignored):', err);
     }
-    node.cleanup = null;
+    node._cleanup = null;
   }
 }
 
@@ -371,8 +499,6 @@ export function on(
     // Track only the specified deps
     const values = depArray.map(d => d());
 
-    // Skip the initial effect run — only fire on actual changes
-    // (pass { defer: false } to opt out and run immediately)
     if (isFirst) {
       isFirst = false;
       prevValues = values.slice();
@@ -382,7 +508,6 @@ export function on(
     const prev = prevValues;
     prevValues = values.slice();
 
-    // Run fn without tracking so reads inside don't create subscriptions
     return untrack(() => fn(
       isArray ? values : values[0],
       prev ? (isArray ? prev : prev[0]) : undefined,
@@ -396,10 +521,10 @@ function trackSubscriber(
   node: SignalNode<any> | ComputedNode<any>,
 ): void {
   if (currentSubscriber) {
-    node.subscribers.add(currentSubscriber);
+    node._subscribers = addSubscriber(node._subscribers, currentSubscriber);
 
-    if ('sources' in currentSubscriber) {
-      currentSubscriber.sources.add(node);
+    if ('_sources' in currentSubscriber) {
+      addSource(currentSubscriber as any, node);
     }
   }
 }
@@ -407,21 +532,12 @@ function trackSubscriber(
 function notifySubscribers(
   node: SignalNode<any> | ComputedNode<any>,
 ): void {
-  // Snapshot subscribers before iterating. Effects that run synchronously
-  // during flush() will delete and re-add themselves to the Set, and JS
-  // Set iterators visit newly added entries — causing an infinite loop
-  // without the snapshot.
-  const subs = [...node.subscribers];
-  for (const sub of subs) {
+  forEachSubscriber(node._subscribers, (sub) => {
     if (sub._tag === 'computed') {
-      // Mark dirty. The computed will re-evaluate lazily when read.
-      sub.state = ComputedState.Dirty;
-      // Propagate through the computed chain to reach effects.
-      // The effects will re-read the computed, triggering recompute,
-      // and only update DOM if the value actually changed.
-      notifySubscribers(sub);
+      (sub as ComputedNode<any>)._state = ComputedState.Dirty;
+      notifySubscribers(sub as ComputedNode<any>);
     } else if (sub._tag === 'effect') {
-      scheduleEffect(sub);
+      scheduleEffect(sub as unknown as ScheduledEffect);
     }
-  }
+  });
 }

@@ -8,8 +8,9 @@ Modern frameworks force a choice: **structure** or **simplicity**. Angular gives
 
 AkashJS takes a different path:
 
-- **Signals-first reactivity** — No virtual DOM, no RxJS, no Zones. Fine-grained updates that patch exactly the DOM nodes that changed.
+- **Signals-first reactivity** — No virtual DOM, no RxJS, no Zones. Fine-grained updates that patch exactly the DOM nodes that changed. Signal writes take ~110ns with ~373 bytes per signal.
 - **Single-file components** — `.akash` files with `<script>`, `<template>`, and `<style scoped>` sections, compiled to optimized JS at build time.
+- **Tiny footprint** — Core runtime is **2.8KB gzipped**. A minimal app ships ~3KB — smaller than Preact, competitive with Solid. Full-featured apps with routing, stores, and query cache are typically ~15KB.
 - **Batteries included** — Router, forms, HTTP client, and CLI ship with the framework. Zero setup to go from idea to production.
 - **TypeScript-native** — Every API is designed for TypeScript first. Full inference, no decorators, no `any` leaks.
 - **Local-first** — Built-in CRDT sync, offline stores, IndexedDB query cache, and service worker support. Your app works offline and syncs automatically when reconnected.
@@ -19,7 +20,7 @@ AkashJS takes a different path:
 
 1. **Functions over classes** — Components are functions. Validators are functions. Guards are functions. No `@Component()` decorators or `implements CanActivate`.
 2. **Signals over observables** — Reactive state with `signal()`, `computed()`, `effect()`. Reads are function calls, writes are `.set()`.
-3. **Compile-time over runtime** — The `.akash` compiler transforms templates to direct DOM operations. No interpretation at runtime.
+3. **Compile-time over runtime** — The `.akash` compiler hoists static HTML into templates that are cloned per instance. Dynamic expressions get fine-grained effects. No virtual DOM, no interpretation at runtime.
 4. **Explicit over magic** — No zone.js change detection. No hidden injector trees. Dependencies are provided and injected explicitly.
 
 ## Packages

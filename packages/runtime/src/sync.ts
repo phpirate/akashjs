@@ -52,17 +52,11 @@ export class LWWRegister<T> {
 
   set(value: T, peerId: string): boolean {
     const ts = Date.now();
-    // Local writes always succeed (same peer always advances its own state).
-    // Cross-peer conflicts resolve by highest timestamp, then peerId tiebreak.
-    if (
-      peerId === this.entry.peerId ||
-      ts > this.entry.timestamp ||
-      (ts === this.entry.timestamp && peerId > this.entry.peerId)
-    ) {
-      this.entry = { value, timestamp: Math.max(ts, this.entry.timestamp + 1), peerId };
-      return true;
-    }
-    return false;
+    // Local writes always succeed unconditionally — the register always
+    // advances for intentional writes. Conflict resolution only applies
+    // in merge() for remote ops.
+    this.entry = { value, timestamp: Math.max(ts, this.entry.timestamp + 1), peerId };
+    return true;
   }
 
   merge(remote: LWWEntry<T>): boolean {
@@ -359,8 +353,9 @@ export function createSync<T extends Record<string, unknown>>(
     conflictsSignal.update(list => list.filter(c => c.key !== key));
   }
 
-  // Listen for remote operations
+  // Listen for remote operations (skip self-originated ops)
   const unsubOps = transport.onReceive((op) => {
+    if (op.peerId === peerId) return;
     if (op.type === 'set' && registers.has(op.key)) {
       const register = registers.get(op.key)!;
       const localValue = register.value;

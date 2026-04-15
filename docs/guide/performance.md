@@ -85,39 +85,89 @@ const App = defineComponent((ctx) => {
 });
 ```
 
-## Static Hoisting
+## Template Cloning
 
-The AkashJS compiler automatically detects static subtrees in your templates — elements with no signals, no directives, and no dynamic attributes. These are hoisted to module scope and rendered once using `cloneNode(true)` instead of being recreated on every render.
+The compiler automatically detects static subtrees in your templates — elements with no signals, no directives, and no dynamic attributes. These are compiled into hoisted `<template>` elements at module scope and cloned with `cloneNode(true)` per instance, instead of generating individual `createElement` + `setAttribute` + `appendChild` chains.
 
 Given this template:
 
 ```html
-<div>
+<div class="app">
   <header>
     <h1>My App</h1>
     <p>Welcome to the site</p>
   </header>
   <main>{content()}</main>
+  <footer>
+    <p>Copyright 2026</p>
+    <a href="/privacy">Privacy Policy</a>
+  </footer>
 </div>
 ```
 
-The compiler hoists the entire `<header>` block because it is fully static. The compiled output looks roughly like:
+The compiler generates:
 
 ```ts
-// Created once at module scope
-const __hoisted_0 = (() => {
-  const _t = document.createElement('template');
-  _t.innerHTML = '<header><h1>My App</h1><p>Welcome to the site</p></header>';
-  return _t;
+// Hoisted — parsed once at module load, shared across all instances
+const _tmpl0 = /*#__PURE__*/ (() => {
+  const t = document.createElement('template');
+  t.innerHTML = `<div class="app"><header><h1>My App</h1>
+    <p>Welcome to the site</p></header><main><!></main>
+    <footer><p>Copyright 2026</p><a href="/privacy">Privacy Policy</a></footer></div>`;
+  return t;
 })();
 
-// Inside the component — clone instead of recreate
-const header = __hoisted_0.content.cloneNode(true);
+// Per instance — one clone + walker instead of 10 createElement calls
+const root = _tmpl0.content.firstChild.cloneNode(true);
+const _w0 = root.firstChild.nextSibling;  // <main>
+const _w1 = _w0.firstChild;                // <!> marker
+// Only the dynamic {content()} expression gets an effect
+effect(() => setText(_w1, content()));
 ```
 
-This means initial render is faster (no DOM API calls for static parts) and memory usage is lower (one template shared across all instances).
+This reduces DOM calls from **~18 per component** (createElement chains) to **1 cloneNode + walker traversal**. For a benchmark table with 1000 rows, that's 18,000 DOM calls → 1,000 clones — roughly **3x faster** initial render.
 
-You do not need to configure anything — hoisting happens automatically during compilation.
+### How it works
+
+1. **Analysis** — the compiler tags each template node as static or dynamic
+2. **Template HTML** — static elements become an `innerHTML` string with `<!>` markers where dynamic content will be inserted
+3. **Hoisting** — the template is created at module scope with `/*#__PURE__*/` (tree-shakeable)
+4. **Cloning** — each component instance calls `cloneNode(true)` (a single C++ call)
+5. **Walker** — `firstChild`/`nextSibling` traversal finds dynamic insertion points
+6. **Bindings** — effects, events, and class directives attach to walker references
+
+### Eligibility
+
+Template cloning activates when a component has **3 or more static elements**. Components with fewer static elements use traditional `createElement` chains (the cloning overhead isn't worth it for 1-2 elements).
+
+Elements that prevent cloning: components (`<Show>`, `<For>`, custom), SVG, spread attributes (`{...props}`), `:if`/`:for` directives.
+
+You do not need to configure anything — template cloning happens automatically during compilation.
+
+## Signal Performance
+
+AkashJS signals are built on class-based nodes with lazy subscriber tracking and version-based dirty checking. This makes them lightweight and fast:
+
+| Metric | Value |
+|--------|-------|
+| Memory per signal | ~373 bytes |
+| Memory per computed | ~313 bytes |
+| Memory per effect | ~262 bytes |
+| Signal write speed | ~110ns per `.set()` |
+
+### Why it's fast
+
+1. **Class-based nodes** — V8 hidden classes share shape across all signal instances, reducing per-instance overhead
+2. **Lazy subscribers** — no `Set` allocated until a signal is actually observed. Most signals in a list have 0-1 subscribers
+3. **Version-based dirty checking** — computed signals compare integer versions instead of re-evaluating their function to check if dependencies changed
+4. **Dev code stripped in production** — profiling counters and computed-write warnings are removed via `__DEV__` guards, eliminating branches in hot paths
+
+### Tips
+
+- **Prefer `computed()` over `effect()` + `signal()`** for derived values. Computed signals are lazy (only re-evaluate when read) and cached.
+- **Use `batch()`** when updating multiple signals at once. Without batch, each `.set()` triggers its own effect flush.
+- **Use `untrack()`** to read a signal without subscribing to it when you don't need reactivity for that dependency.
+- **Avoid creating signals inside effects** — create them in the component setup function so they're allocated once.
 
 ## Performance Profiling
 
@@ -256,17 +306,19 @@ akash size
 Output:
 
 ```
-  Package Sizes
+  Package Sizes (main entry points)
 
   ───────────────────────────────────────────────────────
-  @akashjs/compiler           11.2 KB →    4.8 KB gzip
-  @akashjs/runtime             7.1 KB →    3.2 KB gzip
-  @akashjs/router              3.4 KB →    1.6 KB gzip
-  @akashjs/forms               2.8 KB →    1.3 KB gzip
-  @akashjs/http                2.6 KB →    1.2 KB gzip
+  @akashjs/runtime             6.8 KB →    2.8 KB gzip
+  @akashjs/router             13.3 KB →    4.9 KB gzip
+  @akashjs/http               17.7 KB →    6.5 KB gzip
+  @akashjs/forms               5.4 KB →    2.0 KB gzip
+  @akashjs/i18n                2.1 KB →    1.1 KB gzip
   ───────────────────────────────────────────────────────
-  Total                       27.1 KB →   12.1 KB gzip
+  Total (core)                45.3 KB →   17.3 KB gzip
 ```
+
+The runtime is split into 54 subpath entry points. Tree-shaking ensures you only ship what you import — a minimal app using just signals and components is ~3KB gzipped.
 
 ### Budget Enforcement
 
@@ -280,11 +332,11 @@ If any package exceeds its budget, the command exits with code 1. Default budget
 
 | Package | Max gzipped |
 |---------|------------|
-| `@akashjs/runtime` | 8 KB |
-| `@akashjs/router` | 4 KB |
+| `@akashjs/runtime` | 4 KB |
+| `@akashjs/router` | 6 KB |
+| `@akashjs/http` | 8 KB |
 | `@akashjs/forms` | 3 KB |
-| `@akashjs/http` | 3 KB |
-| `@akashjs/compiler` | 12 KB |
+| `@akashjs/i18n` | 2 KB |
 
 Add it to your CI pipeline:
 

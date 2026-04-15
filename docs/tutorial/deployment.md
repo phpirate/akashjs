@@ -48,11 +48,11 @@ Bundle Analysis
   Total JS                     14.0 kB   5.6 kB
   Total CSS                     2.1 kB   0.9 kB
 
-  Runtime overhead: ~4 kB gzipped
+  Runtime overhead: ~3 kB gzipped
 ```
 
 ::: tip Why so small?
-AkashJS compiles templates to direct DOM operations at build time. There is no virtual DOM diffing library, no template interpreter, and no zone.js. The runtime is just the signal system, scheduler, and a few DOM helpers.
+AkashJS compiles templates to hoisted `<template>` elements that are cloned per instance with `cloneNode(true)`. Static HTML is parsed once at module load; only dynamic expressions get effects. There is no virtual DOM diffing library, no template interpreter, and no zone.js. The runtime is just the signal system, scheduler, and a few DOM helpers.
 :::
 
 ## Preview Locally
@@ -156,7 +156,7 @@ Congratulations! You built a complete todo application with:
 | Testing | `mount()`, `fireEvent`, Vitest |
 | Deployment | `vite build`, `@akashjs/cli deploy` |
 
-All of this in under 15 kB gzipped.
+All of this in under 6 kB gzipped — smaller than React's runtime alone.
 
 ::: info You did it
 You went from zero to a production-ready app. Every concept you learned here -- signals, stores, forms, routing -- is the same API you will use to build real-world applications.

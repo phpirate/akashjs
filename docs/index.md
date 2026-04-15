@@ -3,7 +3,7 @@ layout: home
 hero:
   name: AkashJS
   text: Angular structure, Svelte simplicity
-  tagline: A TypeScript-first UI framework with signals reactivity, direct DOM rendering, and zero boilerplate. 950+ tests. 12 packages. Everything you need.
+  tagline: A TypeScript-first UI framework with signals reactivity, direct DOM rendering, and zero boilerplate. 3KB gzipped core. 1050+ tests. Everything you need.
   image:
     src: /logo-hero.png
     alt: AkashJS Logo
@@ -36,7 +36,7 @@ features:
     linkText: See all features
   - icon: 🎨
     title: Material Design UI
-    details: 24 Material Design 3 components with design tokens, dark mode, and ripple effects. Ready for production.
+    details: 60+ Material Design 3 components with design tokens, dark mode, and ripple effects. Ready for production.
     link: /ui/getting-started
     linkText: Browse components
   - icon: 🌐

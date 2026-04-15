@@ -16,7 +16,7 @@ AkashJS is functional with 1050+ tests passing. The API is stabilizing. It's sui
 
 ### What's the bundle size?
 
-The core runtime is ~24KB gzipped. With tree-shaking, you only ship the features you use — an app using just signals and components ships significantly less. The full framework (runtime + router + HTTP) is ~35KB gzipped, which includes what React needs 80KB+ of separate libraries to achieve.
+The core runtime entry is **2.8KB gzipped**. With tree-shaking, a minimal app (signals + components) ships **~3KB gzipped** — smaller than Preact and competitive with Solid. As you use more features (stores, router, HTTP), the bundle grows incrementally — only what you import is shipped. A full-featured app with routing, query cache, and stores is typically ~15-20KB gzipped, which includes what React needs 80KB+ of separate libraries to achieve.
 
 ### What license is AkashJS under?
 
@@ -28,7 +28,7 @@ MIT — use it for anything, commercial or personal.
 
 ### How does reactivity work without a virtual DOM?
 
-Signals track which DOM nodes depend on them. When a signal changes, it directly updates only the specific text node, attribute, or element that reads it — no tree diffing needed. The compiler generates these fine-grained bindings at build time. See [Reactivity](/guide/reactivity) for details.
+Signals track which DOM nodes depend on them. When a signal changes, it directly updates only the specific text node, attribute, or element that reads it — no tree diffing needed. Each signal write takes ~110ns and each signal uses only ~373 bytes of memory. The compiler generates these fine-grained bindings at build time. See [Reactivity](/guide/reactivity) for details.
 
 ### Do I need TypeScript?
 
@@ -40,7 +40,7 @@ Yes — `defineComponent()` works with any render function, including JSX. The .
 
 ### How does the .akash compiler work?
 
-The compiler parses `.akash` files into three blocks (script, template, style), transforms the template into direct DOM creation code, scopes the CSS, and outputs standard JavaScript. The Vite plugin handles this transparently during development and builds. See the [Compiler API](/api/compiler) for details.
+The compiler parses `.akash` files into three blocks (script, template, style), analyzes static vs dynamic nodes, hoists static subtrees into `<template>` elements that are cloned per instance, generates fine-grained effects for dynamic expressions, scopes the CSS, and outputs standard JavaScript. This means a component with 8 static elements creates them with a single `cloneNode(true)` call instead of 8 `createElement` chains. The Vite plugin handles this transparently during development and builds. See the [Compiler API](/api/compiler) for details.
 
 ### Can I use server-side rendering?
 
