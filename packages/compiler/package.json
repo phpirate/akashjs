@@ -1,6 +1,6 @@
 {
   "name": "@akashjs/compiler",
-  "version": "0.1.58",
+  "version": "0.1.59",
   "description": "AkashJS compiler — .akash SFC parsing, analysis, and code generation",
   "type": "module",
   "main": "dist/index.cjs",
