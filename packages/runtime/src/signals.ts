@@ -13,7 +13,7 @@
  * - Dev-only code stripped in production builds
  */
 
-import { scheduleEffect, batch, enterBatch, exitBatch, type ScheduledEffect } from './scheduler.js';
+import { scheduleEffect, enterBatch, exitBatch, type ScheduledEffect } from './scheduler.js';
 
 import { recordPerfEntry, isProfiling } from './perf.js';
 
@@ -129,7 +129,10 @@ export function signal<T>(
     node._value = value;
     node._version++;
     if (__DEV__ && isProfiling()) recordPerfEntry('signal-update', 'signal.set', 0);
-    batch(() => { notifySubscribers(node); });
+    // Inline batch to avoid closure allocation on every set() call
+    enterBatch();
+    notifySubscribers(node);
+    exitBatch();
   };
 
   // Strategy 3: bind shared functions instead of creating per-instance closures
@@ -532,12 +535,27 @@ function trackSubscriber(
 function notifySubscribers(
   node: SignalNode<any> | ComputedNode<any>,
 ): void {
-  forEachSubscriber(node._subscribers, (sub) => {
-    if (sub._tag === 'computed') {
-      (sub as ComputedNode<any>)._state = ComputedState.Dirty;
-      notifySubscribers(sub as ComputedNode<any>);
-    } else if (sub._tag === 'effect') {
-      scheduleEffect(sub as unknown as ScheduledEffect);
+  // Inlined iteration — avoids closure + array copy overhead.
+  // Safe because notifySubscribers is always called inside a batch,
+  // so effects are only scheduled (not flushed) during iteration.
+  const slot = node._subscribers;
+  if (slot === null) return;
+  if (Array.isArray(slot)) {
+    for (let i = 0; i < slot.length; i++) {
+      const sub = slot[i];
+      if (sub._tag === 'computed') {
+        (sub as ComputedNode<any>)._state = ComputedState.Dirty;
+        notifySubscribers(sub as ComputedNode<any>);
+      } else {
+        scheduleEffect(sub as unknown as ScheduledEffect);
+      }
     }
-  });
+  } else {
+    if (slot._tag === 'computed') {
+      (slot as ComputedNode<any>)._state = ComputedState.Dirty;
+      notifySubscribers(slot as ComputedNode<any>);
+    } else {
+      scheduleEffect(slot as unknown as ScheduledEffect);
+    }
+  }
 }

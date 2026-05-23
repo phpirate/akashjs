@@ -386,7 +386,7 @@ function generateDynamicBindings(
       case 'classToggle': {
         const dir = part.directive!;
         imports.add('effect');
-        lines.push(`${pad}effect(() => { ${walkerVar}.classList.toggle('${dir.arg}', !!(${dir.value})); }, { render: true });`);
+        lines.push(`${pad}{ let __prev; effect(() => { const __v = !!(${dir.value}); if (__v !== __prev) { __prev = __v; ${walkerVar}.classList.toggle('${dir.arg}', __v); } }, { render: true }); }`);
         break;
       }
 
@@ -1410,7 +1410,7 @@ function generateElement(
   // 1b. Apply class: directives (class:active={expr})
   for (const dir of classDirectives) {
     imports.add('effect');
-    lines.push(`${pad}effect(() => { ${varName}.classList.toggle('${dir.arg}', !!(${dir.value})); }, { render: true });`);
+    lines.push(`${pad}{ let __prev; effect(() => { const __v = !!(${dir.value}); if (__v !== __prev) { __prev = __v; ${varName}.classList.toggle('${dir.arg}', __v); } }, { render: true }); }`)
   }
 
   // 2. Process bind: directives — value effect (before children is OK for input/textarea)

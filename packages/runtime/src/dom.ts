@@ -215,78 +215,118 @@ export function renderList<T>(
   // Capture scope so children created in renderItem inherit provide/inject context
   const scope = getCurrentScope();
 
+  function createItem(data: T, index: number, key: unknown): ListItem<T> {
+    const fragment = scope ? runInScope(scope, () => renderItem(data, index)) : renderItem(data, index);
+    const nodes = fragment instanceof DocumentFragment
+      ? Array.from(fragment.childNodes)
+      : [fragment];
+    return { key, value: data, nodes, dispose: null };
+  }
+
   const dispose = effect(
     () => {
       const newData = items();
-      const newItems: ListItem<T>[] = [];
-      const oldMap = new Map<unknown, ListItem<T>>();
+      const oldItems = currentItems;
+      const oldLen = oldItems.length;
+      const newLen = newData.length;
 
-      for (const item of currentItems) {
-        oldMap.set(item.key, item);
+      // Fast path: first render
+      if (oldLen === 0) {
+        const newItems: ListItem<T>[] = new Array(newLen);
+        const liveParent = anchor.parentNode;
+        for (let i = 0; i < newLen; i++) {
+          const data = newData[i];
+          const item = createItem(data, i, keyFn(data, i));
+          newItems[i] = item;
+          if (liveParent) {
+            for (let j = 0; j < item.nodes.length; j++) {
+              liveParent.insertBefore(item.nodes[j], anchor);
+            }
+          }
+        }
+        currentItems = newItems;
+        return;
       }
 
-      // Build new list, reuse existing DOM nodes when keys match
-      for (let i = 0; i < newData.length; i++) {
+      // Fast path: clear all
+      if (newLen === 0) {
+        for (let i = 0; i < oldLen; i++) {
+          const item = oldItems[i];
+          for (let j = 0; j < item.nodes.length; j++) {
+            const n = item.nodes[j];
+            if (n.parentNode) n.parentNode.removeChild(n);
+          }
+          item.dispose?.();
+        }
+        currentItems = [];
+        return;
+      }
+
+      // Build old key → index map
+      const oldKeyMap = new Map<unknown, number>();
+      for (let i = 0; i < oldLen; i++) {
+        oldKeyMap.set(oldItems[i].key, i);
+      }
+
+      // Build new items array, reusing existing ListItems by key
+      const newItems: ListItem<T>[] = new Array(newLen);
+      // newToOld[i] = index in old array, or -1 if new
+      const newToOld: number[] = new Array(newLen);
+
+      for (let i = 0; i < newLen; i++) {
         const data = newData[i];
         const key = keyFn(data, i);
-        const existing = oldMap.get(key);
+        const oldIdx = oldKeyMap.get(key);
 
-        if (existing) {
-          oldMap.delete(key);
-          // If the reused item's nodes were detached (e.g., parent removed them),
-          // treat as new to avoid stale DOM references
-          const firstNode = existing.nodes[0];
-          if (firstNode && !firstNode.parentNode) {
-            // Nodes were detached — create fresh
-            const fragment = scope ? runInScope(scope, () => renderItem(data, i)) : renderItem(data, i);
-            const nodes = fragment instanceof DocumentFragment
-              ? Array.from(fragment.childNodes)
-              : [fragment];
-            newItems.push({ key, value: data, nodes, dispose: null });
+        if (oldIdx !== undefined) {
+          oldKeyMap.delete(key);
+          const existing = oldItems[oldIdx];
+          // Check if nodes are still attached
+          if (existing.nodes[0] && !existing.nodes[0].parentNode) {
+            newItems[i] = createItem(data, i, key);
+            newToOld[i] = -1;
           } else {
             existing.value = data;
-            newItems.push(existing);
+            newItems[i] = existing;
+            newToOld[i] = oldIdx;
           }
         } else {
-          const fragment = scope ? runInScope(scope, () => renderItem(data, i)) : renderItem(data, i);
-          const nodes = fragment instanceof DocumentFragment
-            ? Array.from(fragment.childNodes)
-            : [fragment];
-          newItems.push({ key, value: data, nodes, dispose: null });
+          newItems[i] = createItem(data, i, key);
+          newToOld[i] = -1;
         }
       }
 
-      // Remove items that are no longer in the list
-      for (const item of oldMap.values()) {
-        for (const node of item.nodes) {
-          if (node.parentNode) node.parentNode.removeChild(node);
+      // Remove items no longer in list
+      for (const oldIdx of oldKeyMap.values()) {
+        const item = oldItems[oldIdx];
+        for (let j = 0; j < item.nodes.length; j++) {
+          const n = item.nodes[j];
+          if (n.parentNode) n.parentNode.removeChild(n);
         }
         item.dispose?.();
       }
 
-      // Reconcile DOM order — insertBefore moves existing nodes, inserts new ones
+      // LIS-based reconciliation: compute which items are already in order
+      const lisIndices = longestIncreasingSubsequence(newToOld);
+      const lisSet = new Set<number>();
+      for (let i = 0; i < lisIndices.length; i++) lisSet.add(lisIndices[i]);
+
+      // Walk backwards through new items. Items in the LIS stay in place.
+      // Items NOT in the LIS (moves + inserts) get insertBefore'd.
       const liveParent = anchor.parentNode;
       if (liveParent) {
-        // Normal path — anchor is in the DOM, insert before it
-        for (const item of newItems) {
-          for (const node of item.nodes) {
-            liveParent.insertBefore(node, anchor);
-          }
-        }
-      } else {
-        // Table fallback — browser relocated the comment anchor.
-        // Find the real parent from any node still in the DOM.
-        let realParent: Node | null = null;
-        for (const item of currentItems) {
-          if (item.nodes[0]?.parentNode) { realParent = item.nodes[0].parentNode; break; }
-        }
-        if (realParent) {
-          // Remove old nodes first (oldMap items already removed above)
-          // Then append all new items
-          for (const item of newItems) {
-            for (const node of item.nodes) {
-              realParent.appendChild(node);
+        let nextSibling: Node = anchor;
+        for (let i = newLen - 1; i >= 0; i--) {
+          const item = newItems[i];
+          if (lisSet.has(i)) {
+            // In LIS — already in correct relative order, just update nextSibling
+            nextSibling = item.nodes[0];
+          } else {
+            // Not in LIS — move or insert before nextSibling
+            for (let j = 0; j < item.nodes.length; j++) {
+              liveParent.insertBefore(item.nodes[j], nextSibling);
             }
+            nextSibling = item.nodes[0];
           }
         }
       }
@@ -299,13 +339,43 @@ export function renderList<T>(
   return () => {
     dispose();
     for (const item of currentItems) {
-      for (const node of item.nodes) {
-        if (node.parentNode) node.parentNode.removeChild(node);
+      for (let j = 0; j < item.nodes.length; j++) {
+        const n = item.nodes[j];
+        if (n.parentNode) n.parentNode.removeChild(n);
       }
       item.dispose?.();
     }
     currentItems = [];
   };
+}
+
+/** LIS for renderList — returns indices into arr that form the longest increasing subsequence */
+function longestIncreasingSubsequence(arr: number[]): number[] {
+  const n = arr.length;
+  if (n === 0) return [];
+  const tails: number[] = [];
+  const predecessors: number[] = new Array(n).fill(-1);
+  const indices: number[] = [];
+
+  for (let i = 0; i < n; i++) {
+    if (arr[i] === -1) continue;
+    let lo = 0, hi = tails.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (tails[mid] < arr[i]) lo = mid + 1; else hi = mid;
+    }
+    tails[lo] = arr[i];
+    indices[lo] = i;
+    if (lo > 0) predecessors[i] = indices[lo - 1];
+  }
+
+  const result: number[] = new Array(tails.length);
+  let k = indices[tails.length - 1];
+  for (let i = tails.length - 1; i >= 0; i--) {
+    result[i] = k;
+    k = predecessors[k];
+  }
+  return result;
 }
 
 // --- Built-in control flow components ---
