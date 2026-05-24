@@ -1,11 +1,18 @@
 import { defineConfig } from 'vite';
-import akash from '../packages/vite-plugin/dist/index.js';
 
 export default defineConfig({
-  plugins: [(akash as any)()],
   resolve: {
     alias: {
-      '@akashjs/runtime': new URL('../packages/runtime/src/index.ts', import.meta.url).pathname,
+      '@akashjs/compiler': new URL('../packages/compiler/dist/index.js', import.meta.url).pathname,
+      '@akashjs/runtime': new URL('../packages/runtime/dist/index.js', import.meta.url).pathname,
     },
+  },
+  worker: {
+    format: 'es',
+  },
+  build: {
+    outDir: 'dist',
+    target: 'es2022',
+    chunkSizeWarningLimit: 4000,
   },
 });

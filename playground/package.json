@@ -1,7 +1,7 @@
 {
   "name": "akashjs-playground",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,11 +9,21 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@akashjs/runtime": "workspace:*"
+    "codemirror": "^6.0.1",
+    "@codemirror/lang-html": "^6.4.0",
+    "@codemirror/lang-javascript": "^6.2.0",
+    "@codemirror/lang-css": "^6.3.0",
+    "@codemirror/theme-one-dark": "^6.1.0",
+    "@codemirror/state": "^6.4.0",
+    "@codemirror/view": "^6.35.0",
+    "@codemirror/commands": "^6.7.0",
+    "@codemirror/language": "^6.10.0",
+    "@codemirror/autocomplete": "^6.18.0",
+    "@codemirror/search": "^6.5.0",
+    "@codemirror/lint": "^6.8.0",
+    "lz-string": "^1.5.0"
   },
   "devDependencies": {
-    "@akashjs/vite-plugin": "workspace:*",
-    "@akashjs/compiler": "workspace:*",
     "vite": "^5.0.0",
     "typescript": "^5.4.0"
   }

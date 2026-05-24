@@ -5,11 +5,14 @@
  * to the component. Same approach as Vue and Svelte.
  */
 
-import { createHash } from 'crypto';
-
 /** Generate a scope ID from a filename */
 export function generateScopeId(filename: string): string {
-  const hash = createHash('md5').update(filename).digest('hex').slice(0, 6);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < filename.length; i++) {
+    h ^= filename.charCodeAt(i);
+    h = (h * 0x01000193) >>> 0;
+  }
+  const hash = h.toString(16).padStart(6, '0').slice(0, 6);
   return `data-a-${hash}`;
 }
 
