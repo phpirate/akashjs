@@ -20,6 +20,7 @@ export default defineConfig({
       { text: 'Guide', link: '/guide/introduction' },
       { text: 'Tutorial', link: '/tutorial/introduction' },
       { text: 'API', link: '/api/runtime' },
+      { text: 'Playground', link: 'https://play.akash.js.org' },
       {
         text: 'More',
         items: [

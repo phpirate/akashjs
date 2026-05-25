@@ -17,6 +17,9 @@ hero:
     - theme: alt
       text: API Reference
       link: /api/runtime
+    - theme: alt
+      text: Try Playground
+      link: https://play.akash.js.org
 
 features:
   - icon: ⚡
@@ -75,6 +78,11 @@ features:
 <a href="/migration/" style="text-decoration: none; display: block; padding: 20px; border-radius: 12px; border: 1px solid var(--vp-c-divider); transition: border-color 0.2s;">
   <strong>🔄 Migration Guides</strong><br>
   <span style="color: var(--vp-c-text-2); font-size: 14px;">Coming from Angular, React, Vue, or Svelte? Side-by-side comparisons and step-by-step migration.</span>
+</a>
+
+<a href="https://play.akash.js.org" target="_blank" style="text-decoration: none; display: block; padding: 20px; border-radius: 12px; border: 1px solid var(--vp-c-divider); transition: border-color 0.2s; background: linear-gradient(135deg, rgba(99,102,241,0.05), rgba(99,102,241,0.1));">
+  <strong>⚡ Playground</strong><br>
+  <span style="color: var(--vp-c-text-2); font-size: 14px;">Try AkashJS in your browser — no install needed. Write .akash components with live preview.</span>
 </a>
 
 </div>
