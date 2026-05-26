@@ -31,7 +31,7 @@ This umbrella package bundles the full AkashJS ecosystem:
 | `@akashjs/forms` | Signal-based form management with validation and Zod integration |
 | `@akashjs/http` | HTTP client with interceptors, createResource, createAction, WebSocket |
 | `@akashjs/i18n` | Signal-based internationalization with pluralization and lazy loading |
-| `@akashjs/ui` | 30+ Material Design 3 components |
+| `@akashjs/ui` | 34 Material Design 3 components |
 
 ## Features
 

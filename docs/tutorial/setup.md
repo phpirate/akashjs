@@ -65,14 +65,14 @@ Let's understand each key file.
     "test": "vitest"
   },
   "dependencies": {
-    "@akashjs/runtime": "^0.1.0",
-    "@akashjs/router": "^0.1.0",
-    "@akashjs/forms": "^0.1.0",
-    "@akashjs/http": "^0.1.0"
+    "@akashjs/runtime": "^0.2.8",
+    "@akashjs/router": "^0.1.11",
+    "@akashjs/forms": "^0.1.7",
+    "@akashjs/http": "^0.2.7"
   },
   "devDependencies": {
-    "@akashjs/compiler": "^0.1.0",
-    "@akashjs/vite-plugin": "^0.1.0",
+    "@akashjs/compiler": "^0.1.60",
+    "@akashjs/vite-plugin": "^0.2.4",
     "typescript": "^5.4.0",
     "vite": "^6.0.0",
     "vitest": "^2.0.0"

@@ -214,7 +214,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.2] - 2026-03-29
 
 ### Added
-- README.md for all 10 npm packages (visible on npmjs.com)
+- README.md for all 11 npm packages (visible on npmjs.com)
 - E2E test scaffold with Playwright (14 integration tests)
 - Benchmark runner script (`npx tsx benchmark/run.ts`)
 

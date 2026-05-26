@@ -24,6 +24,8 @@ This scaffolds a project with:
 - `src/App.akash` — root component
 - `src/components/Counter.akash` — example counter
 
+> **Want to try without installing?** Use the [Playground](https://play.akash.js.org) to write `.akash` components with live preview directly in your browser.
+
 ### Options
 
 Or use `create-akash` with a template:

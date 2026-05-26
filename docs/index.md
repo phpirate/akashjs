@@ -39,7 +39,7 @@ features:
     linkText: See all features
   - icon: 🎨
     title: Material Design UI
-    details: 60+ Material Design 3 components with design tokens, dark mode, and ripple effects. Ready for production.
+    details: 34 Material Design 3 components with design tokens, dark mode, and ripple effects. Ready for production.
     link: /ui/getting-started
     linkText: Browse components
   - icon: 🌐

@@ -6,7 +6,7 @@ Every release comes with deprecation warnings, codemods, and migration hints so 
 
 ## Release Notes
 
-### Latest (runtime 0.2.6 / http 0.2.7 / compiler 0.1.57 / router 0.1.11 / i18n 0.1.11 / forms 0.1.7 / vite-plugin 0.2.1 / ui 0.2.3)
+### Latest (runtime 0.2.8 / compiler 0.1.60 / vite-plugin 0.2.4 / http 0.2.7 / router 0.1.11 / i18n 0.1.11 / forms 0.1.7 / ui 0.2.4)
 
 **New features:**
 

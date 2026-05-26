@@ -345,3 +345,19 @@ Add it to your CI pipeline:
 - name: Check bundle size
   run: akash size --budget
 ```
+
+## Recent Optimizations
+
+AkashJS is included in the official [js-framework-benchmark](https://krausest.github.io/js-framework-benchmark/) (keyed implementation). The following optimizations were shipped to improve benchmark and real-world performance:
+
+### LIS-Based List Reconciler
+
+The `<For>` component uses a longest-increasing-subsequence (LIS) algorithm to compute minimal DOM moves when a keyed list changes. Swap and remove operations now produce only the necessary `insertBefore` calls instead of iterating the entire list.
+
+### class: Directive Caching
+
+The compiler emits a previous-value cache for `class:` directives. When a signal changes, the effect still fires on every row that reads it, but `classList.toggle` is skipped when the boolean result hasn't changed — so only the affected rows touch the DOM.
+
+### Inline Signal Batching
+
+`signal.set()` uses inline `enterBatch()` / `exitBatch()` calls instead of wrapping in a closure via `batch(() => { ... })`. This eliminates one closure allocation per `set()` call, reducing GC pressure in hot paths (~14% faster signal writes).

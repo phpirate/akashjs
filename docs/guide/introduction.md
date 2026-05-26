@@ -34,6 +34,6 @@ AkashJS takes a different path:
 | `@akashjs/forms` | Signal-based forms with declarative validation |
 | `@akashjs/http` | Promise-based HTTP client with interceptors |
 | `@akashjs/i18n` | Signal-based internationalization with lazy loading |
-| `@akashjs/ui` | 60+ Material Design 3 components (Button, TextField, DataTable, etc.) |
+| `@akashjs/ui` | 34 Material Design 3 components (Button, TextField, DataTable, etc.) |
 | `@akashjs/cli` | Project scaffolding, dev tooling, and `akash audit` security scanner |
 | `@akashjs/create` | `npx create-akash` — project templates (basic, full, local-first) |

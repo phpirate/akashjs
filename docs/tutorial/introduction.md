@@ -22,6 +22,8 @@ By the end, you will have a working app that looks like this:
 
 ## What You Will Build
 
+> **Tip:** You can also try AkashJS instantly in the [Playground](https://play.akash.js.org) — no install needed. AkashJS is benchmarked in the official [js-framework-benchmark](https://krausest.github.io/js-framework-benchmark/).
+
 This is not a toy example. The finished Todo app includes:
 
 - **Component composition** -- reusable `TodoItem`, `TodoList`, `TodoForm`, and layout components
