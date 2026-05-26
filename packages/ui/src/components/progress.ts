@@ -11,6 +11,7 @@ import { defineComponent } from '@akashjs/runtime';
 export interface ProgressBarProps {
   value?: number;
   variant?: 'determinate' | 'indeterminate';
+  label?: string;
 }
 
 function injectProgressStyles(): void {
@@ -43,6 +44,7 @@ export const ProgressBar = defineComponent<ProgressBarProps>((ctx) => {
   const {
     value = 0,
     variant = 'determinate',
+    label,
   } = ctx.props;
 
   return () => {
@@ -50,6 +52,7 @@ export const ProgressBar = defineComponent<ProgressBarProps>((ctx) => {
     track.setAttribute('role', 'progressbar');
     track.setAttribute('aria-valuemin', '0');
     track.setAttribute('aria-valuemax', '100');
+    track.setAttribute('aria-label', label ?? 'Progress');
 
     if (variant === 'determinate') {
       track.setAttribute('aria-valuenow', String(Math.round(value)));
@@ -100,6 +103,7 @@ export interface ProgressCircularProps {
   value?: number;
   size?: number;
   variant?: 'determinate' | 'indeterminate';
+  label?: string;
 }
 
 export const ProgressCircular = defineComponent<ProgressCircularProps>((ctx) => {
@@ -109,6 +113,7 @@ export const ProgressCircular = defineComponent<ProgressCircularProps>((ctx) => 
     value = 0,
     size = 48,
     variant = 'indeterminate',
+    label,
   } = ctx.props;
 
   return () => {
@@ -116,6 +121,7 @@ export const ProgressCircular = defineComponent<ProgressCircularProps>((ctx) => 
     container.setAttribute('role', 'progressbar');
     container.setAttribute('aria-valuemin', '0');
     container.setAttribute('aria-valuemax', '100');
+    container.setAttribute('aria-label', label ?? 'Progress');
 
     if (variant === 'determinate') {
       container.setAttribute('aria-valuenow', String(Math.round(value)));

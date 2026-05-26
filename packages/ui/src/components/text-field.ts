@@ -112,6 +112,13 @@ export const TextField = defineComponent<TextFieldProps>((ctx) => {
     if (disabled) input.disabled = true;
     if (value) input.value = value();
 
+    // Accessibility: associate label with input via id + for attribute
+    if (label) {
+      const inputId = 'akash-tf-' + Math.random().toString(36).slice(2, 8);
+      input.id = inputId;
+      labelEl.setAttribute('for', inputId);
+    }
+
     input.style.cssText = `
       width: 100%;
       height: 100%;

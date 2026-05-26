@@ -108,6 +108,14 @@ export const Select = defineComponent<SelectProps>((ctx) => {
     const selectEl = document.createElement('select');
     if (disabled) selectEl.disabled = true;
 
+    // Accessibility: associate label with select
+    if (label) {
+      const selectId = 'akash-sel-' + Math.random().toString(36).slice(2, 8);
+      selectEl.id = selectId;
+      const labelEl = fieldContainer.querySelector('label');
+      if (labelEl) labelEl.setAttribute('for', selectId);
+    }
+
     selectEl.style.cssText = `
       width: 100%;
       height: 100%;
