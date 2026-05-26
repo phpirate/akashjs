@@ -94,7 +94,7 @@ effect(() => console.log(doubled())); // re-runs only when count changes
 
 **HTTP** — `createHttpClient()` with interceptors, `createResource()` for async data, `createAction()` for mutations.
 
-**UI** — 34 Material Design 3 components: Button, TextField, Card, Dialog, Tabs, Drawer, etc. (Note: these components use semantic HTML but have not undergone a formal WCAG accessibility audit.)
+**UI** — 34 Material Design 3 components: Button, TextField, Card, Dialog, Tabs, Drawer, etc. All components are tested with [axe-core](https://github.com/dequelabs/axe-core) for WCAG 2.1 AA compliance.
 
 ## What's different
 
@@ -209,7 +209,7 @@ What's still needed before 1.0:
 
 - Real-world usage and feedback
 - Cross-browser testing (currently tested in happy-dom/Node.js; no automated Playwright/Selenium suite for real browsers yet)
-- WCAG accessibility audit for UI components
+- Full WCAG accessibility audit by a certified consultant (automated axe-core testing is in place)
 - API stabilization
 
 ### Requirements
