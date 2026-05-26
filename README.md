@@ -6,9 +6,15 @@ A TypeScript-first UI framework with signals reactivity, direct DOM rendering, a
 [![npm](https://img.shields.io/npm/v/@akashjs/runtime)](https://www.npmjs.com/package/@akashjs/runtime)
 [![License](https://img.shields.io/github/license/phpirate/akashjs)](https://github.com/phpirate/akashjs/blob/main/LICENSE)
 
-> **Early stage** — AkashJS is at v0.1.x. The APIs work and tests pass, but the framework is new and hasn't been battle-tested in production yet. Feedback and contributions welcome.
-
 > **Note on naming:** This project is unrelated to [akash-network/akashjs](https://github.com/akash-network/akashjs) (the Akash Network blockchain SDK). We are a UI framework.
+
+---
+
+## Try it now
+
+**[Playground](https://play.akash.js.org)** — Write `.akash` components in your browser with live preview. No install needed.
+
+**[Documentation](https://akash.js.org)** — Full guide, tutorial, API reference, and cookbook.
 
 ---
 
@@ -56,18 +62,19 @@ npx akash dev
 
 All published on npm under `@akashjs/`:
 
-| Package | Description | Gzipped |
+| Package | Description | Version |
 |---|---|---|
-| [@akashjs/runtime](https://www.npmjs.com/package/@akashjs/runtime) | Signals, components, DOM rendering | 3.4KB core / 28KB full |
-| [@akashjs/compiler](https://www.npmjs.com/package/@akashjs/compiler) | `.akash` SFC parser and code generator | 7.3KB |
-| [@akashjs/vite-plugin](https://www.npmjs.com/package/@akashjs/vite-plugin) | Vite integration with HMR | 0.9KB |
-| [@akashjs/router](https://www.npmjs.com/package/@akashjs/router) | File-based routing, guards, loaders | 2.6KB |
-| [@akashjs/forms](https://www.npmjs.com/package/@akashjs/forms) | Signal-based forms with validation | 1.8KB |
-| [@akashjs/http](https://www.npmjs.com/package/@akashjs/http) | HTTP client, resources, WebSocket | 4.1KB |
-| [@akashjs/i18n](https://www.npmjs.com/package/@akashjs/i18n) | Internationalization | 0.6KB |
-| [@akashjs/ui](https://www.npmjs.com/package/@akashjs/ui) | 24 Material Design 3 components | 11.9KB |
-| [@akashjs/cli](https://www.npmjs.com/package/@akashjs/cli) | Project scaffolding and tooling | 7.1KB |
-| [@akashjs/devtools](https://www.npmjs.com/package/@akashjs/devtools) | Component inspector | 2.3KB |
+| [@akashjs/runtime](https://www.npmjs.com/package/@akashjs/runtime) | Signals, components, DOM rendering | 0.2.8 |
+| [@akashjs/compiler](https://www.npmjs.com/package/@akashjs/compiler) | `.akash` SFC parser and code generator | 0.1.60 |
+| [@akashjs/vite-plugin](https://www.npmjs.com/package/@akashjs/vite-plugin) | Vite integration with HMR | 0.2.4 |
+| [@akashjs/router](https://www.npmjs.com/package/@akashjs/router) | File-based routing, guards, loaders | 0.1.11 |
+| [@akashjs/forms](https://www.npmjs.com/package/@akashjs/forms) | Signal-based forms with validation | 0.1.7 |
+| [@akashjs/http](https://www.npmjs.com/package/@akashjs/http) | HTTP client, resources, WebSocket | 0.2.7 |
+| [@akashjs/i18n](https://www.npmjs.com/package/@akashjs/i18n) | Internationalization | 0.1.11 |
+| [@akashjs/ui](https://www.npmjs.com/package/@akashjs/ui) | 34 Material Design 3 components | 0.2.4 |
+| [@akashjs/cli](https://www.npmjs.com/package/@akashjs/cli) | Project scaffolding and tooling | 0.1.6 |
+| [@akashjs/devtools](https://www.npmjs.com/package/@akashjs/devtools) | Component inspector | 0.1.5 |
+| [@akashjs/eslint-plugin](https://www.npmjs.com/package/@akashjs/eslint-plugin) | Linting rules for `.akash` files | 0.1.2 |
 
 ## Core Features
 
@@ -87,7 +94,54 @@ effect(() => console.log(doubled())); // re-runs only when count changes
 
 **HTTP** — `createHttpClient()` with interceptors, `createResource()` for async data, `createAction()` for mutations.
 
-**UI** — 24 Material Design 3 components: Button, TextField, Card, Dialog, Tabs, Drawer, etc. (Note: these components use semantic HTML but have not undergone a formal WCAG accessibility audit.)
+**UI** — 34 Material Design 3 components: Button, TextField, Card, Dialog, Tabs, Drawer, etc. (Note: these components use semantic HTML but have not undergone a formal WCAG accessibility audit.)
+
+## What's different
+
+A few things AkashJS ships that other frameworks don't:
+
+- **`createSync()`** — Collaborative signals with CRDT conflict resolution
+- **`defineAPI()`** — Type-safe API layer (define once, typed on client and server)
+- **`createOfflineStore()`** — IndexedDB persistence with background sync
+- **`sanitize()`** — Built-in HTML sanitizer, CSP headers, CSRF protection
+- **`akash audit`** — CLI security scanner for your codebase
+- **`akash deploy`** — Zero-config deploy to Vercel/Cloudflare/Netlify/Deno
+
+## Performance
+
+### js-framework-benchmark
+
+AkashJS is included in the official [js-framework-benchmark](https://krausest.github.io/js-framework-benchmark/) (keyed implementation). The benchmark uses AkashJS's own primitives: `<For>` for keyed list rendering, `class:` directives, per-row event handlers, and `signal()` state.
+
+Performance-focused optimizations in recent releases:
+
+- **LIS-based list reconciler** — Swap/remove operations produce minimal DOM moves instead of O(n) iteration
+- **Template cloning** — Compiler generates `cloneNode` from hoisted `<template>` elements instead of individual `createElement` chains
+- **class: directive caching** — Prev-value check skips `classList.toggle` when the boolean result hasn't changed
+- **Inline signal batching** — `signal.set()` uses inline `enterBatch/exitBatch` instead of closure allocation per call
+- **54 subpath exports** — Tree-shakeable; only import what you use
+
+### Bundle size
+
+| Import | Gzipped |
+|---|---|
+| `@akashjs/runtime` (core only) | ~2.7KB |
+| + router | +2.6KB |
+| + forms | +1.8KB |
+| + http | +4.1KB |
+| Full runtime (everything) | ~23KB |
+
+### Signal microbenchmarks
+
+(Node.js, not DOM — run `npx tsx benchmark/run.ts`)
+
+| Operation | Time |
+|---|---|
+| Create 10,000 signals | 8.6ms |
+| Create+dispose 10,000 effects | 14ms |
+| Batch update 1000 signals x 100 | 10ms |
+| Diamond deps (depth 50) x 1000 | 45ms |
+| signal.set() | ~115ns |
 
 ## SSR / SSG
 
@@ -103,43 +157,6 @@ npx tsx apps/taskflow/server/index.ts
 **What works:** `ssrElement()`, `ssrText()`, `nodeToHtml()`, `escapeHtml()`, server-mode compiler, security headers on responses, `__SSR_DATA__` for client hydration bootstrap.
 
 **What's still experimental:** `hydrate()` and `progressiveHydrate()` for client-side signal attachment, `renderToStream()` for streaming SSR, and `prerender()` for build-time SSG. These have unit tests but haven't been used in a full hydration round-trip yet.
-
-## What's different
-
-A few things AkashJS ships that other frameworks don't:
-
-- **`createSync()`** — Collaborative signals with CRDT conflict resolution
-- **`defineAPI()`** — Type-safe API layer (define once, typed on client and server)
-- **`createOfflineStore()`** — IndexedDB persistence with background sync
-- **`sanitize()`** — Built-in HTML sanitizer, CSP headers, CSRF protection
-- **`akash audit`** — CLI security scanner for your codebase
-- **`akash deploy`** — Zero-config deploy to Vercel/Cloudflare/Netlify/Deno
-
-## Performance
-
-**Bundle size:** Core runtime is 3.4KB gzipped. Features you don't import aren't shipped.
-
-**Signal benchmarks** (Node.js, not DOM — run `npx tsx benchmark/run.ts`):
-
-| Operation | Time |
-|---|---|
-| Create 10,000 signals | 8.6ms |
-| Create+dispose 10,000 effects | 14ms |
-| Batch update 1000 signals × 100 | 10ms |
-| Diamond deps (depth 50) × 1000 | 45ms |
-
-**Known performance gaps:**
-- Memory per signal (~650 bytes) is higher than SolidJS (~40 bytes). Optimization needed.
-- No browser DOM rendering benchmarks yet — js-framework-benchmark harness not integrated.
-- Large computed chains (1000+ computeds) show linear scaling, not constant time.
-
-| Import | Gzipped |
-|---|---|
-| `@akashjs/runtime/core` | 3.4KB |
-| + router | +2.6KB |
-| + forms | +1.8KB |
-| + http | +4.1KB |
-| Full runtime (everything) | 28KB |
 
 ## CLI
 
@@ -166,31 +183,33 @@ To use the grammar locally: copy `extensions/vscode-akash/` into your `~/.vscode
 
 ## Documentation
 
-- **[Guide](docs/guide/)** — Feature documentation
-- **[Tutorial](docs/tutorial/)** — Build a todo app step by step
-- **[API Reference](docs/api/)** — Function signatures
-- **[Cookbook](docs/cookbook/)** — Practical recipes
-- **[Best Practices](docs/best-practices/)** — Architecture and patterns
-- **[Migration](docs/migration/)** — From Angular, React, Vue, Svelte
-- **[UI Components](docs/ui/)** — Material Design component docs
-- **[FAQ](docs/faq/)** — Common questions
+- **[Guide](https://akash.js.org/guide/introduction)** — Feature documentation
+- **[Tutorial](https://akash.js.org/tutorial/introduction)** — Build a todo app step by step
+- **[API Reference](https://akash.js.org/api/runtime)** — Function signatures
+- **[Cookbook](https://akash.js.org/cookbook/)** — Practical recipes
+- **[Best Practices](https://akash.js.org/best-practices/)** — Architecture and patterns
+- **[Migration](https://akash.js.org/migration/)** — From Angular, React, Vue, Svelte
+- **[UI Components](https://akash.js.org/ui/getting-started)** — Material Design component docs
+- **[FAQ](https://akash.js.org/faq/)** — Common questions
+- **[Playground](https://play.akash.js.org)** — Try AkashJS in your browser
 
 ## Status
 
-AkashJS is in early development (v0.1.x). Here's what exists:
+AkashJS is in active development (v0.2.x). Here's what exists:
 
-- 10 npm packages, all published
-- 974 unit tests passing
-- 114 documentation pages
+- 11 npm packages, all published
+- 1050+ unit tests passing
+- 265 documentation pages
 - Automated CI/CD (test on push, publish on tag)
+- Included in [js-framework-benchmark](https://krausest.github.io/js-framework-benchmark/) (keyed)
+- Interactive [playground](https://play.akash.js.org) with live preview
 - A reference app (TaskFlow — project management with Kanban)
 
 What's still needed before 1.0:
 
 - Real-world usage and feedback
 - Cross-browser testing (currently tested in happy-dom/Node.js; no automated Playwright/Selenium suite for real browsers yet)
-- Performance benchmarks against other frameworks
-- WCAG accessibility audit for UI components (the components use semantic HTML and ARIA where appropriate, but no formal compliance audit has been done)
+- WCAG accessibility audit for UI components
 - API stabilization
 
 ### Requirements
@@ -206,7 +225,7 @@ AkashJS follows [Semantic Versioning](https://semver.org/). During 0.x, minor ve
 - **`akash codemod`** — applies code transformations for API changes
 - **Deprecation warnings** — old APIs warn in console with migration hints before removal
 
-See [CHANGELOG.md](CHANGELOG.md) and the [Upgrading Guide](docs/guide/upgrading.md).
+See [CHANGELOG.md](CHANGELOG.md) and the [Upgrading Guide](https://akash.js.org/guide/upgrading).
 
 ## Community
 
