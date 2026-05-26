@@ -5,6 +5,7 @@ export default defineConfig({
   description: 'Angular structure, Svelte simplicity — a TypeScript-first UI framework',
   ignoreDeadLinks: true,
   head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }],
     ['meta', { name: 'theme-color', content: '#1565C0' }],
     ['meta', { property: 'og:type', content: 'website' }],
     ['meta', { property: 'og:title', content: 'AkashJS' }],
