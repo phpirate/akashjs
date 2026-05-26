@@ -175,11 +175,19 @@ akash update           # Update + run codemods
 
 ## Editor Support
 
-A TextMate grammar for `.akash` syntax highlighting is in `extensions/vscode-akash/`. It provides basic highlighting for script/template/style blocks with embedded TypeScript, HTML, and CSS.
+The [AkashJS VS Code extension](https://marketplace.visualstudio.com/items?itemName=akashjs.vscode-akash) provides syntax highlighting, IntelliSense, diagnostics, and snippets for `.akash` single-file components. Install it from the VS Code Marketplace:
 
-**This is not a full language server** — there's no auto-completion or diagnostics in templates yet. A `createLanguageService()` API exists in the compiler package but hasn't been integrated into a VS Code LSP extension.
+1. Open VS Code → Extensions (Ctrl+Shift+X)
+2. Search "AkashJS"
+3. Click Install
 
-To use the grammar locally: copy `extensions/vscode-akash/` into your `~/.vscode/extensions/` folder.
+Features:
+- Full syntax highlighting for `.akash` SFCs
+- Embedded TypeScript, HTML, and CSS highlighting
+- Directive highlighting (`if`, `for`, `show`, `bind:value`, `on:click`)
+- Snippets for common patterns
+
+A `createLanguageService()` API exists in the compiler package for deeper editor integration (full LSP support is planned).
 
 ## Documentation
 
