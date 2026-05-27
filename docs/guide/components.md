@@ -2,27 +2,11 @@
 
 Components in AkashJS are functions. No classes, no decorators, no `ngOnInit`.
 
-## defineComponent()
-
-```ts
-import { defineComponent, signal } from '@akashjs/runtime';
-
-const Counter = defineComponent<{ initial: number }>((ctx) => {
-  const count = signal(ctx.props.initial);
-
-  return () => {
-    const div = document.createElement('div');
-    div.textContent = `Count: ${count()}`;
-    return div;
-  };
-});
-```
-
-The setup function runs **once** per instance. It receives a context with typed props and returns a render function.
+> **Try it live:** Open the [Playground](https://play.akash.js.org) and select any example to see components in action.
 
 ## Single-File Components
 
-The preferred way to write components is `.akash` files:
+The preferred way to write components is `.akash` files with three sections — script, template, and scoped styles:
 
 ```html
 <script lang="ts">
@@ -48,7 +32,27 @@ div { display: flex; gap: 1rem; }
 </style>
 ```
 
-The compiler transforms this into a `defineComponent()` call. Static elements are compiled to a hoisted `<template>` that's cloned per instance; dynamic expressions get fine-grained effects.
+The compiler transforms this into optimized JavaScript. Static elements are compiled to a hoisted `<template>` element that's cloned with `cloneNode(true)` per instance — a single C++ call instead of multiple `createElement` chains. Dynamic expressions like `{count()}` get fine-grained effects that update only the exact DOM node that changed.
+
+## Under the Hood: defineComponent()
+
+The `.akash` compiler generates a `defineComponent()` call. You can also write components this way directly — useful for library code or when you don't need a template:
+
+```ts
+import { defineComponent, signal } from '@akashjs/runtime';
+
+const Counter = defineComponent<{ initial: number }>((ctx) => {
+  const count = signal(ctx.props.initial);
+
+  return () => {
+    const div = document.createElement('div');
+    div.textContent = `Count: ${count()}`;
+    return div;
+  };
+});
+```
+
+The setup function runs **once** per instance. It receives a context (`ctx`) with typed props and returns a render function.
 
 ## Fragments
 

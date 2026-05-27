@@ -13,7 +13,7 @@ AkashJS takes a different path:
 - **Tiny footprint** — Core runtime is **2.8KB gzipped**. A minimal app ships ~3KB — smaller than Preact, competitive with Solid. Full-featured apps with routing, stores, and query cache are typically ~15KB.
 - **Batteries included** — Router, forms, HTTP client, and CLI ship with the framework. Zero setup to go from idea to production.
 - **TypeScript-native** — Every API is designed for TypeScript first. Full inference, no decorators, no `any` leaks.
-- **Local-first** — Built-in CRDT sync, offline stores, IndexedDB query cache, and service worker support. Your app works offline and syncs automatically when reconnected.
+- **Local-first** — Your app works offline and syncs automatically when reconnected. Built-in conflict resolution (CRDT), offline stores, IndexedDB query cache, and service worker support.
 - **AI-native** — Every scaffolded project includes context files for Claude Code, Cursor, Copilot, Gemini, and Windsurf. AI tools understand your AkashJS code from the first prompt.
 
 ## Core Principles
@@ -37,3 +37,24 @@ AkashJS takes a different path:
 | `@akashjs/ui` | 34 Material Design 3 components (Button, TextField, DataTable, etc.) |
 | `@akashjs/cli` | Project scaffolding, dev tooling, and `akash audit` security scanner |
 | `@akashjs/create` | `npx create-akash` — project templates (basic, full, local-first) |
+
+## How Does It Compare?
+
+| | AkashJS | React | Vue | Svelte | Solid | Angular |
+|---|---|---|---|---|---|---|
+| **Reactivity** | Signals | Hooks + VDOM | Refs + VDOM | Runes (compiled) | Signals | Zones + RxJS |
+| **Core size (gzip)** | ~2.7KB | ~42KB | ~33KB | ~2KB | ~7KB | ~130KB |
+| **Routing** | Built-in | Third-party | Third-party | Third-party | Third-party | Built-in |
+| **Forms** | Built-in | Third-party | Third-party | Third-party | Third-party | Built-in |
+| **State management** | Built-in | Third-party | Pinia (official) | Built-in | Third-party | Built-in |
+| **Offline/sync** | Built-in CRDT | None | None | None | None | None |
+| **SFC format** | `.akash` | JSX | `.vue` | `.svelte` | JSX | `.component.ts` |
+| **TypeScript** | Native | Supported | Supported | Supported | Native | Native |
+| **Learning curve** | Low | Medium | Low | Low | Medium | High |
+
+## Next Steps
+
+- **[Quick Start](./getting-started)** — Create a project and run it in 2 minutes
+- **[Tutorial](../tutorial/introduction)** — Build a complete Todo app step by step
+- **[Playground](https://play.akash.js.org)** — Try AkashJS in your browser, no install needed
+- **[Reactivity](./reactivity)** — Understand signals, computed, and effects

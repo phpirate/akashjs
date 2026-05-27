@@ -82,6 +82,12 @@ Each step includes complete, runnable code. You can either:
 Each step builds on the previous one. If you jump ahead, you may be missing files from earlier steps.
 :::
 
+## Need Help?
+
+- **[Playground](https://play.akash.js.org)** — experiment with code without leaving the browser
+- **[GitHub Issues](https://github.com/phpirate/akashjs/issues)** — bug reports and feature requests
+- **[GitHub Discussions](https://github.com/phpirate/akashjs/discussions)** — questions and ideas
+
 ## Ready?
 
 Let's set up your project.

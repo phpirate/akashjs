@@ -1,16 +1,10 @@
 # Quick Start
 
-## Install
+AkashJS is a TypeScript-first UI framework with signals reactivity and direct DOM rendering. Get started in under 2 minutes.
 
-Add to an existing project:
-
-```sh
-npm install @akashjs/akashjs
-```
+> **Want to try first?** Open the [Playground](https://play.akash.js.org) — write `.akash` components with live preview directly in your browser. No install needed.
 
 ## Create a Project
-
-Or scaffold a new project:
 
 ```sh
 npx @akashjs/cli new my-app
@@ -19,12 +13,18 @@ npm install
 npx akash dev
 ```
 
+Open `http://localhost:5173` — you should see a running AkashJS app.
+
 This scaffolds a project with:
 - `vite.config.ts` with `@akashjs/vite-plugin`
 - `src/App.akash` — root component
 - `src/components/Counter.akash` — example counter
 
-> **Want to try without installing?** Use the [Playground](https://play.akash.js.org) to write `.akash` components with live preview directly in your browser.
+## Add to an Existing Project
+
+```sh
+npm install @akashjs/akashjs
+```
 
 ### Options
 

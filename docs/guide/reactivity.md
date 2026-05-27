@@ -2,6 +2,8 @@
 
 AkashJS uses a fine-grained reactivity system based on **signals**. Signals are reactive values that automatically track dependencies and update only what changed — no virtual DOM diffing needed.
 
+> **Try it live:** Open the [Playground](https://play.akash.js.org) and select the "Signals & Effects" example to see reactivity in action.
+
 ## signal()
 
 A signal holds a reactive value. Read it by calling it as a function. Write it with `.set()` or `.update()`.
