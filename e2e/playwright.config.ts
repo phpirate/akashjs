@@ -10,7 +10,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   webServer: {
-    command: 'cd ../apps/taskflow && node ../../node_modules/.pnpm/vite@5.4.21_@types+node@25.5.0/node_modules/vite/bin/vite.js --port 3000',
+    command: 'cd ../apps/taskflow && npx vite --port 3000',
     port: 3000,
     reuseExistingServer: true,
     timeout: 15000,
