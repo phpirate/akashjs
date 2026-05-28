@@ -13,7 +13,7 @@ test.describe('TaskFlow App', () => {
     test('shows login page when not authenticated', async ({ page }) => {
       await page.goto('/');
       await expect(page.getByRole('heading', { name: 'TaskFlow' })).toBeVisible();
-      await expect(page.locator('text=Sign In').or(page.locator('text=Try Demo'))).toBeVisible();
+      await expect(page.locator('text=Sign In').or(page.locator('text=Try Demo')).first()).toBeVisible();
     });
 
     test('can login with demo mode', async ({ page }) => {
@@ -40,8 +40,8 @@ test.describe('TaskFlow App', () => {
     });
 
     test('shows project cards', async ({ page }) => {
-      await expect(page.locator('text=AkashJS Framework')).toBeVisible();
-      await expect(page.locator('text=TaskFlow App')).toBeVisible();
+      await expect(page.locator('text=AkashJS Framework').first()).toBeVisible();
+      await expect(page.locator('text=TaskFlow App').first()).toBeVisible();
     });
 
     test('shows stats', async ({ page }) => {
@@ -56,16 +56,16 @@ test.describe('TaskFlow App', () => {
       await page.click('text=Try Demo');
       await expect(page.locator('text=Welcome')).toBeVisible({ timeout: 5000 });
       // Navigate to a project
-      await page.click('text=AkashJS Framework');
+      await page.locator('text=AkashJS Framework').first().click();
       await page.waitForTimeout(500);
     });
 
     test('shows kanban columns', async ({ page }) => {
-      await expect(page.locator('text=Backlog')).toBeVisible();
-      await expect(page.locator('text=To Do')).toBeVisible();
-      await expect(page.locator('text=In Progress')).toBeVisible();
-      await expect(page.locator('text=Review')).toBeVisible();
-      await expect(page.locator('text=Done')).toBeVisible();
+      await expect(page.locator('text=Backlog').first()).toBeVisible();
+      await expect(page.locator('text=To Do').first()).toBeVisible();
+      await expect(page.locator('text=In Progress').first()).toBeVisible();
+      await expect(page.locator('text=Review').first()).toBeVisible();
+      await expect(page.locator('text=Done').first()).toBeVisible();
     });
 
     test('shows task cards', async ({ page }) => {
@@ -88,12 +88,12 @@ test.describe('TaskFlow App', () => {
     });
 
     test('sidebar shows navigation items', async ({ page }) => {
-      await expect(page.locator('text=Dashboard')).toBeVisible();
+      await expect(page.locator('text=Dashboard').first()).toBeVisible();
     });
 
     test('sidebar shows projects list', async ({ page }) => {
-      await expect(page.locator('text=AkashJS Framework')).toBeVisible();
-      await expect(page.locator('text=TaskFlow App')).toBeVisible();
+      await expect(page.locator('text=AkashJS Framework').first()).toBeVisible();
+      await expect(page.locator('text=TaskFlow App').first()).toBeVisible();
     });
   });
 
@@ -105,9 +105,9 @@ test.describe('TaskFlow App', () => {
     });
 
     test('can navigate to settings', async ({ page }) => {
-      await page.click('text=Settings');
+      await page.locator('text=Settings').first().click();
       await page.waitForTimeout(500);
-      await expect(page.locator('text=Profile').or(page.locator('text=Appearance'))).toBeVisible();
+      await expect(page.locator('text=Profile').or(page.locator('text=Appearance')).first()).toBeVisible();
     });
   });
 
