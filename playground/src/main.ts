@@ -96,8 +96,10 @@ header.className = 'header';
 const headerLeft = document.createElement('div');
 headerLeft.className = 'header-left';
 
-const logo = document.createElement('div');
+const logo = document.createElement('a');
 logo.className = 'logo';
+logo.href = 'https://akash.js.org';
+logo.target = '_blank';
 logo.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 32 32" style="vertical-align: middle; margin-right: 6px;"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#6750A4"/><stop offset="50%" style="stop-color:#3b82f6"/><stop offset="100%" style="stop-color:#10b981"/></linearGradient></defs><rect width="32" height="32" rx="8" fill="url(#g)"/><text x="16" y="22" font-family="Inter, sans-serif" font-weight="800" font-size="18" fill="white" text-anchor="middle">A</text></svg>AkashJS <span>Playground</span>';
 
 const select = document.createElement('select');

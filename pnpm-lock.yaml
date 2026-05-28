@@ -73,8 +73,8 @@ importers:
   extensions/vscode-akash:
     dependencies:
       '@akashjs/compiler':
-        specifier: ^0.1.40
-        version: 0.1.48(typescript@5.9.3)
+        specifier: ^0.1.60
+        version: 0.1.60(typescript@5.9.3)
       vscode-languageclient:
         specifier: ^9.0.1
         version: 9.0.1
@@ -244,8 +244,8 @@ importers:
 
 packages:
 
-  '@akashjs/compiler@0.1.48':
-    resolution: {integrity: sha512-b/Rw57Pmsxh8k7clUtac8G4MdvPpQaN/U/fKbGZk4WB/P0KyhKTu/W7rcOWL0chsPPOg0MWcZLINk/fkSiKosQ==}
+  '@akashjs/compiler@0.1.60':
+    resolution: {integrity: sha512-1TJifZJRB36upjQYV6iLa9CuamzcGztnXY3HFFGuf3unXS5S9iWSOUxdRnL4rWhIombggzgentvHd0zazjNBdQ==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       typescript: '>=5.0.0'
@@ -1927,7 +1927,7 @@ packages:
 
 snapshots:
 
-  '@akashjs/compiler@0.1.48(typescript@5.9.3)':
+  '@akashjs/compiler@0.1.60(typescript@5.9.3)':
     optionalDependencies:
       typescript: 5.9.3
 
