@@ -12,7 +12,7 @@ test.describe('TaskFlow App', () => {
   test.describe('Login', () => {
     test('shows login page when not authenticated', async ({ page }) => {
       await page.goto('/');
-      await expect(page.locator('text=TaskFlow')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'TaskFlow' })).toBeVisible();
       await expect(page.locator('text=Sign In').or(page.locator('text=Try Demo'))).toBeVisible();
     });
 
@@ -115,13 +115,13 @@ test.describe('TaskFlow App', () => {
     test('renders on mobile viewport', async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 812 });
       await page.goto('/');
-      await expect(page.locator('text=TaskFlow')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'TaskFlow' })).toBeVisible();
     });
 
     test('renders on tablet viewport', async ({ page }) => {
       await page.setViewportSize({ width: 768, height: 1024 });
       await page.goto('/');
-      await expect(page.locator('text=TaskFlow')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'TaskFlow' })).toBeVisible();
     });
   });
 
@@ -129,7 +129,7 @@ test.describe('TaskFlow App', () => {
     test('login page loads within 3 seconds', async ({ page }) => {
       const start = Date.now();
       await page.goto('/');
-      await expect(page.locator('text=TaskFlow')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'TaskFlow' })).toBeVisible();
       const loadTime = Date.now() - start;
       expect(loadTime).toBeLessThan(3000);
     });
