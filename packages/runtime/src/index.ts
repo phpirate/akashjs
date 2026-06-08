@@ -1,5 +1,5 @@
 // @akashjs/runtime — Core runtime entry point
-export { signal, computed, effect, untrack, on } from './signals.js';
+export { signal, computed, effect, untrack, on, createDisposableScope } from './signals.js';
 export type { Signal, ReadonlySignal } from './signals.js';
 
 export { batch, flushSync } from './scheduler.js';

@@ -6,7 +6,7 @@
  * update only the specific DOM node that changed.
  */
 
-import { effect } from './signals.js';
+import { effect, createDisposableScope } from './signals.js';
 import { getCurrentScope, runInScope } from './context.js';
 import type { AkashNode } from './types.js';
 
@@ -216,11 +216,14 @@ export function renderList<T>(
   const scope = getCurrentScope();
 
   function createItem(data: T, index: number, key: unknown): ListItem<T> {
-    const fragment = scope ? runInScope(scope, () => renderItem(data, index)) : renderItem(data, index);
-    const nodes = fragment instanceof DocumentFragment
-      ? Array.from(fragment.childNodes)
-      : [fragment];
-    return { key, value: data, nodes, dispose: null };
+    let fragment: Node;
+    const dispose = createDisposableScope(() => {
+      fragment = scope ? runInScope(scope, () => renderItem(data, index)) : renderItem(data, index);
+    });
+    const nodes = fragment! instanceof DocumentFragment
+      ? Array.from(fragment!.childNodes)
+      : [fragment!];
+    return { key, value: data, nodes, dispose };
   }
 
   const dispose = effect(

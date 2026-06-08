@@ -336,6 +336,31 @@ class EffectNode implements ScheduledEffect {
   }
 }
 
+// --- Effect ownership / disposal tracking ---
+
+let currentOwner: (() => void)[] | null = null;
+
+/**
+ * Run a function and collect all effect disposers created during its execution.
+ * Returns a single dispose function that cleans up all collected effects.
+ * Used by <For> to track per-row effects for proper garbage collection.
+ */
+export function createDisposableScope(fn: () => void): () => void {
+  const disposers: (() => void)[] = [];
+  const prevOwner = currentOwner;
+  currentOwner = disposers;
+  try {
+    fn();
+  } finally {
+    currentOwner = prevOwner;
+  }
+  if (disposers.length === 0) return () => {};
+  if (disposers.length === 1) return disposers[0];
+  return () => {
+    for (let i = 0; i < disposers.length; i++) disposers[i]();
+  };
+}
+
 export function effect(
   fn: () => void | (() => void),
   options?: { render?: boolean },
@@ -346,7 +371,7 @@ export function effect(
   runEffect(node);
 
   // Return dispose function
-  return () => {
+  const dispose = () => {
     node._disposed = true;
     cleanupEffect(node);
     if (node._sources !== null) {
@@ -356,6 +381,11 @@ export function effect(
       node._sources = null;
     }
   };
+
+  // Register with current owner scope (if any) for batch disposal
+  if (currentOwner) currentOwner.push(dispose);
+
+  return dispose;
 }
 
 function runEffect(node: EffectNode): void {

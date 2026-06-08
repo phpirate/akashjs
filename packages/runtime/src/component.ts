@@ -9,8 +9,17 @@
 import { effect, untrack } from './signals.js';
 import { pushScope, popScope, getCurrentScope } from './context.js';
 import { nodeToDOM } from './dom.js';
-import { akashError } from './errors.js';
 import type { AkashNode } from './types.js';
+
+const __DEV__ = typeof process === 'undefined' || process.env?.NODE_ENV !== 'production';
+
+function throwError(code: string): never {
+  if (__DEV__) {
+    // Dynamic import in dev — keeps error catalog out of production bundles
+    throw new Error(`[AkashJS ${code}] See https://akash.js.org/errors/${code}`);
+  }
+  throw new Error(`[AkashJS ${code}]`);
+}
 
 // --- Reactive getter marker (used by compiler) ---
 
@@ -54,7 +63,7 @@ let currentHooks: LifecycleHooks | null = null;
  */
 export function onMount(fn: () => void | (() => void)): void {
   if (!currentHooks) {
-    throw akashError('AK0020');
+    throwError('AK0020');
   }
   currentHooks.mount.push(fn);
 }
@@ -64,7 +73,7 @@ export function onMount(fn: () => void | (() => void)): void {
  */
 export function onUnmount(fn: () => void): void {
   if (!currentHooks) {
-    throw akashError('AK0021');
+    throwError('AK0021');
   }
   currentHooks.unmount.push(fn);
 }
@@ -74,7 +83,7 @@ export function onUnmount(fn: () => void): void {
  */
 export function onError(fn: (error: Error) => void): void {
   if (!currentHooks) {
-    throw akashError('AK0022');
+    throwError('AK0022');
   }
   currentHooks.error.push(fn);
 }
@@ -142,7 +151,7 @@ export function defineComponent<P extends Record<string, any> = Record<string, a
       // dependencies because effect() sets its own subscriber during execution.
       domNode = untrack(() => {
         renderFn = setup(ctx);
-        if (typeof renderFn !== 'function') { throw akashError('AK0040'); }
+        if (typeof renderFn !== 'function') { throwError('AK0040'); }
         const rendered = renderFn();
         return nodeToDOM(rendered);
       });

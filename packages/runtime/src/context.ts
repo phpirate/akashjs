@@ -7,8 +7,6 @@
 
 // --- Types ---
 
-import { akashError } from './errors.js';
-
 const CONTEXT_BRAND = Symbol('akash.context');
 
 export interface InjectionKey<T> {
@@ -85,7 +83,7 @@ export function createContext<T>(defaultValue?: T): InjectionKey<T> {
  */
 export function provide<T>(key: InjectionKey<T>, value: T): void {
   if (!currentScope) {
-    throw akashError('AK0010');
+    throw new Error('[AkashJS AK0010] provide() called outside component setup');
   }
   currentScope.values.set(key.id, value);
 }
@@ -99,7 +97,7 @@ export function inject<T>(key: InjectionKey<T>): T;
 export function inject<T>(key: InjectionKey<T>, fallback: T): T;
 export function inject<T>(key: InjectionKey<T>, fallback?: T): T {
   if (!currentScope) {
-    throw akashError('AK0012');
+    throw new Error('[AkashJS AK0012] inject() called outside component setup');
   }
 
   // Walk up the scope chain
@@ -115,5 +113,5 @@ export function inject<T>(key: InjectionKey<T>, fallback?: T): T {
   if (fallback !== undefined) return fallback;
   if (key.defaultValue !== undefined) return key.defaultValue;
 
-  throw akashError('AK0013');
+  throw new Error('[AkashJS AK0013] No provider found for context key');
 }
