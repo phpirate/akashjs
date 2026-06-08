@@ -113,7 +113,22 @@ A few things AkashJS ships that other frameworks don't:
 
 AkashJS is included in the official [js-framework-benchmark](https://krausest.github.io/js-framework-benchmark/) (keyed implementation). The benchmark uses AkashJS's own primitives: `<For>` for keyed list rendering, `class:` directives, per-row event handlers, and `signal()` state.
 
-Performance-focused optimizations in recent releases:
+Official results (Chrome 150, keyed):
+
+| Benchmark | AkashJS | vanillajs |
+|---|---|---|
+| Create 1,000 rows | 24.8ms | 24.3ms |
+| Replace all rows | 28.5ms | 25.3ms |
+| Partial update | 13.4ms | 12.5ms |
+| Select row | 3.6ms | 1.8ms |
+| Swap rows | 12.9ms | 11.4ms |
+| Remove row | 9.3ms | 9.5ms |
+| Create 10,000 rows | 279.2ms | 259.5ms |
+| Append rows | 30.7ms | 27.8ms |
+| Clear rows | 9.3ms | 8.1ms |
+| **Geometric mean** | **1.27** | **1.23** |
+
+Performance-focused optimizations:
 
 - **LIS-based list reconciler** — Swap/remove operations produce minimal DOM moves instead of O(n) iteration
 - **Template cloning** — Compiler generates `cloneNode` from hoisted `<template>` elements instead of individual `createElement` chains

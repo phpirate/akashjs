@@ -348,7 +348,18 @@ Add it to your CI pipeline:
 
 ## Recent Optimizations
 
-AkashJS is included in the official [js-framework-benchmark](https://krausest.github.io/js-framework-benchmark/) (keyed implementation). The following optimizations were shipped to improve benchmark and real-world performance:
+AkashJS is included in the official [js-framework-benchmark](https://krausest.github.io/js-framework-benchmark/) (keyed implementation). Official results (Chrome 150):
+
+| Benchmark | AkashJS | vanillajs |
+|---|---|---|
+| Create 1,000 rows | 24.8ms | 24.3ms |
+| Replace all rows | 28.5ms | 25.3ms |
+| Select row | 3.6ms | 1.8ms |
+| Swap rows | 12.9ms | 11.4ms |
+| Remove row | 9.3ms | 9.5ms |
+| **Geometric mean** | **1.27** | **1.23** |
+
+The following optimizations were shipped to improve benchmark and real-world performance:
 
 ### LIS-Based List Reconciler
 
