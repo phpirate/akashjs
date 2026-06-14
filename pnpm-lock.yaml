@@ -195,6 +195,12 @@ importers:
 
   playground:
     dependencies:
+      '@akashjs/compiler':
+        specifier: workspace:*
+        version: link:../packages/compiler
+      '@akashjs/runtime':
+        specifier: workspace:*
+        version: link:../packages/runtime
       '@codemirror/autocomplete':
         specifier: ^6.18.0
         version: 6.20.2
