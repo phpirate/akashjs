@@ -553,9 +553,9 @@ function commitEdit() {
   const key = editingCell();
   if (!key) return;
   cells.update(c => ({ ...c, [key]: editValue() }));
-  editingCell.set(null);
+  setTimeout(() => editingCell.set(null), 0);
 }
-function cancelEdit() { editingCell.set(null); }
+function cancelEdit() { setTimeout(() => editingCell.set(null), 0); }
 
 // Pre-fill some data
 onMount(() => {
