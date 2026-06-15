@@ -85,8 +85,8 @@ Each step builds on the previous one. If you jump ahead, you may be missing file
 ## Need Help?
 
 - **[Playground](https://play.akash.js.org)** — experiment with code without leaving the browser
-- **[GitHub Issues](https://github.com/phpirate/akashjs/issues)** — bug reports and feature requests
-- **[GitHub Discussions](https://github.com/phpirate/akashjs/discussions)** — questions and ideas
+- **[GitHub Issues](https://github.com/hish/akashjs/issues)** — bug reports and feature requests
+- **[GitHub Discussions](https://github.com/hish/akashjs/discussions)** — questions and ideas
 
 ## Ready?
 

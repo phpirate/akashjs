@@ -116,5 +116,5 @@ Use `computed()` instead of `effect()` + `signal()` when deriving values. Use `b
 ---
 
 ::: info Still have questions?
-Open an issue on [GitHub](https://github.com/phpirate/akashjs/issues) — we're happy to help.
+Open an issue on [GitHub](https://github.com/hish/akashjs/issues) — we're happy to help.
 :::

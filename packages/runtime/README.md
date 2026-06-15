@@ -2,7 +2,7 @@
 
 AkashJS core runtime — signals, components, DOM rendering
 
-Part of the [AkashJS](https://github.com/phpirate/akashjs) framework.
+Part of the [AkashJS](https://github.com/hish/akashjs) framework.
 
 ## Installation
 
@@ -14,7 +14,7 @@ npm install @akashjs/runtime
 
 - [Guide](https://akash.js.org/guide/introduction)
 - [API Reference](https://akash.js.org/api/runtime)
-- [GitHub](https://github.com/phpirate/akashjs)
+- [GitHub](https://github.com/hish/akashjs)
 
 ## License
 

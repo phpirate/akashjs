@@ -2,7 +2,7 @@
 
 AkashJS i18n — signal-based internationalization
 
-Part of the [AkashJS](https://github.com/phpirate/akashjs) framework.
+Part of the [AkashJS](https://github.com/hish/akashjs) framework.
 
 ## Installation
 
@@ -14,7 +14,7 @@ npm install @akashjs/i18n
 
 - [Guide](https://akash.js.org/guide/introduction)
 - [API Reference](https://akash.js.org/api/i18n)
-- [GitHub](https://github.com/phpirate/akashjs)
+- [GitHub](https://github.com/hish/akashjs)
 
 ## License
 

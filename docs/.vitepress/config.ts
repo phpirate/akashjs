@@ -39,7 +39,7 @@ export default defineConfig({
       provider: 'local',
     },
     editLink: {
-      pattern: 'https://github.com/phpirate/akashjs/edit/main/docs/:path',
+      pattern: 'https://github.com/hish/akashjs/edit/main/docs/:path',
       text: 'Edit this page on GitHub',
     },
     footer: {
@@ -227,7 +227,7 @@ export default defineConfig({
       ],
     },
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/phpirate/akashjs' },
+      { icon: 'github', link: 'https://github.com/hish/akashjs' },
       { icon: 'npm', link: 'https://www.npmjs.com/org/akashjs' },
     ],
   },

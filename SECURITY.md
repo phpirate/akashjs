@@ -12,7 +12,7 @@ If you discover a security vulnerability in AkashJS, please report it responsibl
 
 **Do NOT open a public GitHub issue for security vulnerabilities.**
 
-Instead, email: **phpirate@gmail.com**
+Instead, email: **hish@gmail.com**
 
 Include:
 - Description of the vulnerability

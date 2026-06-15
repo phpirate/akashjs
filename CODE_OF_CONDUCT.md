@@ -20,7 +20,7 @@ We are committed to providing a friendly, safe, and welcoming environment for ev
 
 ## Enforcement
 
-Instances of unacceptable behavior may be reported by contacting **phpirate@gmail.com**. All complaints will be reviewed and investigated promptly and fairly.
+Instances of unacceptable behavior may be reported by contacting **hish@gmail.com**. All complaints will be reviewed and investigated promptly and fairly.
 
 Project maintainers have the right to remove, edit, or reject comments, commits, code, issues, and other contributions that are not aligned with this Code of Conduct.
 

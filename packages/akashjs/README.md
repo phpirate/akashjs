@@ -4,7 +4,7 @@ A TypeScript-first UI framework with Angular's structure and Svelte's simplicity
 
 **Fine-grained reactivity. Direct DOM rendering. Zero boilerplate.**
 
-[Documentation](https://akash.js.org) | [GitHub](https://github.com/phpirate/akashjs) | [Getting Started](https://akash.js.org/guide/getting-started)
+[Documentation](https://akash.js.org) | [GitHub](https://github.com/hish/akashjs) | [Getting Started](https://akash.js.org/guide/getting-started)
 
 ## Install
 

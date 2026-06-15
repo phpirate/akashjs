@@ -2,7 +2,7 @@
 
 AkashJS router — file-based routing, guards, loaders
 
-Part of the [AkashJS](https://github.com/phpirate/akashjs) framework.
+Part of the [AkashJS](https://github.com/hish/akashjs) framework.
 
 ## Installation
 
@@ -14,7 +14,7 @@ npm install @akashjs/router
 
 - [Guide](https://akash.js.org/guide/introduction)
 - [API Reference](https://akash.js.org/api/router)
-- [GitHub](https://github.com/phpirate/akashjs)
+- [GitHub](https://github.com/hish/akashjs)
 
 ## License
 

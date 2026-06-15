@@ -35,7 +35,7 @@ extensions/    — VS Code extension
 
 ### Bug Reports
 
-Open an [issue](https://github.com/phpirate/akashjs/issues) with:
+Open an [issue](https://github.com/hish/akashjs/issues) with:
 - Steps to reproduce
 - Expected vs actual behavior
 - Browser/Node version
@@ -43,7 +43,7 @@ Open an [issue](https://github.com/phpirate/akashjs/issues) with:
 
 ### Feature Requests
 
-Open an [issue](https://github.com/phpirate/akashjs/issues) with:
+Open an [issue](https://github.com/hish/akashjs/issues) with:
 - The problem you're trying to solve
 - Your proposed solution
 - Alternatives you considered

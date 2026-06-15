@@ -2,9 +2,9 @@
 
 A TypeScript-first UI framework with signals reactivity, direct DOM rendering, and batteries included.
 
-[![CI](https://github.com/phpirate/akashjs/actions/workflows/ci.yml/badge.svg)](https://github.com/phpirate/akashjs/actions/workflows/ci.yml)
+[![CI](https://github.com/hish/akashjs/actions/workflows/ci.yml/badge.svg)](https://github.com/hish/akashjs/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@akashjs/runtime)](https://www.npmjs.com/package/@akashjs/runtime)
-[![License](https://img.shields.io/github/license/phpirate/akashjs)](https://github.com/phpirate/akashjs/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/hish/akashjs)](https://github.com/hish/akashjs/blob/main/LICENSE)
 
 > **Note on naming:** This project is unrelated to [akash-network/akashjs](https://github.com/akash-network/akashjs) (the Akash Network blockchain SDK). We are a UI framework.
 
@@ -252,8 +252,8 @@ See [CHANGELOG.md](CHANGELOG.md) and the [Upgrading Guide](https://akash.js.org/
 
 ## Community
 
-- [GitHub Issues](https://github.com/phpirate/akashjs/issues) — bug reports and feature requests
-- [GitHub Discussions](https://github.com/phpirate/akashjs/discussions) — questions and ideas
+- [GitHub Issues](https://github.com/hish/akashjs/issues) — bug reports and feature requests
+- [GitHub Discussions](https://github.com/hish/akashjs/discussions) — questions and ideas
 
 ## Contributing
 
@@ -269,4 +269,4 @@ See [SECURITY.md](SECURITY.md) for reporting vulnerabilities. AkashJS includes b
 
 ---
 
-Created by [Ma'moon Al-Akash](https://github.com/phpirate)
+Created by [Ma'moon Al-Akash](https://github.com/hish)
